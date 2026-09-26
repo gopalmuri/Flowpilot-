@@ -1,0 +1,120 @@
+﻿name: FlowPilot CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  backend-test-and-lint:
+    name: Backend Quality & Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: flowpilot_test
+          POSTGRES_USER: flowpilot_admin
+          POSTGRES_PASSWORD: flowpilot_secret_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install ruff mypy pytest pytest-asyncio pytest-cov httpx
+
+      - name: Run Ruff Linter
+        run: |
+          ruff check backend/app
+
+      - name: Run Mypy Type Checker
+        run: |
+          mypy backend/app --ignore-missing-imports
+
+      - name: Run Database Migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://flowpilot_admin:flowpilot_secret_password@localhost:5432/flowpilot_test
+          SYNC_DATABASE_URL: postgresql://flowpilot_admin:flowpilot_secret_password@localhost:5432/flowpilot_test
+          FIELD_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          SECRET_KEY: "test-secret-key-for-github-actions-ci-32-chars"
+        run: |
+          cd backend
+          alembic upgrade head
+
+      - name: Run Backend Pytest Suite with Coverage
+        env:
+          DATABASE_URL: postgresql+asyncpg://flowpilot_admin:flowpilot_secret_password@localhost:5432/flowpilot_test
+          SYNC_DATABASE_URL: postgresql://flowpilot_admin:flowpilot_secret_password@localhost:5432/flowpilot_test
+          REDIS_URL: redis://localhost:6379/0
+          CELERY_BROKER_URL: redis://localhost:6379/1
+          CELERY_RESULT_BACKEND: redis://localhost:6379/2
+          SECRET_KEY: "test-secret-key-for-github-actions-ci-32-chars"
+          FIELD_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          RATE_LIMIT_ENABLED: "false"
+        run: |
+          cd backend
+          python -m pytest tests/ -v --cov=app --cov-report=xml --cov-report=term
+
+  frontend-test-and-lint:
+    name: Frontend Quality & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package.json
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run ESLint
+        run: |
+          cd frontend
+          npm run lint
+
+      - name: Run Vitest Unit & Component Tests
+        run: |
+          cd frontend
+          npm test -- --run
+
+      - name: Run Production Bundle Build Check
+        run: |
+          cd frontend
+          npm run build
