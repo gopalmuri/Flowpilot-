@@ -1,0 +1,33 @@
+# ========================================================================
+# FlowPilot Frontend - Production Multi-Stage Dockerfile
+# =======================================================================
+
+# Stage 1: Build & Compile
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+# Compile TypeScript and build Vite production bundle
+RUN npm run build
+
+# Stage 2: Minimal Nginx Runtime
+FROM nginx:1.27-alpine AS runner
+
+# Remove default nginx static assets
+RUN rm -rf /usr/share/nginx/html/*
+
+# Copy built distribution from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy SPA Nginx configuration with try_files fallback
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port 80 for reverse proxy routing
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

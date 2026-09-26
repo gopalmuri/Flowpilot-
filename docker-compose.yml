@@ -1,0 +1,129 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: flowpilot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-flowpilot_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flowpilot_secret_password}
+      POSTGRES_DB: ${POSTGRES_DB:-flowpilot}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-flowpilot_admin} -d ${POSTGRES_DB:-flowpilot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - flowpilot-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: flowpilot-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - flowpilot-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: flowpilot-backend
+    restart: unless-stopped
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-flowpilot_admin}:${POSTGRES_PASSWORD:-flowpilot_secret_password}@postgres:5432/${POSTGRES_DB:-flowpilot}
+      SYNC_DATABASE_URL: postgresql://${POSTGRES_USER:-flowpilot_admin}:${POSTGRES_PASSWORD:-flowpilot_secret_password}@postgres:5432/${POSTGRES_DB:-flowpilot}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - flowpilot-network
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: flowpilot-celery-worker
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app.celery_app worker --loglevel=info --concurrency=4
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-flowpilot_admin}:${POSTGRES_PASSWORD:-flowpilot_secret_password}@postgres:5432/${POSTGRES_DB:-flowpilot}
+      SYNC_DATABASE_URL: postgresql://${POSTGRES_USER:-flowpilot_admin}:${POSTGRES_PASSWORD:-flowpilot_secret_password}@postgres:5432/${POSTGRES_DB:-flowpilot}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - flowpilot-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: flowpilot-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - flowpilot-network
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  flowpilot-network:
+    driver: bridge
