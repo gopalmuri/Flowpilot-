@@ -1,9 +1,8 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { AuthLayout } from '../../components/auth/AuthLayout';
 import { AuthCard } from '../../components/auth/AuthCard';
-import { WorkflowPreview } from '../../components/auth/WorkflowPreview';
 import { FormField } from '../../components/auth/FormField';
 import { PasswordField } from '../../components/auth/PasswordField';
 import { PrimaryButton } from '../../components/auth/PrimaryButton';
@@ -40,11 +39,11 @@ export const LoginPage: React.FC = () => {
   };
 
   const footerLink = (
-    <p className="text-xs text-slate-400">
+    <p className="text-xs text-[var(--text-secondary)]">
       Don't have an organization account?{' '}
       <Link
         to={searchParams.get('redirect') ? `/register?redirect=${searchParams.get('redirect')}` : '/register'}
-        className="text-[#18B89A] hover:text-[#20C997] font-semibold underline underline-offset-4 transition-colors"
+        className="text-brand-600 dark:text-brand-400 hover:underline font-semibold transition-colors ml-1"
       >
         Register now
       </Link>
@@ -52,21 +51,10 @@ export const LoginPage: React.FC = () => {
   );
 
   return (
-    <AuthLayout
-      categoryTag="B2B WORKFLOW ORCHESTRATION"
-      headline={
-        <>
-          Orchestrate business work.
-          <br />
-          <span className="text-slate-300 font-normal">Control every step.</span>
-        </>
-      }
-      supportingText="Connect incoming requests to rules, approvals, and business actions through controlled workflows."
-      showcase={<WorkflowPreview />}
-    >
+    <AuthLayout>
       <AuthCard
         title="Sign in to FlowPilot"
-        subtitle="Enter your credentials to access your organization workspace."
+        subtitle="Access your organization workspace."
         error={error}
         footer={footerLink}
       >
@@ -80,7 +68,7 @@ export const LoginPage: React.FC = () => {
             placeholder="alex@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            icon={<Mail className="w-4 h-4 text-slate-500" />}
+            icon={<Mail className="w-4 h-4 text-[var(--text-muted)]" />}
           />
 
           <PasswordField
@@ -90,15 +78,17 @@ export const LoginPage: React.FC = () => {
             onChange={(e) => setPassword(e.target.value)}
           />
 
-          <PrimaryButton
-            type="submit"
-            disabled={isSubmitting}
-            isLoading={isSubmitting}
-            loadingText="Authenticating..."
-          >
-            <span>Sign In</span>
-            <ArrowRight className="w-4 h-4" />
-          </PrimaryButton>
+          <div className="pt-2">
+            <PrimaryButton
+              type="submit"
+              disabled={isSubmitting}
+              isLoading={isSubmitting}
+              loadingText="Signing In..."
+            >
+              <span>Sign In</span>
+              <ArrowRight className="w-4 h-4" />
+            </PrimaryButton>
+          </div>
         </form>
       </AuthCard>
     </AuthLayout>

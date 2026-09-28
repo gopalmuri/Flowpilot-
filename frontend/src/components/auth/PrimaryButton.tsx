@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Loader2 } from 'lucide-react';
 
 interface PrimaryButtonProps {
@@ -25,7 +25,7 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
       type={type}
       disabled={disabled || isLoading}
       onClick={onClick}
-      className={`w-full h-12 flex items-center justify-center gap-2 rounded-lg bg-[#18B89A] hover:bg-[#16A389] active:bg-[#14917A] text-sm font-semibold text-white transition-all disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#18B89A]/40 ${className}`}
+      className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 dark:bg-brand-500 dark:hover:bg-brand-400 dark:active:bg-brand-600 text-sm font-semibold text-white shadow-sm hover:shadow active:scale-[0.99] transition-all duration-150 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-brand-500/40 ${className}`}
     >
       {isLoading ? (
         <>
