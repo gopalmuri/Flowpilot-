@@ -66,6 +66,12 @@ export const AppRoutes: React.FC = () => {
         <Route path="/audit" element={<AuditLogsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/status" element={<StatusPage />} />
+
+        {/* Operational Route Aliases */}
+        <Route path="/audit-logs" element={<Navigate to="/audit" replace />} />
+        <Route path="/system-status" element={<Navigate to="/status" replace />} />
+        <Route path="/sla-monitoring" element={<Navigate to="/analytics" replace />} />
+        <Route path="/sla" element={<Navigate to="/analytics" replace />} />
       </Route>
 
       {/* 404 Fallback */}

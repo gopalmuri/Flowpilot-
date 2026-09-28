@@ -146,12 +146,12 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative w-full max-w-lg bg-white dark:bg-charcoal-900 border border-warm-200 dark:border-charcoal-750 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-warm-200 dark:border-charcoal-750 bg-warm-50 dark:bg-charcoal-850">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800/60 flex items-center justify-center text-brand-600 dark:text-brand-400">
               {integrationType === 'SLACK' ? (
                 <MessageSquare className="w-5 h-5" />
               ) : (
@@ -159,10 +159,10 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
               )}
             </div>
             <div>
-              <h2 className="text-base font-semibold text-white tracking-tight">
+              <h2 className="text-base font-semibold text-warm-900 dark:text-charcoal-100 tracking-tight">
                 {isEditing ? 'Configure Integration' : 'Connect Integration'}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-warm-500 dark:text-charcoal-400">
                 {integrationType === 'SLACK'
                   ? 'Slack Webhook & Block Kit Notifications'
                   : 'High-Fidelity CRM Simulator & Deduplication'}
@@ -172,7 +172,7 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
           <button
             onClick={onClose}
             disabled={isSubmitting}
-            className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800"
+            className="text-warm-500 dark:text-charcoal-400 hover:text-warm-900 dark:text-charcoal-100 transition-colors p-1.5 rounded-lg hover:bg-warm-100 dark:hover:bg-charcoal-800"
           >
             <X className="w-5 h-5" />
           </button>
@@ -197,7 +197,7 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
 
           {/* Integration Name */}
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+            <label className="block text-xs font-medium text-warm-700 dark:text-charcoal-300 mb-1.5">
               Integration Name <span className="text-rose-400">*</span>
             </label>
             <input
@@ -207,7 +207,7 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
               onChange={(e) => setName(e.target.value)}
               disabled={!canManage || isSubmitting}
               placeholder="e.g. Sales Team Slack"
-              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+              className="w-full px-3.5 py-2.5 bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 rounded-xl text-xs text-warm-900 dark:text-charcoal-100 placeholder-warm-400 dark:placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 focus:border-brand-600 dark:border-brand-500 transition-colors"
             />
           </div>
 
@@ -215,7 +215,7 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
           {integrationType === 'SLACK' && (
             <>
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-warm-700 dark:text-charcoal-300 mb-1.5">
                   Incoming Webhook URL
                 </label>
                 <div className="relative">
@@ -229,17 +229,17 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
                         ? '•••••••• (configured, enter new URL to rotate)'
                         : 'https://hooks.slack.com/services/T00/B00/XXXX'
                     }
-                    className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-colors font-mono"
+                    className="w-full px-3.5 py-2.5 bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 rounded-xl text-xs text-warm-900 dark:text-charcoal-100 placeholder-warm-400 dark:placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 focus:border-brand-600 dark:border-brand-500 transition-colors font-mono"
                   />
-                  <Lock className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
+                  <Lock className="w-4 h-4 text-warm-400 dark:text-charcoal-500 absolute right-3 top-3" />
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-warm-500 dark:text-charcoal-400 mt-1">
                   Credentials are encrypted at rest with AES-256-GCM. Never exposed in API responses.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-warm-700 dark:text-charcoal-300 mb-1.5">
                   Default Channel
                 </label>
                 <input
@@ -248,7 +248,7 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
                   onChange={(e) => setChannel(e.target.value)}
                   disabled={!canManage || isSubmitting}
                   placeholder="#leads-hot"
-                  className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                  className="w-full px-3.5 py-2.5 bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 rounded-xl text-xs text-warm-900 dark:text-charcoal-100 placeholder-warm-400 dark:placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 focus:border-brand-600 dark:border-brand-500 transition-colors"
                 />
               </div>
 
@@ -259,9 +259,9 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
                   checked={mockMode}
                   onChange={(e) => setMockMode(e.target.checked)}
                   disabled={!canManage || isSubmitting}
-                  className="rounded border-slate-800 text-indigo-500 focus:ring-indigo-500"
+                  className="rounded border-warm-200 dark:border-charcoal-750 text-brand-600 dark:text-brand-400 focus:ring-brand-500/20"
                 />
-                <label htmlFor="mock-mode-toggle" className="text-xs text-slate-300">
+                <label htmlFor="mock-mode-toggle" className="text-xs text-warm-700 dark:text-charcoal-300">
                   Simulate Delivery (Mock mode without outbound HTTP network call)
                 </label>
               </div>
@@ -272,7 +272,7 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
           {integrationType === 'MOCK_CRM' && (
             <>
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-warm-700 dark:text-charcoal-300 mb-1.5">
                   Simulated Network Latency (ms)
                 </label>
                 <input
@@ -282,15 +282,15 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
                   value={simulatedLatency}
                   onChange={(e) => setSimulatedLatency(Number(e.target.value))}
                   disabled={!canManage || isSubmitting}
-                  className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                  className="w-full px-3.5 py-2.5 bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 rounded-xl text-xs text-warm-900 dark:text-charcoal-100 placeholder-warm-400 dark:placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 focus:border-brand-600 dark:border-brand-500 transition-colors"
                 />
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-warm-500 dark:text-charcoal-400 mt-1">
                   Simulates realistic round-trip cloud CRM latency (HubSpot/Salesforce).
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-warm-700 dark:text-charcoal-300 mb-1.5">
                   Simulated API Key / Secret (Optional)
                 </label>
                 <div className="relative">
@@ -304,9 +304,9 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
                         ? '•••••••• (configured, enter new value to rotate)'
                         : 'sk-crm-prod-secret'
                     }
-                    className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-colors font-mono"
+                    className="w-full px-3.5 py-2.5 bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 rounded-xl text-xs text-warm-900 dark:text-charcoal-100 placeholder-warm-400 dark:placeholder-charcoal-500 focus:outline-none focus:ring-1 focus:ring-brand-500/20 focus:border-brand-600 dark:border-brand-500 transition-colors font-mono"
                   />
-                  <Lock className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
+                  <Lock className="w-4 h-4 text-warm-400 dark:text-charcoal-500 absolute right-3 top-3" />
                 </div>
               </div>
             </>
@@ -330,42 +330,42 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
                 <div className="font-semibold">
                   {testResult.status === 'healthy' ? 'Handshake Verified' : 'Connection Failed'} ({testResult.latency_ms}ms)
                 </div>
-                <div className="text-[11px] text-slate-300 mt-0.5">{testResult.message}</div>
+                <div className="text-[11px] text-warm-700 dark:text-charcoal-300 mt-0.5">{testResult.message}</div>
               </div>
             </div>
           )}
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-4 border-t border-warm-200 dark:border-charcoal-750">
             {isEditing && (
               <button
                 type="button"
                 onClick={handleTestExisting}
                 disabled={isTesting || isSubmitting}
-                className="flex items-center space-x-1.5 px-3 py-2 text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50"
+                className="flex items-center space-x-1.5 px-3 py-2 text-xs font-semibold text-warm-700 dark:text-charcoal-300 bg-warm-100 dark:bg-charcoal-800 hover:bg-warm-200 dark:hover:bg-charcoal-700 rounded-xl transition-colors disabled:opacity-50"
               >
                 {isTesting ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-brand-600 dark:text-brand-400" />
                 ) : (
-                  <Play className="w-3.5 h-3.5 text-indigo-400" />
+                  <Play className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                 )}
                 <span>{isTesting ? 'Testing...' : 'Test Connection'}</span>
               </button>
             )}
 
-            <div className="flex items-center space-x-2 ml-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2 ml-auto w-full sm:w-auto">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors"
+                className="w-full sm:w-auto px-4 py-2.5 text-xs font-medium text-warm-600 dark:text-charcoal-400 hover:text-warm-900 dark:hover:text-charcoal-100 bg-warm-100 dark:bg-charcoal-800 hover:bg-warm-200 dark:hover:bg-charcoal-700 rounded-xl transition-colors text-center"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={!canManage || isSubmitting}
-                className="flex items-center space-x-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-600/25 transition-colors disabled:opacity-50"
+                className="w-full sm:w-auto flex items-center justify-center space-x-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 rounded-xl shadow-subtle transition-colors disabled:opacity-50"
               >
                 <span>{isSubmitting ? 'Saving...' : isEditing ? 'Update Integration' : 'Connect'}</span>
               </button>

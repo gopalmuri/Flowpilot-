@@ -3,44 +3,116 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --bg-app: #F5F3EE;
+    --bg-surface: #FFFFFF;
+    --bg-surface-secondary: #FAF9F6;
+    --bg-surface-hover: #EAE7DF;
+    --border-subtle: #D9DDD8;
+    --border-strong: #B5BCB6;
+    --text-primary: #18201C;
+    --text-secondary: #59645E;
+    --text-muted: #7B847E;
+    --brand-primary: #176B4D;
+    --brand-hover: #12553D;
+    --brand-soft: #E0F0E8;
+    --brand-text: #0E4733;
+    --status-success: #16845A;
+    --status-success-soft: #E0F0E8;
+    --status-warning: #B7791F;
+    --status-warning-soft: #FEF3C7;
+    --status-danger: #C24141;
+    --status-danger-soft: #FEE2E2;
+  }
+
+  .dark {
+    --bg-app: #101513;
+    --bg-surface: #171D1A;
+    --bg-surface-secondary: #1D2521;
+    --bg-surface-hover: #242E29;
+    --border-subtle: #2A332E;
+    --border-strong: #3B4740;
+    --text-primary: #F1F4EF;
+    --text-secondary: #A5AEA8;
+    --text-muted: #7E8982;
+    --brand-primary: #35B982;
+    --brand-hover: #49CC96;
+    --brand-soft: #16372B;
+    --brand-text: #A7F3D0;
+    --status-success: #35B982;
+    --status-success-soft: rgba(53, 185, 130, 0.15);
+    --status-warning: #F59E0B;
+    --status-warning-soft: rgba(245, 158, 11, 0.15);
+    --status-danger: #EF4444;
+    --status-danger-soft: rgba(239, 68, 68, 0.15);
+  }
+
+  html {
+    height: 100%;
+    background-color: var(--bg-app);
+  }
+
   body {
-    @apply bg-slate-950 text-slate-100 antialiased font-sans;
+    height: 100%;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  #root {
+    height: 100%;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: inherit;
+    font-weight: 700;
   }
 }
 
-/* Custom scrollbars */
+/* Operational Panel Utilities */
+.op-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.op-card:hover {
+  border-color: var(--border-strong);
+}
+
+.op-card-interactive:hover {
+  border-color: var(--brand-primary);
+}
+
+/* Clean Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 3px;
+  background: #D9DDD8;
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #2A332E;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #7B847E;
 }
 
-/* Glassmorphism card utilities */
-.glass-panel {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glass-panel-hover {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass-panel-hover:hover {
-  background: rgba(30, 41, 59, 0.85);
-  border-color: rgba(99, 102, 241, 0.3);
-  transform: translateY(-1px);
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3B4740;
 }

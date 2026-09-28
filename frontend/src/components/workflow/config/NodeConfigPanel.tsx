@@ -3,7 +3,6 @@ import { Node } from '@xyflow/react';
 import {
   X,
   Trash2,
-  Sliders,
 } from 'lucide-react';
 import { StepType } from '../../../types/workflow';
 import { WorkflowNodeData } from '../../../utils/workflowGraphValidator';
@@ -23,31 +22,22 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
   onDeleteNode,
   isReadOnly = false,
 }) => {
-  if (!selectedNode) {
-    return (
-      <div className="w-80 bg-slate-950 border-l border-slate-800 p-6 flex flex-col items-center justify-center text-center text-slate-500">
-        <Sliders className="w-8 h-8 mb-2 opacity-50" />
-        <p className="text-xs">Select a step on the canvas to configure parameters</p>
-      </div>
-    );
-  }
+  if (!selectedNode) return null;
 
   const { id, data } = selectedNode;
   const stepType = data.step_type;
   const config = data.config || {};
 
-  const handleConfigChange = (key: string, value: any) => {
+  const handleBasicChange = (field: 'name' | 'step_key', value: string) => {
+    onUpdateNode(id, { [field]: value });
+  };
+
+  const handleConfigChange = (field: string, value: any) => {
     onUpdateNode(id, {
       config: {
         ...config,
-        [key]: value,
+        [field]: value,
       },
-    });
-  };
-
-  const handleBasicChange = (field: 'name' | 'step_key', value: string) => {
-    onUpdateNode(id, {
-      [field]: value,
     });
   };
 
@@ -57,49 +47,35 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
-                HMAC Secret Token (Optional)
-              </label>
-              <input
-                type="password"
-                placeholder="whsec_..."
-                value={config.secret_token || ''}
-                disabled={isReadOnly}
-                onChange={(e) => handleConfigChange('secret_token', e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+              <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
                 Allowed HTTP Methods
               </label>
               <div className="flex gap-2">
-                {['POST', 'PUT', 'GET'].map((m) => {
-                  const methods = config.allowed_methods || ['POST'];
-                  const isChecked = methods.includes(m);
+                {['POST', 'GET', 'PUT'].map((method) => {
+                  const allowed = config.allowed_methods || ['POST'];
+                  const isChecked = allowed.includes(method);
                   return (
                     <label
-                      key={m}
-                      className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer"
+                      key={method}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-xs font-mono cursor-pointer transition ${
+                        isChecked
+                          ? 'border-brand-600 bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300'
+                          : 'border-warm-300 dark:border-charcoal-700 bg-white dark:bg-charcoal-850 text-warm-600 dark:text-charcoal-400'
+                      }`}
                     >
                       <input
                         type="checkbox"
-                        checked={isChecked}
                         disabled={isReadOnly}
+                        checked={isChecked}
                         onChange={(e) => {
-                          if (e.target.checked) {
-                            handleConfigChange('allowed_methods', [...methods, m]);
-                          } else {
-                            handleConfigChange(
-                              'allowed_methods',
-                              methods.filter((x: string) => x !== m)
-                            );
-                          }
+                          const next = e.target.checked
+                            ? [...allowed, method]
+                            : allowed.filter((m: string) => m !== method);
+                          handleConfigChange('allowed_methods', next.length ? next : ['POST']);
                         }}
-                        className="rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-0"
+                        className="hidden"
                       />
-                      <span>{m}</span>
+                      <span>{method}</span>
                     </label>
                   );
                 })}
@@ -108,12 +84,56 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
           </div>
         );
 
-      case StepType.MANUAL_TRIGGER:
+      case StepType.CONDITION:
         return (
-          <div className="space-y-3">
-            <p className="text-[11px] text-slate-400">
-              Manual triggers accept test JSON payloads during interactive testing.
-            </p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
+                Evaluation Field (dot-notated)
+              </label>
+              <input
+                type="text"
+                placeholder="payload.score"
+                value={config.field || ''}
+                disabled={isReadOnly}
+                onChange={(e) => handleConfigChange('field', e.target.value)}
+                className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 font-mono focus:outline-none focus:border-brand-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
+                Operator
+              </label>
+              <select
+                value={config.operator || 'eq'}
+                disabled={isReadOnly}
+                onChange={(e) => handleConfigChange('operator', e.target.value)}
+                className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600"
+              >
+                <option value="eq">Equal (==)</option>
+                <option value="neq">Not Equal (!=)</option>
+                <option value="gt">Greater Than (&gt;)</option>
+                <option value="gte">Greater Than or Equal (&gt;=)</option>
+                <option value="lt">Less Than (&lt;)</option>
+                <option value="lte">Less Than or Equal (&lt;=)</option>
+                <option value="contains">Contains</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
+                Comparison Target Value
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 50, enterprise, true"
+                value={config.value !== undefined ? String(config.value) : ''}
+                disabled={isReadOnly}
+                onChange={(e) => handleConfigChange('value', e.target.value)}
+                className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600"
+              />
+            </div>
           </div>
         );
 
@@ -121,124 +141,33 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
-                Target Model
+              <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
+                AI Classification Model
               </label>
               <select
                 value={config.model || 'gpt-4o-mini'}
                 disabled={isReadOnly}
                 onChange={(e) => handleConfigChange('model', e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-purple-500"
+                className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600"
               >
-                <option value="gpt-4o-mini">gpt-4o-mini (Fast & Efficient)</option>
-                <option value="gpt-4o">gpt-4o (High Reasoning)</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+              <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
                 Prompt / Instructions
               </label>
               <textarea
                 rows={3}
-                placeholder="Classify the incoming lead intent based on company size and message..."
+                placeholder="Classify this lead as ENTERPRISE, SMB, or CONSUMER based on company size and message."
                 value={config.prompt || ''}
                 disabled={isReadOnly}
                 onChange={(e) => handleConfigChange('prompt', e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-purple-500 resize-none font-mono"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
-                Candidate Categories (comma separated)
-              </label>
-              <input
-                type="text"
-                placeholder="enterprise, mid_market, smb, spam"
-                value={(config.categories || []).join(', ')}
-                disabled={isReadOnly}
-                onChange={(e) =>
-                  handleConfigChange(
-                    'categories',
-                    e.target.value.split(',').map((s) => s.trim()).filter(Boolean)
-                  )
-                }
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-purple-500"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="text-[11px] font-medium text-slate-300">
-                  Confidence Threshold
-                </label>
-                <span className="text-[10px] text-purple-400 font-mono">
-                  {config.confidence_threshold ?? 0.7}
-                </span>
-              </div>
-              <input
-                type="range"
-                min="0.1"
-                max="1.0"
-                step="0.05"
-                value={config.confidence_threshold ?? 0.7}
-                disabled={isReadOnly}
-                onChange={(e) =>
-                  handleConfigChange('confidence_threshold', parseFloat(e.target.value))
-                }
-                className="w-full accent-purple-500 cursor-pointer"
-              />
-            </div>
-          </div>
-        );
-
-      case StepType.CONDITION:
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
-                Context Field Path
-              </label>
-              <input
-                type="text"
-                placeholder="steps.classify.output.category"
-                value={config.field || ''}
-                disabled={isReadOnly}
-                onChange={(e) => handleConfigChange('field', e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 font-mono focus:outline-none focus:border-amber-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
-                Comparison Operator
-              </label>
-              <select
-                value={config.operator || 'equals'}
-                disabled={isReadOnly}
-                onChange={(e) => handleConfigChange('operator', e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-amber-500"
-              >
-                <option value="equals">Equals (==)</option>
-                <option value="not_equals">Not Equals (!=)</option>
-                <option value="contains">Contains</option>
-                <option value="greater_than">Greater Than (&gt;)</option>
-                <option value="less_than">Less Than (&lt;)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
-                Target Value
-              </label>
-              <input
-                type="text"
-                placeholder="enterprise"
-                value={config.value || ''}
-                disabled={isReadOnly}
-                onChange={(e) => handleConfigChange('value', e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-amber-500"
+                className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600 resize-none font-mono"
               />
             </div>
           </div>
@@ -248,12 +177,12 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
-                Required Fields (comma separated)
+              <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
+                Required Fields (comma-separated)
               </label>
               <input
                 type="text"
-                placeholder="email, full_name, plan"
+                placeholder="email, name, company"
                 value={(config.required_fields || []).join(', ')}
                 disabled={isReadOnly}
                 onChange={(e) =>
@@ -262,7 +191,7 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
                     e.target.value.split(',').map((s) => s.trim()).filter(Boolean)
                   )
                 }
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600"
               />
             </div>
           </div>
@@ -272,14 +201,14 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+              <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
                 Target Entity Type
               </label>
               <select
                 value={config.entity_type || 'lead'}
                 disabled={isReadOnly}
                 onChange={(e) => handleConfigChange('entity_type', e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-teal-500"
+                className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600"
               >
                 <option value="lead">Lead</option>
                 <option value="contact">Contact</option>
@@ -293,7 +222,7 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+              <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
                 Target Slack Channel
               </label>
               <input
@@ -302,12 +231,12 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
                 value={config.channel || ''}
                 disabled={isReadOnly}
                 onChange={(e) => handleConfigChange('channel', e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+              <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
                 Message Content / Template
               </label>
               <textarea
@@ -316,7 +245,7 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
                 value={config.message || ''}
                 disabled={isReadOnly}
                 onChange={(e) => handleConfigChange('message', e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-indigo-500 resize-none font-mono"
+                className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600 resize-none font-mono"
               />
             </div>
           </div>
@@ -326,14 +255,14 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+              <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
                 Required Approver Role
               </label>
               <select
                 value={config.approver_role || 'MANAGER'}
                 disabled={isReadOnly}
                 onChange={(e) => handleConfigChange('approver_role', e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-rose-500"
+                className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600"
               >
                 <option value="MANAGER">Manager or higher</option>
                 <option value="ADMIN">Admin or higher</option>
@@ -342,7 +271,7 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
             </div>
 
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+              <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
                 Approval Request Title
               </label>
               <input
@@ -351,12 +280,12 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
                 value={config.title || ''}
                 disabled={isReadOnly}
                 onChange={(e) => handleConfigChange('title', e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-rose-500"
+                className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+              <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
                 Expiration Timeout (Hours)
               </label>
               <input
@@ -366,7 +295,7 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
                 value={config.timeout_hours || 24}
                 disabled={isReadOnly}
                 onChange={(e) => handleConfigChange('timeout_hours', parseInt(e.target.value, 10) || 24)}
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-rose-500"
+                className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600"
               />
             </div>
           </div>
@@ -378,14 +307,25 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
   };
 
   return (
-    <div className="w-80 bg-slate-950 border-l border-slate-800 flex flex-col h-full select-none">
-      {/* Panel Header */}
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+    <>
+      {/* Mobile Drawer Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/40 backdrop-blur-xs md:hidden z-40"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <div className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] md:relative md:inset-auto md:max-h-full md:z-auto w-full md:w-80 bg-white dark:bg-charcoal-900 border-t md:border-t-0 md:border-l border-warm-300 dark:border-charcoal-750 rounded-t-2xl md:rounded-none shadow-elevated md:shadow-subtle flex flex-col select-none transition-all duration-200">
+        {/* Mobile Pull Handle */}
+        <div className="w-10 h-1 bg-warm-300 dark:bg-charcoal-700 rounded-full mx-auto mt-2 mb-1 md:hidden flex-shrink-0" />
+
+        {/* Panel Header */}
+        <div className="p-3.5 sm:p-4 border-b border-warm-200 dark:border-charcoal-800 flex items-center justify-between flex-shrink-0">
         <div>
-          <h3 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
+          <h3 className="text-xs font-semibold text-warm-900 dark:text-charcoal-100 uppercase tracking-wider">
             Step Configuration
           </h3>
-          <span className="text-[10px] font-mono text-cyan-400 block mt-0.5">
+          <span className="text-[10px] font-mono text-brand-600 dark:text-brand-400 block mt-0.5">
             {stepType}
           </span>
         </div>
@@ -394,7 +334,7 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
             <button
               type="button"
               onClick={() => onDeleteNode(id)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
+              className="p-1.5 rounded-lg text-warm-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
               title="Delete Step"
             >
               <Trash2 className="w-4 h-4" />
@@ -403,7 +343,7 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-lg text-warm-400 hover:text-warm-700 dark:hover:text-charcoal-200 hover:bg-warm-100 dark:hover:bg-charcoal-800 transition"
             title="Close Panel"
           >
             <X className="w-4 h-4" />
@@ -414,9 +354,9 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
       {/* Panel Body */}
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {/* Core Attributes */}
-        <div className="space-y-3 pb-4 border-b border-slate-800/80">
+        <div className="space-y-3 pb-4 border-b border-warm-200 dark:border-charcoal-800">
           <div>
-            <label className="block text-[11px] font-medium text-slate-300 mb-1">
+            <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
               Step Label / Name
             </label>
             <input
@@ -424,12 +364,12 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
               value={data.name || ''}
               disabled={isReadOnly}
               onChange={(e) => handleBasicChange('name', e.target.value)}
-              className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="w-full px-3 py-1.5 bg-warm-50 dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600 focus:ring-1 focus:ring-brand-500/20"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-slate-300 mb-1">
+            <label className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1">
               Step Key (DAG Identifier)
             </label>
             <input
@@ -437,19 +377,20 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
               value={data.step_key || ''}
               disabled={isReadOnly}
               onChange={(e) => handleBasicChange('step_key', e.target.value)}
-              className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="w-full px-3 py-1.5 bg-warm-50 dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 font-mono focus:outline-none focus:border-brand-600 focus:ring-1 focus:ring-brand-500/20"
             />
           </div>
         </div>
 
         {/* Step-Specific Configuration Form */}
         <div className="space-y-2">
-          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
+          <span className="text-[10px] font-semibold text-warm-500 dark:text-charcoal-400 uppercase tracking-wider block mb-2">
             Execution Parameters
           </span>
           {renderStepSpecificForm()}
         </div>
       </div>
     </div>
+  </>
   );
 };

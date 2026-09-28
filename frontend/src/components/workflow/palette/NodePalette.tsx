@@ -9,7 +9,6 @@ import {
   MessageSquare,
   UserCheck,
   Plus,
-  GripVertical,
 } from 'lucide-react';
 import { StepType } from '../../../types/workflow';
 
@@ -18,22 +17,19 @@ interface PaletteItem {
   label: string;
   category: string;
   icon: React.ElementType;
-  color: string;
-  bgColor: string;
-  textColor: string;
   description: string;
+  badgeClass: string;
+  iconClass: string;
 }
 
 const PALETTE_ITEMS: PaletteItem[] = [
-  // Triggers
   {
     type: StepType.WEBHOOK_TRIGGER,
     label: 'Webhook Trigger',
     category: 'Triggers',
     icon: Webhook,
-    color: 'indigo',
-    bgColor: 'bg-indigo-500/10',
-    textColor: 'text-indigo-400',
+    badgeClass: 'bg-warm-100 dark:bg-charcoal-800 text-warm-800 dark:text-charcoal-300 border-warm-200 dark:border-charcoal-700',
+    iconClass: 'text-brand-600 dark:text-brand-400',
     description: 'Listen for authenticated inbound JSON payloads',
   },
   {
@@ -41,167 +37,110 @@ const PALETTE_ITEMS: PaletteItem[] = [
     label: 'Manual Trigger',
     category: 'Triggers',
     icon: Play,
-    color: 'blue',
-    bgColor: 'bg-blue-500/10',
-    textColor: 'text-blue-400',
+    badgeClass: 'bg-warm-100 dark:bg-charcoal-800 text-warm-800 dark:text-charcoal-300 border-warm-200 dark:border-charcoal-700',
+    iconClass: 'text-brand-600 dark:text-brand-400',
     description: 'Trigger workflow manually with test parameters',
   },
-  // Processing
   {
     type: StepType.VALIDATE_DATA,
-    label: 'Validate Data',
+    label: 'Data Validation',
     category: 'Processing',
     icon: CheckCircle2,
-    color: 'emerald',
-    bgColor: 'bg-emerald-500/10',
-    textColor: 'text-emerald-400',
+    badgeClass: 'bg-brand-50 dark:bg-brand-900/40 text-brand-800 dark:text-brand-300 border-brand-200 dark:border-brand-800/60',
+    iconClass: 'text-brand-600 dark:text-brand-400',
     description: 'Ensure fields adhere to required types and rules',
   },
   {
     type: StepType.AI_CLASSIFICATION,
     label: 'AI Classification',
-    category: 'Processing',
+    category: 'Intelligence',
     icon: Sparkles,
-    color: 'purple',
-    bgColor: 'bg-purple-500/10',
-    textColor: 'text-purple-400',
-    description: 'LLM classification and intent extraction',
+    badgeClass: 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/60',
+    iconClass: 'text-teal-600 dark:text-teal-400',
+    description: 'Classify content using LLM model triage',
   },
-  // Flow Control
   {
     type: StepType.CONDITION,
-    label: 'Condition Branch',
-    category: 'Logic & Flow',
+    label: 'Condition Rule',
+    category: 'Logic',
     icon: GitFork,
-    color: 'amber',
-    bgColor: 'bg-amber-500/10',
-    textColor: 'text-amber-400',
-    description: 'Route execution paths based on evaluated rules',
+    badgeClass: 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
+    iconClass: 'text-amber-600 dark:text-amber-400',
+    description: 'Branch execution based on boolean condition AST',
   },
   {
     type: StepType.HUMAN_APPROVAL,
     label: 'Human Approval',
-    category: 'Logic & Flow',
+    category: 'Governance',
     icon: UserCheck,
-    color: 'rose',
-    bgColor: 'bg-rose-500/10',
-    textColor: 'text-rose-400',
-    description: 'Paused workflow human review checkpoint',
+    badgeClass: 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
+    iconClass: 'text-amber-600 dark:text-amber-400',
+    description: 'Pause execution until authorized manager reviews',
   },
-  // Integrations
   {
     type: StepType.MOCK_CRM_CREATE,
     label: 'Mock CRM Entity',
     category: 'Integrations',
     icon: Database,
-    color: 'teal',
-    bgColor: 'bg-teal-500/10',
-    textColor: 'text-teal-400',
-    description: 'Create Lead, Contact, or Deal in Mock CRM',
+    badgeClass: 'bg-brand-50 dark:bg-brand-900/30 text-brand-800 dark:text-brand-400 border-brand-200 dark:border-brand-800/50',
+    iconClass: 'text-brand-600 dark:text-brand-400',
+    description: 'Upsert record in simulated external CRM',
   },
   {
     type: StepType.SLACK_NOTIFICATION,
-    label: 'Slack Message',
+    label: 'Slack Notification',
     category: 'Integrations',
     icon: MessageSquare,
-    color: 'indigo',
-    bgColor: 'bg-indigo-500/10',
-    textColor: 'text-indigo-400',
-    description: 'Send formatted alert to Slack channel',
+    badgeClass: 'bg-brand-50 dark:bg-brand-900/30 text-brand-800 dark:text-brand-400 border-brand-200 dark:border-brand-800/50',
+    iconClass: 'text-brand-600 dark:text-brand-400',
+    description: 'Dispatch real-time notification to Slack channel',
   },
 ];
 
-export interface NodePaletteProps {
-  onAddNode?: (type: StepType) => void;
+interface NodePaletteProps {
+  onAddNode: (type: StepType) => void;
   disabled?: boolean;
-  isReadOnly?: boolean;
+  isMobileSheet?: boolean;
 }
 
-export const NodePalette: React.FC<NodePaletteProps> = ({
-  onAddNode,
-  disabled = false,
-  isReadOnly = false,
-}) => {
-  const isLocked = disabled || isReadOnly;
-
-  const onDragStart = (event: React.DragEvent, nodeType: StepType) => {
-    if (isLocked) return;
-    event.dataTransfer.setData('application/reactflow', nodeType);
-    event.dataTransfer.setData('application/reactflow-step-type', nodeType);
-    event.dataTransfer.effectAllowed = 'move';
-  };
-
-  const categories = ['Triggers', 'Processing', 'Logic & Flow', 'Integrations'];
-
+export const NodePalette: React.FC<NodePaletteProps> = ({ onAddNode, disabled = false, isMobileSheet = false }) => {
   return (
-    <div className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col h-full select-none">
-      <div className="p-4 border-b border-slate-800">
-        <h3 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
+    <div className={`p-4 bg-white dark:bg-charcoal-900 ${isMobileSheet ? "w-full border-r-0" : "border-r border-warm-300 dark:border-charcoal-750 w-64"} flex flex-col h-full select-none`}>
+      <div className="mb-4">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-warm-700 dark:text-charcoal-300">
           Node Palette
         </h3>
-        <p className="text-[11px] text-slate-400 mt-1">
-          {isLocked
-            ? 'Canvas is read-only'
-            : 'Drag nodes onto canvas or click + to add'}
+        <p className="text-[11px] text-warm-500 dark:text-charcoal-400 mt-0.5">
+          Click to add orchestration steps to canvas
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-4">
-        {categories.map((category) => {
-          const items = PALETTE_ITEMS.filter((i) => i.category === category);
-          if (items.length === 0) return null;
-
+      <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+        {PALETTE_ITEMS.map((item) => {
+          const Icon = item.icon;
           return (
-            <div key={category} className="space-y-1.5">
-              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-1">
-                {category}
-              </span>
-              <div className="space-y-1">
-                {items.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <div
-                      key={item.type}
-                      draggable={!isLocked}
-                      onDragStart={(e) => onDragStart(e, item.type)}
-                      className={`group relative flex items-center justify-between p-2 rounded-xl border border-slate-800/80 bg-slate-900/60 transition-all ${
-                        isLocked
-                          ? 'opacity-60 cursor-not-allowed'
-                          : 'cursor-grab hover:cursor-grab active:cursor-grabbing hover:border-slate-700 hover:bg-slate-900'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <GripVertical className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 shrink-0" />
-                        <div
-                          className={`p-1 rounded-lg ${item.bgColor} ${item.textColor} shrink-0`}
-                        >
-                          <Icon className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="truncate">
-                          <h4 className="text-xs font-medium text-slate-200 truncate">
-                            {item.label}
-                          </h4>
-                          <p className="text-[10px] text-slate-400 truncate">
-                            {item.description}
-                          </p>
-                        </div>
-                      </div>
-
-                      {onAddNode && !isLocked && (
-                        <button
-                          type="button"
-                          onClick={() => onAddNode(item.type)}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-indigo-400 transition"
-                          title={`Add ${item.label}`}
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+            <button
+              key={item.type}
+              type="button"
+              disabled={disabled}
+              onClick={() => onAddNode(item.type)}
+              className="w-full p-2.5 rounded-lg border border-warm-200 dark:border-charcoal-800 bg-warm-50 dark:bg-charcoal-850 hover:border-warm-300 dark:hover:border-charcoal-700 hover:bg-white dark:hover:bg-charcoal-800 transition-all text-left flex items-start justify-between group disabled:opacity-50 cursor-pointer"
+            >
+              <div className="flex items-start gap-2.5 min-w-0">
+                <div className="w-6 h-6 rounded-md bg-warm-200/80 dark:bg-charcoal-800 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Icon className={`w-3.5 h-3.5 ${item.iconClass}`} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-warm-900 dark:text-charcoal-100 truncate">
+                    {item.label}
+                  </div>
+                  <div className="text-[10px] text-warm-500 dark:text-charcoal-400 line-clamp-1 mt-0.5">
+                    {item.description}
+                  </div>
+                </div>
               </div>
-            </div>
+              <Plus className="w-3.5 h-3.5 text-warm-400 dark:text-charcoal-500 group-hover:text-brand-600 dark:group-hover:text-brand-400 flex-shrink-0 mt-1" />
+            </button>
           );
         })}
       </div>

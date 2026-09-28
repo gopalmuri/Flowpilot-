@@ -18,9 +18,9 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 text-left space-y-4 animate-pulse">
-        <div className="h-5 w-44 bg-slate-800 rounded" />
-        <div className="h-48 bg-slate-800/40 rounded-xl" />
+      <div className="p-6 rounded-2xl bg-white dark:bg-charcoal-900/60 border border-warm-200 dark:border-charcoal-750 text-left space-y-4 animate-pulse">
+        <div className="h-5 w-44 bg-warm-100 dark:bg-charcoal-800 rounded" />
+        <div className="h-48 bg-warm-100 dark:bg-charcoal-800/40 rounded-xl" />
       </div>
     );
   }
@@ -28,26 +28,26 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
   const maxLatency = Math.max(...items.map((it) => Math.max(it.p95_execution_time_ms, it.avg_execution_time_ms)), 50);
 
   return (
-    <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 shadow-xl text-left space-y-4">
+    <div className="p-6 rounded-2xl bg-white dark:bg-charcoal-900/60 border border-warm-200 dark:border-charcoal-750 shadow-xl text-left space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+          <h3 className="text-sm font-bold text-warm-900 dark:text-charcoal-100 tracking-tight flex items-center gap-2">
             <Flame className="w-4 h-4 text-rose-400" />
             Step Latency & Bottleneck Analysis
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-warm-500 dark:text-charcoal-400 mt-0.5">
             Identify the slowest step executions and highest failure rates across workflows
           </p>
         </div>
 
         {/* Sort Selector */}
-        <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs">
+        <div className="flex items-center gap-1 bg-warm-50 dark:bg-charcoal-850/80 p-1 rounded-xl border border-warm-200 dark:border-charcoal-750 text-xs">
           <button
             onClick={() => onSortChange('avg_latency')}
             className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
               sortBy === 'avg_latency'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-brand-600 dark:bg-brand-500 text-warm-900 dark:text-charcoal-100 shadow-sm'
+                : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
             }`}
           >
             Avg Latency
@@ -56,8 +56,8 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
             onClick={() => onSortChange('p95_latency')}
             className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
               sortBy === 'p95_latency'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-brand-600 dark:bg-brand-500 text-warm-900 dark:text-charcoal-100 shadow-sm'
+                : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
             }`}
           >
             P95 Latency
@@ -66,8 +66,8 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
             onClick={() => onSortChange('failure_rate')}
             className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
               sortBy === 'failure_rate'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-brand-600 dark:bg-brand-500 text-warm-900 dark:text-charcoal-100 shadow-sm'
+                : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
             }`}
           >
             Failure Rate
@@ -76,8 +76,8 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
             onClick={() => onSortChange('execution_count')}
             className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
               sortBy === 'execution_count'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-brand-600 dark:bg-brand-500 text-warm-900 dark:text-charcoal-100 shadow-sm'
+                : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
             }`}
           >
             Volume
@@ -86,8 +86,8 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
       </div>
 
       {items.length === 0 ? (
-        <div className="py-10 text-center text-slate-500">
-          <Activity className="w-8 h-8 mx-auto mb-2 text-slate-600 opacity-60" />
+        <div className="py-10 text-center text-warm-400 dark:text-charcoal-500">
+          <Activity className="w-8 h-8 mx-auto mb-2 text-warm-600 dark:text-charcoal-400 opacity-60" />
           <p className="text-xs">No step execution metrics found for the selected filter.</p>
         </div>
       ) : (
@@ -99,25 +99,25 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
             return (
               <div
                 key={`${step.step_key}-${idx}`}
-                className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-slate-700/80 transition-all space-y-2 group"
+                className="p-3.5 rounded-xl bg-warm-50 dark:bg-charcoal-850/60 border border-warm-200 dark:border-charcoal-750/80 hover:border-warm-300 dark:border-charcoal-700/80 transition-all space-y-2 group"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">
+                    <span className="text-xs font-mono font-semibold text-warm-800 dark:text-charcoal-200 group-hover:text-brand-700 dark:text-brand-300 transition-colors">
                       {step.step_key}
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-mono">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-warm-100 dark:bg-charcoal-800 text-warm-500 dark:text-charcoal-400 border border-warm-300 dark:border-charcoal-700 font-mono">
                       {step.step_type}
                     </span>
                     {step.name && (
-                      <span className="text-xs text-slate-400 truncate max-w-[200px]">
+                      <span className="text-xs text-warm-500 dark:text-charcoal-400 truncate max-w-[200px]">
                         ({step.name})
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-3 text-xs font-mono">
-                    <span className="text-slate-400">
+                    <span className="text-warm-500 dark:text-charcoal-400">
                       {step.total_executions} runs
                     </span>
                     {step.failed_count > 0 && (
@@ -126,17 +126,17 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
                         {step.failure_rate.toFixed(1)}% fail ({step.failed_count})
                       </span>
                     )}
-                    <span className="text-slate-300">
-                      Avg: <strong className="text-cyan-400">{formatDurationMs(step.avg_execution_time_ms)}</strong>
+                    <span className="text-warm-700 dark:text-charcoal-300">
+                      Avg: <strong className="text-brand-600 dark:text-brand-400">{formatDurationMs(step.avg_execution_time_ms)}</strong>
                     </span>
-                    <span className="text-slate-300">
-                      P95: <strong className="text-violet-400">{formatDurationMs(step.p95_execution_time_ms)}</strong>
+                    <span className="text-warm-700 dark:text-charcoal-300">
+                      P95: <strong className="text-amber-600 dark:text-amber-400">{formatDurationMs(step.p95_execution_time_ms)}</strong>
                     </span>
                   </div>
                 </div>
 
                 {/* Horizontal Latency Bar (Native SVG) */}
-                <div className="w-full bg-slate-900 rounded-full h-2 relative overflow-hidden">
+                <div className="w-full bg-white dark:bg-charcoal-900 rounded-full h-2 relative overflow-hidden">
                   {/* P95 Bar Background */}
                   <div
                     className="h-full bg-violet-500/30 absolute left-0 top-0 transition-all duration-500 rounded-full"
@@ -144,7 +144,7 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
                   />
                   {/* Avg Bar Foreground */}
                   <div
-                    className="h-full bg-cyan-400 absolute left-0 top-0 transition-all duration-500 rounded-full"
+                    className="h-full bg-brand-500 absolute left-0 top-0 transition-all duration-500 rounded-full"
                     style={{ width: `${Math.max(avgPct, 2)}%` }}
                   />
                 </div>
