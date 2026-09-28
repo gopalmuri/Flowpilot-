@@ -16,9 +16,9 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
 
   if (isLoading) {
     return (
-      <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 text-left space-y-4 animate-pulse">
-        <div className="h-5 w-44 bg-slate-800 rounded" />
-        <div className="h-64 bg-slate-800/40 rounded-xl" />
+      <div className="p-6 rounded-2xl bg-white dark:bg-charcoal-900/60 border border-warm-200 dark:border-charcoal-750 text-left space-y-4 animate-pulse">
+        <div className="h-5 w-44 bg-warm-100 dark:bg-charcoal-800 rounded" />
+        <div className="h-64 bg-warm-100 dark:bg-charcoal-800 rounded-xl" />
       </div>
     );
   }
@@ -27,12 +27,12 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
 
   if (!hasData) {
     return (
-      <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 text-left flex flex-col items-center justify-center min-h-[300px]">
-        <div className="w-12 h-12 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center text-slate-500 mb-3">
+      <div className="p-6 rounded-2xl bg-white dark:bg-charcoal-900/60 border border-warm-200 dark:border-charcoal-750 text-left flex flex-col items-center justify-center min-h-[300px]">
+        <div className="w-12 h-12 rounded-2xl bg-warm-100 dark:bg-charcoal-800/60 border border-warm-300 dark:border-charcoal-700/50 flex items-center justify-center text-warm-400 dark:text-charcoal-500 mb-3">
           <Clock className="w-6 h-6" />
         </div>
-        <h4 className="text-sm font-semibold text-slate-300">No Duration Trend Data</h4>
-        <p className="text-xs text-slate-500 mt-1 max-w-sm text-center">
+        <h4 className="text-sm font-semibold text-warm-700 dark:text-charcoal-300">No Duration Trend Data</h4>
+        <p className="text-xs text-warm-400 dark:text-charcoal-500 mt-1 max-w-sm text-center">
           No execution durations recorded in the selected period. Once workflows complete, latency percentiles will appear here.
         </p>
       </div>
@@ -71,26 +71,26 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
   const p95Area = `${getX(0)},${paddingTop + chartHeight} ${p95Points} ${getX(buckets.length - 1)},${paddingTop + chartHeight}`;
 
   return (
-    <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 shadow-xl text-left relative">
+    <div className="p-6 rounded-2xl bg-white dark:bg-charcoal-900/60 border border-warm-200 dark:border-charcoal-750 shadow-xl text-left relative">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
         <div>
-          <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
-            <Clock className="w-4 h-4 text-violet-400" />
+          <h3 className="text-sm font-bold text-warm-900 dark:text-charcoal-100 tracking-tight flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             Execution Latency Trend
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-warm-500 dark:text-charcoal-400 mt-0.5">
             Average duration and P95 latency percentiles over time
           </p>
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 text-[11px] text-slate-400">
+        <div className="flex items-center gap-4 text-[11px] text-warm-500 dark:text-charcoal-400">
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-1 rounded bg-violet-400" />
+            <span className="w-3 h-1 rounded bg-amber-500" />
             P95 Latency
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-1 rounded bg-cyan-400" />
+            <span className="w-3 h-1 rounded bg-brand-600 dark:bg-brand-500" />
             Avg Latency
           </span>
         </div>
@@ -104,8 +104,8 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
         >
           <defs>
             <linearGradient id="p95Gradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="#d97706" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#d97706" stopOpacity="0.0" />
             </linearGradient>
           </defs>
 
@@ -119,7 +119,7 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
                   y1={y}
                   x2={totalWidth - paddingRight}
                   y2={y}
-                  stroke="#334155"
+                  stroke="#DDD9D0"
                   strokeWidth="1"
                   strokeDasharray={val === 0 ? undefined : '3 3'}
                   opacity={val === 0 ? 0.8 : 0.4}
@@ -142,7 +142,7 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
           {/* P95 Line */}
           <polyline
             fill="none"
-            stroke="#8b5cf6"
+            stroke="#d97706"
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -152,7 +152,7 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
           {/* Avg Line */}
           <polyline
             fill="none"
-            stroke="#06b6d4"
+            stroke="#176B4D"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -191,8 +191,8 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
                   cx={x}
                   cy={getY(b.p95_duration_ms)}
                   r={isHovered ? 5 : 3}
-                  fill="#8b5cf6"
-                  stroke="#0f172a"
+                  fill="#d97706"
+                  stroke="#101513"
                   strokeWidth="2"
                 />
 
@@ -201,8 +201,8 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
                   cx={x}
                   cy={getY(b.avg_duration_ms)}
                   r={isHovered ? 4.5 : 2.5}
-                  fill="#06b6d4"
-                  stroke="#0f172a"
+                  fill="#176B4D"
+                  stroke="#101513"
                   strokeWidth="2"
                 />
 
@@ -234,24 +234,24 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
         {/* Hover Tooltip */}
         {hoveredIdx !== null && buckets[hoveredIdx] && (
           <div
-            className="absolute top-2 right-2 bg-slate-950/95 border border-slate-700/80 rounded-xl p-3 shadow-2xl text-xs backdrop-blur-md pointer-events-none z-20 space-y-1"
+            className="absolute top-2 right-2 bg-warm-50 dark:bg-charcoal-950/95 border border-warm-300 dark:border-charcoal-700/80 rounded-xl p-3 shadow-2xl text-xs backdrop-blur-md pointer-events-none z-20 space-y-1"
           >
-            <div className="font-semibold text-white border-b border-slate-800 pb-1">
+            <div className="font-semibold text-warm-900 dark:text-charcoal-100 border-b border-warm-200 dark:border-charcoal-750 pb-1">
               {formatToLocalDateTime(buckets[hoveredIdx].timestamp)}
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
-              <span className="text-violet-400">P95 Latency:</span>
-              <span className="font-mono font-bold text-violet-300 text-right">
+              <span className="text-amber-600 dark:text-amber-400">P95 Latency:</span>
+              <span className="font-mono font-bold text-amber-700 dark:text-amber-300 text-right">
                 {formatDurationMs(buckets[hoveredIdx].p95_duration_ms)}
               </span>
 
-              <span className="text-cyan-400">Avg Duration:</span>
-              <span className="font-mono font-bold text-cyan-300 text-right">
+              <span className="text-brand-600 dark:text-brand-400">Avg Duration:</span>
+              <span className="font-mono font-bold text-brand-700 dark:text-brand-300 text-right">
                 {formatDurationMs(buckets[hoveredIdx].avg_duration_ms)}
               </span>
 
-              <span className="text-slate-400">Runs Sampled:</span>
-              <span className="font-mono text-slate-300 text-right">
+              <span className="text-warm-500 dark:text-charcoal-400">Runs Sampled:</span>
+              <span className="font-mono text-warm-700 dark:text-charcoal-300 text-right">
                 {buckets[hoveredIdx].total_count}
               </span>
             </div>

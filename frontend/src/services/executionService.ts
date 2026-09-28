@@ -83,3 +83,17 @@ export async function triggerExecution(
     body: JSON.stringify({ trigger_payload: triggerPayload }),
   });
 }
+
+export async function resumeExecution(
+  organizationId: string,
+  runId: string,
+  approved: boolean = true,
+  comment?: string,
+  asyncDispatch: boolean = true
+): Promise<WorkflowRunDetail> {
+  const endpoint = `/api/v1/organizations/${organizationId}/runs/${runId}/resume?async_dispatch=${asyncDispatch}`;
+  return apiRequest<WorkflowRunDetail>(endpoint, {
+    method: 'POST',
+    body: JSON.stringify({ approved, comment }),
+  });
+}

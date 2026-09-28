@@ -176,21 +176,18 @@ export const AnalyticsPage: React.FC = () => {
   return (
     <div className="space-y-6 text-left pb-12">
       {/* Header & Controls Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-warm-200 dark:border-charcoal-750 pb-5">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
-              Phase 15
-            </span>
-            <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-medium text-indigo-300">
-              Live Metrics & SLA
+            <span className="px-2 py-0.5 rounded-md bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800/60 text-[11px] font-semibold text-brand-700 dark:text-brand-300">
+              Control Plane Telemetry
             </span>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight mt-1 flex items-center gap-2">
-            <BarChart3 className="w-6 h-6 text-indigo-500" />
+          <h1 className="text-2xl font-bold text-warm-900 dark:text-charcoal-100 tracking-tight mt-1 flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 text-brand-600 dark:text-brand-400" />
             Execution Analytics & SLA Monitoring
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-warm-500 dark:text-charcoal-400 mt-0.5">
             Production telemetry for execution volumes, percentile latencies, and query-derived SLA targets.
           </p>
         </div>
@@ -206,7 +203,7 @@ export const AnalyticsPage: React.FC = () => {
                 setSelectedWorkflowId(e.target.value);
                 setWfPage(1);
               }}
-              className="bg-slate-900 border border-slate-800 text-xs text-slate-200 rounded-xl px-3 py-2 pr-8 focus:outline-none focus:border-indigo-500 cursor-pointer"
+              className="bg-white dark:bg-charcoal-900 border border-warm-200 dark:border-charcoal-750 text-xs text-warm-800 dark:text-charcoal-200 rounded-xl px-3 py-2 pr-8 focus:outline-none focus:border-brand-600 cursor-pointer"
             >
               <option value="">All Workflows</option>
               {workflows.map((wf) => (
@@ -218,15 +215,15 @@ export const AnalyticsPage: React.FC = () => {
           </div>
 
           {/* Time Range Selector */}
-          <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+          <div className="flex items-center bg-white dark:bg-charcoal-900 p-1 rounded-xl border border-warm-200 dark:border-charcoal-750 text-xs">
             {['24h', '7d', '30d', '90d', 'custom'].map((rng) => (
               <button
                 key={rng}
                 onClick={() => setTimeRange(rng)}
                 className={`px-2.5 py-1 rounded-lg font-medium transition-all select-none ${
                   timeRange === rng
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-brand-600 dark:bg-brand-500 text-warm-900 dark:text-charcoal-100 shadow-subtle'
+                    : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
                 }`}
               >
                 {rng.toUpperCase()}
@@ -240,7 +237,7 @@ export const AnalyticsPage: React.FC = () => {
             className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors flex items-center gap-1.5 ${
               autoRefresh
                 ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                : 'bg-white dark:bg-charcoal-900 border-warm-200 dark:border-charcoal-750 text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
             }`}
             title="Auto-refresh every 30 seconds"
           >
@@ -252,36 +249,36 @@ export const AnalyticsPage: React.FC = () => {
           <button
             onClick={fetchData}
             disabled={isLoading}
-            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-colors disabled:opacity-50"
+            className="p-2 rounded-xl bg-white dark:bg-charcoal-900 hover:bg-slate-800 border border-warm-200 dark:border-charcoal-750 text-warm-700 dark:text-charcoal-300 hover:text-warm-900 dark:text-charcoal-100 transition-colors disabled:opacity-50"
             title="Refresh now"
             aria-label="Refresh analytics"
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-indigo-400' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-brand-600 dark:text-brand-400' : ''}`} />
           </button>
         </div>
       </div>
 
       {/* Custom Date Range Picker (shown when custom is selected) */}
       {timeRange === 'custom' && (
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-wrap items-center gap-4 text-xs">
+        <div className="p-4 rounded-xl bg-white dark:bg-charcoal-900/60 border border-warm-200 dark:border-charcoal-750 flex flex-wrap items-center gap-4 text-xs">
           <div className="flex items-center gap-2">
-            <span className="text-slate-400 font-medium">Start (Local):</span>
+            <span className="text-warm-500 dark:text-charcoal-400 font-medium">Start (Local):</span>
             <input
               type="datetime-local"
               aria-label="Custom start date"
               value={customStart}
               onChange={(e) => setCustomStart(e.target.value)}
-              className="bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 focus:outline-none"
+              className="bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 text-warm-800 dark:text-charcoal-200 rounded-lg px-2.5 py-1.5 focus:border-brand-600 focus:outline-none"
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-slate-400 font-medium">End (Local):</span>
+            <span className="text-warm-500 dark:text-charcoal-400 font-medium">End (Local):</span>
             <input
               type="datetime-local"
               aria-label="Custom end date"
               value={customEnd}
               onChange={(e) => setCustomEnd(e.target.value)}
-              className="bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 focus:outline-none"
+              className="bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 text-warm-800 dark:text-charcoal-200 rounded-lg px-2.5 py-1.5 focus:border-brand-600 focus:outline-none"
             />
           </div>
           <span className="text-[11px] text-slate-500 italic">

@@ -98,18 +98,18 @@ export const SLAConfigModal: React.FC<SLAConfigModalProps> = ({
       role="dialog"
       aria-modal="true"
     >
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-left animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-slate-900 border border-warm-200 dark:border-charcoal-750 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-left animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-warm-200 dark:border-charcoal-750 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
               <Clock className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white tracking-tight">
+              <h3 className="text-sm font-bold text-warm-900 dark:text-charcoal-100 tracking-tight">
                 SLA Configuration (v{version?.version_number || 1})
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-warm-500 dark:text-charcoal-400">
                 Version-scoped execution time thresholds
               </p>
             </div>
@@ -117,7 +117,7 @@ export const SLAConfigModal: React.FC<SLAConfigModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1 rounded-lg text-warm-500 dark:text-charcoal-400 hover:text-warm-900 dark:text-charcoal-100 hover:bg-warm-100 dark:hover:bg-charcoal-800 transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -153,10 +153,10 @@ export const SLAConfigModal: React.FC<SLAConfigModalProps> = ({
           )}
 
           {/* SLA Enabled Toggle */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-warm-50 dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 text-warm-900 dark:text-charcoal-100/60 border border-warm-200 dark:border-charcoal-750/80">
             <div>
-              <span className="text-xs font-semibold text-slate-200 block">Enable SLA Monitoring</span>
-              <span className="text-[10px] text-slate-400">
+              <span className="text-xs font-semibold text-warm-800 dark:text-charcoal-200 block">Enable SLA Monitoring</span>
+              <span className="text-[10px] text-warm-500 dark:text-charcoal-400">
                 Track compliance rates and alert on breaches for this version
               </span>
             </div>
@@ -174,7 +174,7 @@ export const SLAConfigModal: React.FC<SLAConfigModalProps> = ({
 
           {/* Target Duration Input */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-300 block">
+            <label className="text-xs font-medium text-warm-700 dark:text-charcoal-300 block">
               Target Duration (Seconds)
             </label>
             <input
@@ -185,7 +185,7 @@ export const SLAConfigModal: React.FC<SLAConfigModalProps> = ({
               value={targetSeconds}
               onChange={(e) => setTargetSeconds(parseFloat(e.target.value) || 0)}
               disabled={isReadOnly || !enabled}
-              className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs font-mono rounded-xl px-3 py-2 focus:outline-none focus:border-cyan-500 disabled:opacity-50"
+              className="w-full bg-warm-50 dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 text-warm-900 dark:text-charcoal-100 border border-warm-200 dark:border-charcoal-750 text-warm-800 dark:text-charcoal-200 text-xs font-mono rounded-xl px-3 py-2 focus:outline-none focus:border-cyan-500 disabled:opacity-50"
               placeholder="e.g. 30"
               required
             />
@@ -196,7 +196,7 @@ export const SLAConfigModal: React.FC<SLAConfigModalProps> = ({
 
           {/* Warning Threshold Input */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-300 block">
+            <label className="text-xs font-medium text-warm-700 dark:text-charcoal-300 block">
               Warning Threshold (Seconds)
             </label>
             <input
@@ -207,7 +207,7 @@ export const SLAConfigModal: React.FC<SLAConfigModalProps> = ({
               value={warningSeconds}
               onChange={(e) => setWarningSeconds(parseFloat(e.target.value) || 0)}
               disabled={isReadOnly || !enabled}
-              className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs font-mono rounded-xl px-3 py-2 focus:outline-none focus:border-cyan-500 disabled:opacity-50"
+              className="w-full bg-warm-50 dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 text-warm-900 dark:text-charcoal-100 border border-warm-200 dark:border-charcoal-750 text-warm-800 dark:text-charcoal-200 text-xs font-mono rounded-xl px-3 py-2 focus:outline-none focus:border-cyan-500 disabled:opacity-50"
               placeholder="e.g. 20"
               required
             />
@@ -217,11 +217,11 @@ export const SLAConfigModal: React.FC<SLAConfigModalProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2.5">
+          <div className="pt-3 border-t border-warm-200 dark:border-charcoal-750 flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-medium text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200 hover:bg-warm-100 dark:hover:bg-charcoal-800 transition"
             >
               {isReadOnly ? 'Close' : 'Cancel'}
             </button>
@@ -229,7 +229,7 @@ export const SLAConfigModal: React.FC<SLAConfigModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white transition disabled:opacity-50 shadow-md shadow-cyan-600/20"
+                className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-warm-900 dark:text-charcoal-100 transition disabled:opacity-50 shadow-md shadow-cyan-600/20"
               >
                 {isSubmitting ? 'Saving...' : 'Save SLA Targets'}
               </button>
