@@ -1,204 +1,139 @@
-# FlowPilot: System Architecture Specification
+# FlowPilot — System Architecture & Topology
 
-| Metadata | Specification |
-|---|---|
-| **Document Version** | 1.0.0 |
-| **Status** | Approved for MVP (Phase 1) |
-| **Architectural Style** | Modular Monolith with Asynchronous Distributed Workers |
-| **Deployment Model** | Containerized (Docker, Docker Compose, Kubernetes-ready) |
+> **Release Candidate (RC-1.0) Technical Architecture Document**  
+> *Target Audience: Principal Engineers, System Architects, Infrastructure Leads*
 
 ---
 
-## 1. Architectural Principles
-
-1. **Strict Multi-Tenant Isolation**: Tenant boundaries are enforced at the database model layer, query construction layer, and API route authorization layer. Cross-tenant access is structurally impossible.
-2. **Decoupled Ingestion & Execution**: Webhook endpoints ingest events with sub-100ms latency, write idempotency records, and queue jobs. Heavy computations (AI, CRM, Slack, external retries) run asynchronously in worker pools.
-3. **Deterministic Core with AI Augmentation**: AI models act solely as structured categorization filters. The workflow engine, condition evaluation, and action dispatches are 100% deterministic and auditable.
-4. **Resilience by Design**: All external side-effects (API requests, notifications) are idempotent and retry-safe with exponential backoff and jitter.
-
----
-
-## 2. High-Level C4 Container Architecture
+## 1. High-Level Architectural Diagram
 
 ```
-                                      ┌────────────────────────┐
-                                      │   Web Client (Browser) │
-                                      │ React 19 + TypeScript  │
-                                      └───────────┬────────────┘
-                                                  │ HTTPS / REST
-                                                  ▼
-                                      ┌────────────────────────┐
-                                      │   Reverse Proxy / API  │
-                                      │    FastAPI Application │
-                                      └─────┬──────────────┬───┘
-                                            │              │
-                   Enqueue Task (Fast ACK)  │              │ SQL Queries (Tenant-Scoped)
-                                            ▼              ▼
-                                     ┌─────────────┐  ┌────────────────────────┐
-                                     │ Redis Queue │  │ PostgreSQL Database 16 │
-                                     │   Broker    │  │ Multi-Tenant Relational│
-                                     └──────┬──────┘  └───────────▲────────────┘
-                                            │                     │
-                                            ▼                     │ Read/Write State
-                                     ┌─────────────┐              │
-                                     │   Celery    │──────────────┘
-                                     │ Worker Pool │
-                                     └──────┬──────┘
+                              [EXTERNAL CLIENTS / WEBHOOKS]
                                             │
-                       ┌────────────────────┼────────────────────┐
-                       ▼                    ▼                    ▼
-               ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-               │  Mock CRM    │     │  Slack API   │     │ AI Provider  │
-               │ Integration  │     │ Integration  │     │ (OpenAI/Mock)│
-               └──────────────┘     └──────────────┘     └──────────────┘
+                                            │ HTTPS (Port 443 / 80)
+                                            ▼
+                                   [NGINX REVERSE PROXY]
+                        (TLS Termination, Rate Limiting, Static Assets)
+                                            │
+                    ┌───────────────────────┴───────────────────────┐
+                    │                                               │
+             /api/v1/* (REST)                                  /* (SPA Assets)
+                    ▼                                               ▼
+          [FASTAPI APPLICATION]                            [REACT 18 VITE SPA]
+       (Auth, Router, Engine, RBAC)                         (Control Plane UI)
+                    │
+       ┌────────────┴────────────┐
+       │                         │
+       ▼                         ▼
+[POSTGRESQL 16]             [REDIS 7]
+- Multi-Tenant Tables       - Session Cache (DB 0)
+- DAG Version Definitions   - Celery Broker (DB 1)
+- Cryptographic Audit       - Result Backend (DB 2)
+       │                         │
+       └────────────┬────────────┘
+                    │
+                    ▼
+          [CELERY WORKER POOL]
+    (Step Execution, AI Parsing, CRM/Slack Egress)
 ```
 
 ---
 
-## 3. Webhook Latency & Ingestion Architecture
+## 2. Component Subsystems
 
-### 3.1 The Ingestion Challenge
-Enterprise webhooks from Stripe, Shopify, HubSpot, or custom frontends typically require acknowledgement within 2 to 5 seconds. If an integration platform executes sequential AI classification (1.5s - 3s) and CRM calls (500ms) synchronously, webhook connections time out, causing duplicate retries and network stampedes.
+### 2.1 Edge & Gateway Layer: NGINX
+- **Responsibilities**:
+  - TLS termination utilizing modern cipher suites (`TLSv1.2`, `TLSv1.3`).
+  - Security headers injection: `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy`.
+  - Rate limiting on public intake endpoints (e.g. `20 req/s` per IP burstable).
+  - Reverse-proxy routing: forwards `/api/*` to FastAPI upstream and serves compiled frontend assets with immutable cache headers.
 
-### 3.2 FlowPilot Zero-Block Solution
-FlowPilot separates the **Intake Boundary** from the **Execution Boundary**:
+### 2.2 Application Core: FastAPI
+- **Responsibilities**:
+  - High-performance asynchronous endpoint handlers (`uvicorn` ASGI server).
+  - Authentication and RBAC enforcement on all protected tenant routes.
+  - Webhook ingest validation, HMAC signature verification, and idempotency filtering.
+  - Workflow compilation, topological sorting, and DAG validation.
+  - Ephemeral health diagnostics (`/health`, `/api/v1/health`, `/api/v1/health/ready`).
 
-```
-Client Form / Webhook Emitter
-       │
-       │ 1. POST /api/v1/webhooks/{webhook_key}
-       ▼
-[FastAPI Webhook Router]
-       │
-       ├─► 2. Validate webhook_key against cached Active Workflows (Redis: <2ms)
-       ├─► 3. Check & Set Idempotency Key: HSETNX idempotency:{org_id}:{event_id} (<2ms)
-       │      └─► If already exists: Return 200 OK with existing Run ID (No duplicate execution)
-       ├─► 4. Insert Initial Workflow Run Record (Postgres: status="PENDING", <10ms)
-       ├─► 5. Enqueue Celery Task: execute_workflow_run.delay(run_id, payload) (<3ms)
-       │
-       ▼ 6. Return Immediate HTTP 202 Accepted (<25ms total server time)
-{
-  "run_id": "01j8m4n2...",
-  "correlation_id": "corr_9901...",
-  "status": "QUEUED",
-  "received_at": "2026-09-19T11:24:00Z"
-}
-```
+### 2.3 Distributed Execution Engine: Celery & Redis
+- **Worker Configuration**:
+  - Pre-fork worker concurrency with dedicated task queues.
+  - Automatic task retries with exponential backoff on transient third-party network failures.
+  - Heartbeat monitoring and task revocation on in-flight run cancellations.
 
-Downstream workers consume the queued task from Redis, update the run status to `RUNNING`, and execute the DAG step-by-step.
+### 2.4 Relational Persistence: PostgreSQL 16
+- **Database Engine**:
+  - ACID-compliant relational storage.
+  - Connection pooling via `SQLAlchemy AsyncEngine` (`pool_size=20`, `max_overflow=10`, `pool_pre_ping=True`).
+  - Strict tenant partitioning on every entity table.
 
 ---
 
-## 4. Multi-Tenant Data Isolation Strategy
+## 3. Entity-Relationship Data Model
 
-FlowPilot adopts a **Pooled Single-Database, Row-Level Tenant Isolation** architecture:
-
-1. **Foreign Key Invariant**:
-   Every tenant-specific entity (`workflows`, `workflow_runs`, `integrations`, `audit_logs`, `approval_requests`, `usage_records`) contains a mandatory foreign key:
-   ```sql
-   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE
-   ```
-2. **FastAPI Dependency Injection**:
-   Every protected route extracts the caller's verified `user_id` and active `organization_id` from the decoded JWT claims:
-   ```python
-   async def get_current_org_context(
-       current_user: User = Depends(get_current_active_user),
-       db: AsyncSession = Depends(get_db_session)
-   ) -> OrgContext: ...
-   ```
-3. **Repository / Query Scoping**:
-   All database queries explicitly filter by `organization_id`:
-   ```python
-   stmt = select(Workflow).where(
-       Workflow.id == workflow_id,
-       Workflow.organization_id == org_context.org_id
-   )
-   ```
-4. **Cross-Tenant Prevention**:
-   Even if an attacker guesses a valid UUID for a workflow or run belonging to another organization, the query returns `404 Not Found`, completely preventing enumeration and cross-tenant leakage.
+```
+┌────────────────────┐
+│   organizations    │
+├────────────────────┤
+│ id (UUID, PK)      │
+│ name               │
+│ created_at         │
+└─────────┬──────────┘
+          │ 1
+          │
+          │ N
+┌─────────▼──────────┐       ┌────────────────────┐
+│     workflows      │       │       users        │
+├────────────────────┤       ├────────────────────┤
+│ id (UUID, PK)      │       │ id (UUID, PK)      │
+│ organization_id(FK)│       │ email              │
+│ name               │       │ password_hash      │
+│ webhook_key        │       └─────────┬──────────┘
+└─────────┬──────────┘                 │
+          │ 1                          │
+          │                            │ 1
+          │ N                          │
+┌─────────▼──────────┐                 │ N
+│ workflow_versions  │       ┌─────────▼──────────┐
+├────────────────────┤       │ organization_users │
+│ id (UUID, PK)      │       ├────────────────────┤
+│ workflow_id (FK)   │       │ organization_id(FK)│
+│ version_number     │       │ user_id (FK)       │
+│ status (PUB/DRAFT) │       │ role (OWNER/ADMIN) │
+└─────────┬──────────┘       └────────────────────┘
+          │ 1
+          ├─────────────────────────────┐
+          │ N                           │ N
+┌─────────▼──────────┐        ┌─────────▼──────────┐
+│   workflow_steps   │        │   workflow_runs    │
+├────────────────────┤        ├────────────────────┤
+│ id (UUID, PK)      │        │ id (UUID, PK)      │
+│ version_id (FK)    │        │ version_id (FK)    │
+│ step_key           │        │ organization_id(FK)│
+│ step_type          │        │ status             │
+│ config (JSONB)     │        │ started_at         │
+└────────────────────┘        │ completed_at       │
+                              └─────────┬──────────┘
+                                        │ 1
+                                        │
+                                        │ N
+                              ┌─────────▼──────────┐
+                              │     approvals      │
+                              ├────────────────────┤
+                              │ id (UUID, PK)      │
+                              │ workflow_run_id(FK)│
+                              │ status (PEND/APPR) │
+                              │ approver_role      │
+                              │ resolved_by_user_id│
+                              └────────────────────┘
+```
 
 ---
 
-## 5. Asynchronous Workflow Execution Engine
+## 4. Resilience & Fault Tolerance Patterns
 
-The workflow engine models each workflow as a **Directed Acyclic Graph (DAG)** of step nodes and connection edges.
-
-```
-                  ┌──────────────────────┐
-                  │ Webhook Trigger Node │
-                  └──────────┬───────────┘
-                             │
-                             ▼
-                  ┌──────────────────────┐
-                  │ Validate Data Node   │
-                  └──────────┬───────────┘
-                             │
-                             ▼
-                  ┌──────────────────────┐
-                  │ AI Classification    │
-                  └──────────┬───────────┘
-                             │
-                             ▼
-                  ┌──────────────────────┐
-                  │ Rule Engine Node     │
-                  └──────┬────────┬──────┘
-                         │        │
-     [priority == 'high']│        │ [priority != 'high']
-                         ▼        ▼
-           ┌─────────────────┐   ┌──────────────────────┐
-           │ Approval Node   │   │ Mock CRM Action      │
-           │ (State: PAUSED) │   └──────────┬───────────┘
-           └────────┬────────┘              │
-                    │ [Approved]            ▼
-                    └─────────────────────► ┌──────────────────────┐
-                                            │ Slack Notification   │
-                                            └──────────────────────┘
-```
-
-### 5.1 Step Executor Interface (`BaseStepExecutor`)
-Every step node implementation inherits from `BaseStepExecutor`:
-```python
-class BaseStepExecutor(ABC):
-    @abstractmethod
-    async def validate_config(self, config: dict) -> None:
-        """Validates node configuration parameters prior to run."""
-        pass
-
-    @abstractmethod
-    async def execute(self, step_context: StepExecutionContext) -> StepExecutionResult:
-        """Executes the specific integration or logic block."""
-        pass
-```
-
-### 5.2 Suspension and Resumption for Human Approvals
-When a workflow hits a `HUMAN_APPROVAL` step:
-1. The executor verifies approval conditions.
-2. If approval is required, the step generates an `approval_requests` row with status `PENDING`.
-3. The workflow run status transitions to `WAITING_FOR_APPROVAL`.
-4. A notification is dispatched to Slack/email with contextual lead information.
-5. The Celery worker cleanly exits without consuming continuous CPU or thread resources.
-6. When an authorized manager calls `POST /api/v1/approvals/{id}/approve`:
-   - The approval status updates to `APPROVED`.
-   - The approval service enqueues `resume_workflow_run.delay(run_id, step_id)`.
-   - The worker resumes downstream steps from the exact point of suspension.
-
----
-
-## 6. Resilience, Retries, and Error Handling
-
-| Failure Scenario | Mitigation Strategy |
-|---|---|
-| **AI Provider Timeout / 503** | Exponential backoff (1s, 2s, 4s) up to 3 retries. If exhausted, fallback to default category or fail run with actionable error. |
-| **External API Rate Limit (429)** | Respect `Retry-After` header; Celery task scheduled for delayed retry. |
-| **Database Network Blip** | Async connection pool with automatic health check (`pool_pre_ping=True`) and connection recycling. |
-| **Worker Process Crash** | Celery tasks run with `acks_late=True`. Unacknowledged messages return to the Redis broker on worker failure. |
-| **Malformed Incoming Payload** | Strict Pydantic parsing. If invalid, the run records `FAILED` status with explicit validation error messages and does not trigger downstream side effects. |
-
----
-
-## 7. Security Architecture Overview
-
-- **Authentication**: JWT with short-lived access tokens (30m) and rotating refresh tokens (7d).
-- **Password Security**: Argon2id with memory-hard hashing parameters.
-- **Data at Rest**: Sensitive integration tokens, webhook secrets, and API keys are encrypted in PostgreSQL using **AES-256-GCM** with unique nonces.
-- **Audit Trails**: Non-repudiation audit logging for every configuration mutation, credential update, and approval action.
+1. **Database Connection Pre-Ping**: Async connection pools verify connection viability before dispatching queries, seamlessly recovering from network partitions or database restarts.
+2. **Deterministic Idempotency**: Redis stores a SHA-256 hash of inbound webhook payloads alongside the client-provided `Idempotency-Key` for 86,400 seconds. Subsequent identical payloads return the existing run ID immediately without duplicate processing.
+3. **Execution State Checkpointing**: Each step execution updates the database transactionally. If a worker node crashes mid-execution, the unacknowledged Celery task restarts from the last committed step run state.
+4. **Circuit Breaker on Downstream Egress**: Integrations with external CRM and Slack APIs enforce bounded timeouts (5s) and automatic exponential retries.

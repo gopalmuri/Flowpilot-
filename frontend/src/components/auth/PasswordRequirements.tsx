@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Check, Circle } from 'lucide-react';
 
 interface PasswordRequirementsProps {
@@ -25,15 +25,18 @@ export const PasswordRequirements: React.FC<PasswordRequirementsProps> = ({
   ];
 
   return (
-    <div className="mt-2.5 p-2.5 rounded-lg bg-[#0B0F10] border border-[#1F272A] space-y-1 text-xs select-none">
+    <div className="mt-3 p-3 rounded-xl bg-[var(--bg-surface-secondary)] dark:bg-[#121614] border border-[var(--border-subtle)] dark:border-[#242E29] space-y-1.5 text-xs select-none">
+      <span className="block text-[10px] font-mono uppercase tracking-wider text-[var(--text-muted)] font-semibold mb-1">
+        Password Requirements:
+      </span>
       {requirements.map((req) => (
         <div key={req.label} className="flex items-center gap-2">
           {req.met ? (
-            <Check className="w-3.5 h-3.5 text-[#18B89A] flex-shrink-0" />
+            <Check className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 flex-shrink-0" />
           ) : (
-            <Circle className="w-3 h-3 text-slate-600 flex-shrink-0" />
+            <Circle className="w-3 h-3 text-[var(--text-muted)] flex-shrink-0" />
           )}
-          <span className={req.met ? 'text-[#18B89A] font-medium' : 'text-slate-400'}>
+          <span className={req.met ? 'text-brand-700 dark:text-brand-300 font-medium' : 'text-[var(--text-secondary)]'}>
             {req.label}
           </span>
         </div>

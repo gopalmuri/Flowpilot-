@@ -116,3 +116,233 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #3B4740;
 }
+
+/* ============================================================
+   FLOWPILOT CONTINUOUS MOTION SYSTEM
+   ============================================================ */
+
+/* 1. Continuous Emerald Gradient Text with Soft Light Sweep (Hero & CTA) */
+@keyframes text-emerald-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.text-emerald-continuous {
+  background-image: linear-gradient(
+    90deg,
+    #176B4D 0%,
+    #23865D 20%,
+    #35B982 45%,
+    #5eead4 50%,
+    #35B982 55%,
+    #23865D 80%,
+    #176B4D 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  animation: text-emerald-flow 7.5s ease-in-out infinite;
+  display: inline-block;
+}
+
+.dark .text-emerald-continuous {
+  background-image: linear-gradient(
+    90deg,
+    #35B982 0%,
+    #5eead4 25%,
+    #A7F3D0 48%,
+    #ffffff 52%,
+    #A7F3D0 56%,
+    #5eead4 75%,
+    #35B982 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  animation: text-emerald-flow 7.5s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* 2. Hero Heading Imperceptible Micro-Float (2px, 6s) */
+@keyframes micro-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+.animate-micro-float {
+  animation: micro-float 6s ease-in-out infinite;
+}
+
+/* 3. Ambient Background Drift (16s & 20s depth layers) */
+@keyframes ambient-drift-1 {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(25px, -18px) scale(1.06);
+  }
+}
+
+@keyframes ambient-drift-2 {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(-25px, 20px) scale(0.95);
+  }
+}
+
+.animate-ambient-drift-1 {
+  animation: ambient-drift-1 16s ease-in-out infinite;
+}
+
+.animate-ambient-drift-2 {
+  animation: ambient-drift-2 20s ease-in-out infinite;
+}
+
+/* 4. Hero Eyebrow Breathing Effect (0.75 -> 1 -> 0.75 over 4s) */
+@keyframes eyebrow-breathe {
+  0%, 100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-eyebrow-breathe {
+  animation: eyebrow-breathe 4s ease-in-out infinite;
+}
+
+/* 5. Packet Pulse & Scanline Glow */
+@keyframes packet-pulse {
+  0% { transform: scale(0.92); opacity: 0.8; }
+  50% { transform: scale(1.18); opacity: 1; filter: drop-shadow(0 0 7px rgba(53, 185, 130, 0.7)); }
+  100% { transform: scale(0.92); opacity: 0.8; }
+}
+
+@keyframes violet-packet-pulse {
+  0% { transform: scale(0.92); opacity: 0.8; }
+  50% { transform: scale(1.18); opacity: 1; filter: drop-shadow(0 0 7px rgba(139, 92, 246, 0.7)); }
+  100% { transform: scale(0.92); opacity: 0.8; }
+}
+
+@keyframes amber-dwell {
+  0%, 100% { opacity: 1; border-color: rgba(245, 158, 11, 0.85); box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2); }
+  50% { opacity: 0.65; border-color: rgba(245, 158, 11, 0.35); box-shadow: 0 0 0 0px rgba(245, 158, 11, 0); }
+}
+
+@keyframes scanline-glow {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes line-flow {
+  0% { stroke-dashoffset: 24; }
+  100% { stroke-dashoffset: 0; }
+}
+
+.animate-packet-pulse {
+  animation: packet-pulse 1.4s ease-in-out infinite;
+}
+
+.animate-violet-pulse {
+  animation: violet-packet-pulse 1.4s ease-in-out infinite;
+}
+
+.animate-amber-dwell {
+  animation: amber-dwell 1.5s ease-in-out infinite;
+}
+
+.animate-line-flow {
+  stroke-dasharray: 6 6;
+  animation: line-flow 1.2s linear infinite;
+}
+
+/* 6. Standard Card & Button Micro-Interactions */
+.card-hover-micro {
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 220ms ease,
+              box-shadow 220ms ease;
+}
+
+.card-hover-micro:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px -2px rgba(24, 32, 28, 0.05);
+}
+
+.dark .card-hover-micro:hover {
+  box-shadow: 0 6px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+.card-hover-micro:hover .micro-icon {
+  transform: translateY(-1.5px);
+}
+
+.micro-icon {
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 7. Button Hover Micro-Interactions */
+.btn-micro-hover {
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 200ms ease,
+              background-color 200ms ease;
+}
+
+.btn-micro-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px -1px rgba(23, 107, 77, 0.25);
+}
+
+.dark .btn-micro-hover:hover {
+  box-shadow: 0 4px 14px -1px rgba(53, 185, 130, 0.3);
+}
+
+.btn-micro-hover:hover .btn-arrow {
+  transform: translateX(4px);
+}
+
+.btn-arrow {
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 8. Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+    scroll-behavior: auto !important;
+  }
+  .text-emerald-continuous {
+    animation: none !important;
+    background-position: 0% 50% !important;
+  }
+  .animate-micro-float,
+  .animate-ambient-drift-1,
+  .animate-ambient-drift-2,
+  .animate-eyebrow-breathe,
+  .animate-packet-pulse,
+  .animate-violet-pulse,
+  .animate-amber-dwell,
+  .animate-line-flow {
+    animation: none !important;
+    transform: none !important;
+  }
+}

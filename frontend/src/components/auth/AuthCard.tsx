@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { AlertCircle } from 'lucide-react';
 
 interface AuthCardProps {
@@ -19,11 +19,13 @@ export const AuthCard: React.FC<AuthCardProps> = ({
   className = '',
 }) => {
   return (
-    <div className={`p-8 sm:p-9 rounded-xl bg-[#12181A] border border-[#242D30] shadow-sm relative ${className}`}>
+    <div className={`p-6 sm:p-9 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] dark:border-[#2A332E] shadow-sm relative transition-all duration-150 ${className}`}>
       {/* Header */}
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-white tracking-tight">{title}</h2>
-        <p className="text-[13px] text-slate-400 mt-1 leading-relaxed">
+        <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tracking-tight">
+          {title}
+        </h2>
+        <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1.5 leading-relaxed">
           {subtitle}
         </p>
       </div>
@@ -32,19 +34,19 @@ export const AuthCard: React.FC<AuthCardProps> = ({
       {error && (
         <div
           role="alert"
-          className="mb-5 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-start gap-2.5 animate-in fade-in duration-150"
+          className="mb-5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-start gap-2.5 animate-in fade-in duration-150"
         >
-          <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-          <span className="leading-relaxed">{error}</span>
+          <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
+          <span className="leading-relaxed font-medium">{error}</span>
         </div>
       )}
 
       {/* Form Content */}
       {children}
 
-      {/* Optional Card Footer */}
+      {/* Optional Card Footer / Route Switch */}
       {footer && (
-        <div className="mt-5 pt-4 border-t border-[#1F272A] text-center">
+        <div className="mt-6 pt-5 border-t border-[var(--border-subtle)] dark:border-[#242E29] text-center">
           {footer}
         </div>
       )}
