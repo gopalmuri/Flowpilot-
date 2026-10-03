@@ -6,6 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+
+
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import decode_token, is_access_token_revoked
@@ -13,11 +15,12 @@ from app.models.membership import OrganizationMember, OrganizationRole
 from app.models.organization import Organization
 from app.models.user import User
 
+
+
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/auth/login",
     auto_error=False,
 )
-
 
 async def get_current_user(
     token: Optional[str] = Depends(oauth2_scheme),
