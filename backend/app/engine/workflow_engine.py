@@ -121,7 +121,7 @@ class WorkflowEngine:
             val_res = validate_workflow_dag(list(steps), conn_dicts)
             if not val_res.valid:
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=422,
                     detail={"message": "Active version DAG validation failed", "errors": val_res.errors},
                 )
 

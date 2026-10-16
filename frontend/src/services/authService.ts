@@ -30,7 +30,7 @@ export async function logoutUser(refreshToken?: string | null): Promise<void> {
       method: 'POST',
       body: JSON.stringify({ refresh_token: refreshToken || null }),
     });
-  } catch (_e) {
+  } catch {
     // Ignore server error on logout; frontend state must always be cleared
   } finally {
     clearAuthStorage();

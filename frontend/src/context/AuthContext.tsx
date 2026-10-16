@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(data.user);
       setOrganizations(data.organizations || []);
       syncActiveOrg(data.organizations || [], data.active_organization_id, data.active_role);
-    } catch (_e) {
+    } catch {
       setUser(null);
       setOrganizations([]);
       setActiveOrganization(null);
@@ -83,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (token && isMounted) {
           await refreshProfile();
         }
-      } catch (_e) {
+      } catch {
         // Unauthenticated session
       } finally {
         if (isMounted) {
@@ -162,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const rToken = getRefreshToken();
       await logoutUser(rToken);
-    } catch (_err) {
+    } catch {
       // Gracefully ignore server logout failures; frontend state is always cleared
     } finally {
       setUser(null);

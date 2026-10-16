@@ -34,7 +34,7 @@ def validate_payload_size(raw_body: bytes, max_bytes: int = MAX_PAYLOAD_SIZE_BYT
             f"Webhook payload rejected: size {len(raw_body)} bytes exceeds limit of {max_bytes} bytes"
         )
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=413,
             detail=f"Payload exceeds maximum limit of {max_bytes // 1024}KB",
         )
 

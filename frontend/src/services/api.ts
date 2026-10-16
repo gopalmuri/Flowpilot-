@@ -44,7 +44,7 @@ export async function fetchHealthStatus(): Promise<HealthResponse> {
       ...data,
       latencyMs,
     };
-  } catch (_error) {
+  } catch {
     const latencyMs = Math.round(performance.now() - startTime);
     return {
       status: 'unavailable',

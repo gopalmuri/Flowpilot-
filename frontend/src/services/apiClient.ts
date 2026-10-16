@@ -91,7 +91,7 @@ export async function requestTokenRefresh(): Promise<string | null> {
     setTokens(data.access_token, data.refresh_token);
     processQueue(data.access_token);
     return data.access_token;
-  } catch (_err) {
+  } catch {
     clearAuthStorage();
     processQueue(null);
     if (onAuthFailureHandler) {

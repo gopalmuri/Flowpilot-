@@ -838,7 +838,7 @@ async def publish_workflow_version(
     val_result = validate_workflow_dag(list(steps), conn_dicts)
     if not val_result.valid:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail={
                 "message": "Workflow version validation failed",
                 "errors": val_result.errors,
