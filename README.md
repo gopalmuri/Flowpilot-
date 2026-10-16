@@ -51,14 +51,21 @@ Cryptographic Audit Logging & Real-Time SLA Monitoring (<60s Target)
 
 ## Demo Credentials
 
-Once the application is running, log into the dashboard using the pre-seeded enterprise administrator account:
+Start the stack, then create the demo account and its published pipeline (safe to re-run):
+
+```bash
+docker compose up -d
+make seed        # Windows: .\scripts\dev.ps1 seed
+make run-demo    # optional: sends a signed lead and approves it end to end
+```
+
+Log into the dashboard at http://localhost:5173 with:
 
 | Attribute | Value |
 |---|---|
 | **Email** | `demo.admin@flowpilot.internal` |
 | **Password** | `Password123!` |
 | **Role** | `OWNER` / Administrator |
-| **Organization** | `FlowPilot Enterprise Corp` |
 
 ---
 

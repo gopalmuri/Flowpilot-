@@ -67,7 +67,7 @@
 4. Scroll to **Interactive Scenario Switcher** and click through *High-Risk Refund* and *Production Access* to showcase domain adaptability.
 
 ### Step 2: Authentication & Operational Entry
-1. Click **Sign In** and authenticate with demo credentials (`rc_test_dfefd6@flowpilot.io` / `Password123!`).
+1. Click **Sign In** and authenticate with the demo credentials (`demo.admin@flowpilot.internal` / `Password123!`; create them with `make seed`).
 2. Land on `/dashboard`. Show the multi-tenant badge (*Acme RC Systems*) and real-time operational KPI cards.
 
 ### Step 3: Workflow Inspection
@@ -110,4 +110,4 @@
 To prove enterprise reliability, demonstrate negative handling:
 1. **Invalid HMAC Signature**: Send request with altered signature $\rightarrow$ rejected with `401 Unauthorized`.
 2. **Duplicate Webhook**: Re-send identical payload with same `Idempotency-Key` $\rightarrow$ returned existing run ID without duplicate CRM record creation.
-3. **Approval Rejection**: Reject an unverified request in `/approvals` $\rightarrow$ run terminates immediately with status `FAILED` / `REJECTED`, preventing downstream CRM and Slack execution.
+3. **Approval Rejection**: Reject an unverified request in `/approvals` $\rightarrow$ the approval is recorded as `REJECTED` and the run follows its `rejected` branch (a rejection notice), finishing `COMPLETED`. The CRM and approved-path Slack steps are `SKIPPED`, so no downstream system is touched. Rejection is non-fatal by design; only errors and timeouts fail a run.

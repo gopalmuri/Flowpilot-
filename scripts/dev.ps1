@@ -26,6 +26,8 @@ function Show-Help {
     Write-Host "  migrate        - Run Alembic migrations inside backend container" -ForegroundColor Magenta
     Write-Host "  status         - Check status of Docker containers" -ForegroundColor White
     Write-Host "`nLocal Development Commands:" -ForegroundColor White
+    Write-Host "  seed           - Create demo user and the published Enterprise Lead pipeline" -ForegroundColor Green
+    Write-Host "  run-demo       - Send a signed lead through the pipeline and approve it" -ForegroundColor Green
     Write-Host "  setup          - Create backend venv, install backend + frontend dependencies" -ForegroundColor Green
     Write-Host "  test:local     - Run backend & frontend tests locally" -ForegroundColor Cyan
     Write-Host "  test:backend   - Run backend pytest locally" -ForegroundColor Cyan
@@ -63,6 +65,14 @@ switch ($Command.ToLower()) {
     "migrate" {
         Write-Host "Applying database migrations inside Docker..." -ForegroundColor Magenta
         docker compose exec backend alembic upgrade head
+    }
+    "seed" {
+        Write-Host "Seeding demo user and Enterprise Lead pipeline..." -ForegroundColor Green
+        docker compose exec backend python -m scripts.seed_demo
+    }
+    "run-demo" {
+        Write-Host "Sending a signed demo lead and approving it..." -ForegroundColor Green
+        docker compose exec backend python -m scripts.run_demo
     }
     "status" {
         docker compose ps
