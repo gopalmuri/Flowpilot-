@@ -37,13 +37,24 @@ async def test_async_session_maker_lifecycle(db_engine):
         assert user_name == settings.POSTGRES_USER
 
 
+def _alembic_head() -> str:
+    from pathlib import Path
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    backend_root = Path(__file__).resolve().parents[2]
+    config = Config(str(backend_root / "alembic.ini"))
+    config.set_main_option("script_location", str(backend_root / "alembic"))
+    return ScriptDirectory.from_config(config).get_current_head()
+
+
 @pytest.mark.asyncio
 async def test_alembic_version_table_populated(db_engine):
     """Verify that Alembic migration version table exists and contains the head revision."""
     async with db_engine.connect() as conn:
         result = await conn.execute(text("SELECT version_num FROM alembic_version"))
         version = result.scalar()
-        assert version in ["0001_initial_schema", "0002_add_workflow_version_status"]
+        assert version == _alembic_head()
 
 
 @pytest.mark.asyncio

@@ -30,7 +30,7 @@ class IdempotencyRecord(Base, UUIDMixin):
     )
     workflow_run_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
-        ForeignKey("workflow_runs.id"),
+        ForeignKey("workflow_runs.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

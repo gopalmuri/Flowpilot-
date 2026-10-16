@@ -34,7 +34,7 @@ class WorkflowRun(Base, UUIDMixin, TimestampMixin):
     )
     workflow_version_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
-        ForeignKey("workflow_versions.id"),
+        ForeignKey("workflow_versions.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -108,7 +108,7 @@ class WorkflowStepRun(Base, UUIDMixin, TimestampMixin):
     )
     step_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
-        ForeignKey("workflow_steps.id"),
+        ForeignKey("workflow_steps.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

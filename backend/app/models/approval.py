@@ -33,7 +33,7 @@ class ApprovalRequest(Base, UUIDMixin, TimestampMixin):
     )
     step_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
-        ForeignKey("workflow_steps.id"),
+        ForeignKey("workflow_steps.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

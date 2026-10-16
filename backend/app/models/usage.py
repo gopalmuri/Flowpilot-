@@ -35,7 +35,7 @@ class UsageRecord(Base, UUIDMixin):
     )
     workflow_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         Uuid,
-        ForeignKey("workflows.id"),
+        ForeignKey("workflows.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
