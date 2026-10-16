@@ -34,6 +34,8 @@ docker compose up -d postgres redis
 
 ---
 
+> **Shortcut:** `.\scripts\dev.ps1 setup` (Windows) or `make setup` (macOS/Linux) performs the venv, dependency and `.env` steps below. Python 3.12+ is required; always use the project venv, since globally installed packages (e.g. SQLAlchemy 1.x) will break the backend.
+
 ## 3. Backend Setup & Startup
 
 ```bash
@@ -48,7 +50,7 @@ venv\Scripts\activate  # Windows PowerShell
 pip install -r requirements.txt
 
 # 3. Configure environment
-cp .env.example .env
+cp ../.env.example .env   # template lives at the repo root
 
 # 4. Start FastAPI server with live reload (Port 8000)
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
