@@ -1,5 +1,7 @@
 import asyncio
+
 import pytest
+
 from app.services.crm.mock_crm_service import MockCRMService
 from app.services.slack.slack_service import SlackService
 
@@ -80,10 +82,7 @@ async def test_mock_crm_concurrent_duplicate_create():
     lead_data = {"company": "Speedy Corp", "email": "speedy@test.com"}
 
     # Run 5 concurrent creations with identical email
-    tasks = [
-        crm.create_lead("org-concurrent", lead_data)
-        for _ in range(5)
-    ]
+    tasks = [crm.create_lead("org-concurrent", lead_data) for _ in range(5)]
     results = await asyncio.gather(*tasks)
 
     # Exactly one should be "created", others "already_exists"
@@ -107,15 +106,13 @@ async def test_mock_crm_test_connection():
 def test_slack_template_interpolation_valid_and_nested():
     slack = SlackService()
 
-    template = "Lead {{ lead.company }} (Category: {{ ai.category }}) scored {{ lead.score }}. Sub: {{ trigger.user.name }}."
+    template = (
+        "Lead {{ lead.company }} (Category: {{ ai.category }}) scored {{ lead.score }}. Sub: {{ trigger.user.name }}."
+    )
     context = {
         "lead": {"company": "Globex", "score": 98},
         "ai": {"category": "ENTERPRISE"},
-        "trigger": {
-            "user": {
-                "name": "Homer Simpson"
-            }
-        },
+        "trigger": {"user": {"name": "Homer Simpson"}},
     }
 
     rendered = slack.interpolate_template(template, context)
@@ -126,11 +123,7 @@ def test_slack_template_interpolation_missing_variable():
     slack = SlackService()
 
     template = "Contact: {{ trigger.email }} & Phone: {{ trigger.phone }}."
-    context = {
-        "trigger": {
-            "email": "homer@globex.com"
-        }
-    }
+    context = {"trigger": {"email": "homer@globex.com"}}
 
     # Missing variable trigger.phone resolves to empty string
     rendered = slack.interpolate_template(template, context)

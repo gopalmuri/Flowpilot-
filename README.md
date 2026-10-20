@@ -101,7 +101,7 @@ Log into the dashboard at http://localhost:5173 with:
 ### Terminal 1: Backend API (FastAPI)
 ```powershell
 cd backend
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 ```
 - API Endpoint: `http://127.0.0.1:8001`

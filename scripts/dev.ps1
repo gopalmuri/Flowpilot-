@@ -92,7 +92,7 @@ switch ($Command.ToLower()) {
         if (-not (Test-Path (Join-Path $PSScriptRoot "..\.env"))) { Copy-Item (Join-Path $PSScriptRoot "..\.env.example") (Join-Path $PSScriptRoot "..\.env") }
         Set-Location backend
         if (-not (Test-Path venv)) { python -m venv venv }
-        & .\venv\Scripts\python.exe -m pip install -r requirements.txt
+        & .\venv\Scripts\python.exe -m pip install -r requirements-dev.txt
         Set-Location ..\frontend
         npm install
         Set-Location ..

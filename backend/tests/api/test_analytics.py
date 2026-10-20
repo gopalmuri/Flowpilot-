@@ -1,14 +1,15 @@
-import asyncio
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import text
-
-from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
+
 from app.core.config import settings
+
 
 @asynccontextmanager
 async def get_test_db():
@@ -19,7 +20,6 @@ async def get_test_db():
             yield session
     finally:
         await engine.dispose()
-from app.models.membership import OrganizationRole
 
 
 async def create_authenticated_user(async_client: AsyncClient, name: str):
@@ -32,9 +32,7 @@ async def create_authenticated_user(async_client: AsyncClient, name: str):
         "full_name": f"{name.capitalize()} User",
     }
     await async_client.post("/api/v1/auth/register", json=reg_payload)
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     return email, password, headers
@@ -60,6 +58,7 @@ async def create_org_and_owner(async_client: AsyncClient, name: str):
 # ==============================================================================
 # 1. SLA Validation Rules
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_sla_validation_rules(async_client: AsyncClient):
@@ -130,6 +129,7 @@ async def test_sla_validation_rules(async_client: AsyncClient):
 # ==============================================================================
 # 2. SLA Versioning: Draft Updates vs. Published Immutability
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_sla_version_scoped_draft_update_and_published_immutability(async_client: AsyncClient):
@@ -207,6 +207,7 @@ async def test_sla_version_scoped_draft_update_and_published_immutability(async_
 # 3. SLA Audit Event Emitted
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_sla_audit_event_emitted_with_no_secrets(async_client: AsyncClient):
     """Verifies that workflow.sla_updated is emitted to audit_logs without secrets."""
@@ -257,6 +258,7 @@ async def test_sla_audit_event_emitted_with_no_secrets(async_client: AsyncClient
 # 4. SLA & Analytics RBAC
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_sla_and_analytics_rbac(async_client: AsyncClient):
     """Verifies that VIEWER and OPERATOR cannot configure SLA (403), but can read analytics (200)."""
@@ -288,13 +290,19 @@ async def test_sla_and_analytics_rbac(async_client: AsyncClient):
         return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 
     mgr_headers = get_token_header(
-        await async_client.post("/api/v1/auth/login", json={"email": mgr_email, "password": mgr_pw, "organization_id": org_id})
+        await async_client.post(
+            "/api/v1/auth/login", json={"email": mgr_email, "password": mgr_pw, "organization_id": org_id}
+        )
     )
     op_headers = get_token_header(
-        await async_client.post("/api/v1/auth/login", json={"email": op_email, "password": op_pw, "organization_id": org_id})
+        await async_client.post(
+            "/api/v1/auth/login", json={"email": op_email, "password": op_pw, "organization_id": org_id}
+        )
     )
     view_headers = get_token_header(
-        await async_client.post("/api/v1/auth/login", json={"email": view_email, "password": view_pw, "organization_id": org_id})
+        await async_client.post(
+            "/api/v1/auth/login", json={"email": view_email, "password": view_pw, "organization_id": org_id}
+        )
     )
 
     wf = (
@@ -337,16 +345,27 @@ async def test_sla_and_analytics_rbac(async_client: AsyncClient):
     assert view_sla.status_code == 403
 
     # 4. Viewer can read all analytics endpoints -> 200 OK
-    assert (await async_client.get(f"/api/v1/organizations/{org_id}/analytics/overview", headers=view_headers)).status_code == 200
-    assert (await async_client.get(f"/api/v1/organizations/{org_id}/analytics/time-series", headers=view_headers)).status_code == 200
-    assert (await async_client.get(f"/api/v1/organizations/{org_id}/analytics/workflows", headers=view_headers)).status_code == 200
-    assert (await async_client.get(f"/api/v1/organizations/{org_id}/analytics/steps", headers=view_headers)).status_code == 200
-    assert (await async_client.get(f"/api/v1/organizations/{org_id}/analytics/sla", headers=view_headers)).status_code == 200
+    assert (
+        await async_client.get(f"/api/v1/organizations/{org_id}/analytics/overview", headers=view_headers)
+    ).status_code == 200
+    assert (
+        await async_client.get(f"/api/v1/organizations/{org_id}/analytics/time-series", headers=view_headers)
+    ).status_code == 200
+    assert (
+        await async_client.get(f"/api/v1/organizations/{org_id}/analytics/workflows", headers=view_headers)
+    ).status_code == 200
+    assert (
+        await async_client.get(f"/api/v1/organizations/{org_id}/analytics/steps", headers=view_headers)
+    ).status_code == 200
+    assert (
+        await async_client.get(f"/api/v1/organizations/{org_id}/analytics/sla", headers=view_headers)
+    ).status_code == 200
 
 
 # ==============================================================================
 # 5. Cross-Tenant Isolation
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_analytics_cross_tenant_isolation(async_client: AsyncClient):
@@ -383,6 +402,7 @@ async def test_analytics_cross_tenant_isolation(async_client: AsyncClient):
 # 6. Date Range Validation
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_date_range_validation(async_client: AsyncClient):
     """Verifies rejection of date ranges > 90 days and start_time >= end_time."""
@@ -413,6 +433,7 @@ async def test_date_range_validation(async_client: AsyncClient):
 # ==============================================================================
 # 7. Execution Volume Metrics (including PENDING & In-Flight)
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_execution_volume_metrics_including_pending_and_rates(async_client: AsyncClient):
@@ -490,6 +511,7 @@ async def test_execution_volume_metrics_including_pending_and_rates(async_client
 # 8. Zero Terminal Executions
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_zero_terminal_executions_returns_zero_rates(async_client: AsyncClient):
     """Verifies that when terminal == 0, success/failure/cancellation rates are 0.0."""
@@ -512,6 +534,7 @@ async def test_zero_terminal_executions_returns_zero_rates(async_client: AsyncCl
 # ==============================================================================
 # 9. Duration Percentiles
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_duration_percentiles_calculation_and_empty_dataset(async_client: AsyncClient):
@@ -587,6 +610,7 @@ async def test_duration_percentiles_calculation_and_empty_dataset(async_client: 
 # ==============================================================================
 # 10. SLA Metrics & Compliance Calculations
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_sla_compliance_healthy_breached_and_not_applicable_states(async_client: AsyncClient):
@@ -712,6 +736,7 @@ async def test_sla_compliance_healthy_breached_and_not_applicable_states(async_c
 # 11. Time-Series Granularity & Continuous Buckets
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_time_series_granularity_and_continuous_zero_filled_buckets(async_client: AsyncClient):
     """Verifies continuous zero-filled time buckets for hourly, daily, and weekly."""
@@ -762,6 +787,7 @@ async def test_time_series_granularity_and_continuous_zero_filled_buckets(async_
 # 12. Step Latency Analytics & Maximum Limit Bounding
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_step_latency_analytics_and_bounding(async_client: AsyncClient):
     """Verifies bounded top-N step latency queries with maximum 100 limit."""
@@ -780,6 +806,7 @@ async def test_step_latency_analytics_and_bounding(async_client: AsyncClient):
 # ==============================================================================
 # 13. Workflow Performance Pagination & Sorting
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_workflow_performance_pagination_and_sorting(async_client: AsyncClient):
@@ -812,17 +839,21 @@ async def test_workflow_performance_sorting_variants(async_client: AsyncClient):
     org_id, headers, _, _ = await create_org_and_owner(async_client, "wf_sort")
 
     # Create 2 workflows
-    wf1 = (await async_client.post(
-        f"/api/v1/organizations/{org_id}/workflows",
-        headers=headers,
-        json={"name": "Alpha Flow"},
-    )).json()
+    _wf1 = (
+        await async_client.post(
+            f"/api/v1/organizations/{org_id}/workflows",
+            headers=headers,
+            json={"name": "Alpha Flow"},
+        )
+    ).json()
 
-    wf2 = (await async_client.post(
-        f"/api/v1/organizations/{org_id}/workflows",
-        headers=headers,
-        json={"name": "Beta Flow"},
-    )).json()
+    _wf2 = (
+        await async_client.post(
+            f"/api/v1/organizations/{org_id}/workflows",
+            headers=headers,
+            json={"name": "Beta Flow"},
+        )
+    ).json()
 
     # Sort by failure_rate desc
     resp = await async_client.get(
@@ -854,11 +885,13 @@ async def test_step_latency_sorting_and_filtering(async_client: AsyncClient):
     """Verifies step latency sorting and workflow_id filtering."""
     org_id, headers, _, _ = await create_org_and_owner(async_client, "step_sort")
 
-    wf = (await async_client.post(
-        f"/api/v1/organizations/{org_id}/workflows",
-        headers=headers,
-        json={"name": "Step Flow"},
-    )).json()
+    wf = (
+        await async_client.post(
+            f"/api/v1/organizations/{org_id}/workflows",
+            headers=headers,
+            json={"name": "Step Flow"},
+        )
+    ).json()
     wf_id = wf["id"]
 
     # Test sorting by avg_latency
@@ -917,11 +950,13 @@ async def test_sla_monitoring_filtered_by_workflow(async_client: AsyncClient):
     """Verifies SLA monitoring endpoint filtered by specific workflow_id."""
     org_id, headers, _, _ = await create_org_and_owner(async_client, "sla_filt")
 
-    wf = (await async_client.post(
-        f"/api/v1/organizations/{org_id}/workflows",
-        headers=headers,
-        json={"name": "SLA Specific Flow"},
-    )).json()
+    wf = (
+        await async_client.post(
+            f"/api/v1/organizations/{org_id}/workflows",
+            headers=headers,
+            json={"name": "SLA Specific Flow"},
+        )
+    ).json()
     wf_id = wf["id"]
 
     resp = await async_client.get(

@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { listApprovals } from '../../services/approvalService';
 import { listExecutions } from '../../services/executionService';
+import { formatRunDuration } from '../../utils/formatRunDuration';
 
 export interface NotificationItem {
   id: string;
@@ -75,7 +76,7 @@ export const NotificationCenter: React.FC = () => {
             id,
             category: 'APPROVAL',
             title: 'Approval Required',
-            message: `Review required for step "${appr.step_key}" (${appr.required_role} role).`,
+            message: `Review required for step "${appr.step_key}" (${appr.required_role ?? 'any'} role).`,
             timestamp: appr.requested_at,
             severity: 'warning',
             link: '/approvals',
@@ -106,7 +107,7 @@ export const NotificationCenter: React.FC = () => {
               id,
               category: 'SUCCESS',
               title: 'Execution Completed',
-              message: `${run.workflow_name || 'Workflow'} finished successfully in ${run.duration_ms ? `${(run.duration_ms / 1000).toFixed(2)}s` : 'N/A'}.`,
+              message: `${run.workflow_name || 'Workflow'} finished successfully (${formatRunDuration(run)}).`,
               timestamp: run.completed_at || run.updated_at,
               severity: 'success',
               link: `/executions?search=${encodeURIComponent(run.correlation_id)}`,

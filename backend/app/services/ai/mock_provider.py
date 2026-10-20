@@ -1,6 +1,8 @@
 import json
+import re
 import time
 from typing import Dict, List
+
 from app.schemas.ai import AIProviderConfig, LeadClassificationInput
 from app.services.ai.base import AIProviderResponse, BaseAIProvider
 
@@ -116,4 +118,63 @@ class MockAIProvider(BaseAIProvider):
             provider="mock",
             model=config.model or "mock-deterministic-v1",
             latency_ms=duration_ms,
+        )
+
+    async def generate_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        config: AIProviderConfig,
+    ) -> AIProviderResponse:
+        """
+        Deterministic structured analysis for development and tests. No network, no invented
+        facts: the draft only acknowledges the message and asks clarifying questions.
+        """
+        start_time = time.monotonic()
+        match = re.search(r"<untrusted_message>\n(.*?)\n</untrusted_message>", user_prompt, re.DOTALL)
+        body = (match.group(1) if match else user_prompt).lower()
+        name_match = re.search(r"<sender>(.*?)</sender>", user_prompt)
+        name = (name_match.group(1) if name_match else "").strip()
+        greeting = f"Hello {name}," if name and name != "(unknown)" else "Hello,"
+
+        if any(k in body for k in MOCK_KEYWORDS["spam"]):
+            category, action, draft = "spam", "ignore", None
+        elif any(k in body for k in ("price", "pricing", "quote", "cost", "budget")):
+            category, action = "pricing_request", "ask_clarification"
+        elif any(k in body for k in ("bug", "error", "broken", "not working", "issue")):
+            category, action = "support_request", "draft_reply"
+        elif any(k in body for k in ("partner", "collaborat")):
+            category, action = "partnership", "draft_reply"
+        elif any(k in body for k in ("project", "build", "develop", "solution", "automation", "ai")):
+            category, action = "new_project", "ask_clarification"
+        else:
+            category, action = "other", "draft_reply"
+
+        if category != "spam":
+            draft = (
+                f"{greeting}\n\nThank you for reaching out. We have received your message and a member of our "
+                "team will review it. To help us respond properly, could you share more detail about your goals, "
+                "the scope of what you need, and your preferred timeline?\n\nBest regards,\nThe Team"
+            )
+        first_line = next((ln.strip() for ln in body.splitlines() if ln.strip() and not ln.startswith("subject:")), "")
+        payload = {
+            "category": category,
+            "summary": (first_line or "No content")[:300],
+            "requirements": [first_line[:200]] if first_line else [],
+            "missing_information": ["scope", "timeline"] if category in ("new_project", "pricing_request") else [],
+            "urgency": "high" if any(k in body for k in ("urgent", "asap", "immediately")) else "medium",
+            "recommended_action": action,
+            "confidence": 0.8,
+            "uncertainty_notes": None,
+            "injection_suspected": False,
+            "reply_draft": draft,
+        }
+        return AIProviderResponse(
+            raw_output=json.dumps(payload),
+            prompt_tokens=len(user_prompt) // 4,
+            completion_tokens=100,
+            total_tokens=len(user_prompt) // 4 + 100,
+            provider="mock",
+            model="mock-model",
+            latency_ms=max(1, int((time.monotonic() - start_time) * 1000)),
         )

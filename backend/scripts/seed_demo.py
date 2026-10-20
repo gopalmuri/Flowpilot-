@@ -24,14 +24,14 @@ STEPS = [
         "step_type": "WEBHOOK_TRIGGER",
         "name": "Inbound Webhook",
         "config": {"allowed_methods": ["POST"], "secret_token": WEBHOOK_SECRET},
-        "ui_position": {"x": 60, "y": 180},
+        "ui_position": {"x": 400, "y": 0},
     },
     {
         "step_key": "ai_classify",
         "step_type": "AI_CLASSIFICATION",
         "name": "AI Lead Classifier",
         "config": {"categories": ["enterprise", "smb"]},
-        "ui_position": {"x": 340, "y": 180},
+        "ui_position": {"x": 400, "y": 190},
     },
     {
         "step_key": "eval_enterprise",
@@ -39,39 +39,37 @@ STEPS = [
         "name": "Is Enterprise Lead?",
         "config": {
             "logic": "AND",
-            "conditions": [
-                {"field": "ai_classify.category", "operator": "equals", "value": "enterprise"}
-            ],
+            "conditions": [{"field": "ai_classify.category", "operator": "equals", "value": "enterprise"}],
         },
-        "ui_position": {"x": 620, "y": 180},
+        "ui_position": {"x": 400, "y": 380},
     },
     {
         "step_key": "manager_approval",
         "step_type": "HUMAN_APPROVAL",
         "name": "VP Approval Gate",
         "config": {"approver_role": "OWNER", "timeout_hours": 24},
-        "ui_position": {"x": 900, "y": 180},
+        "ui_position": {"x": 400, "y": 570},
     },
     {
         "step_key": "crm_lead",
         "step_type": "MOCK_CRM_CREATE",
         "name": "Create CRM Lead",
         "config": {"entity_type": "lead"},
-        "ui_position": {"x": 1180, "y": 180},
+        "ui_position": {"x": 220, "y": 780},
     },
     {
         "step_key": "slack_announcement",
         "step_type": "SLACK_NOTIFICATION",
         "name": "Notify #enterprise-leads",
         "config": {"channel": "#enterprise-leads"},
-        "ui_position": {"x": 1460, "y": 180},
+        "ui_position": {"x": 220, "y": 980},
     },
     {
         "step_key": "slack_rejected",
         "step_type": "SLACK_NOTIFICATION",
         "name": "Notify Rejection",
         "config": {"channel": "#enterprise-leads", "message": "Lead rejected by approver; no CRM record created."},
-        "ui_position": {"x": 1180, "y": 380},
+        "ui_position": {"x": 580, "y": 780},
     },
 ]
 
@@ -103,7 +101,9 @@ def seed(base_url: str, email: str, password: str) -> None:
         },
     )
     version_id = session.request("GET", f"{base}/{wf['id']}/versions")[0]["id"]
-    session.request("PUT", f"{base}/{wf['id']}/versions/{version_id}", json={"steps": STEPS, "connections": CONNECTIONS})
+    session.request(
+        "PUT", f"{base}/{wf['id']}/versions/{version_id}", json={"steps": STEPS, "connections": CONNECTIONS}
+    )
     session.request(
         "PUT",
         f"{base}/{wf['id']}/versions/{version_id}/sla",
@@ -124,4 +124,4 @@ if __name__ == "__main__":
     try:
         seed(args.base_url, args.email, args.password)
     except DemoError as exc:
-        raise SystemExit(f"[x] {exc}")
+        raise SystemExit(f"[x] {exc}") from exc

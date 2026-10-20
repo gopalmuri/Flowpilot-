@@ -5,6 +5,7 @@ Implements atomic sliding-window rate limiting with fail-open fault tolerance.
 
 import time
 from typing import Callable, Optional
+
 import redis.asyncio as aioredis
 from fastapi import HTTPException, Request, Response, status
 
@@ -160,5 +161,25 @@ analytics_rate_limiter = RateLimiter(
     limit=60,
     window_seconds=60,
     scope="analytics",
+    identifier_func=get_client_ip,
+)
+
+
+def _inbound_key_identifier(request: Request) -> str:
+    return str(request.path_params.get("public_key", "unknown"))
+
+
+# Server-to-server inbound channels: one cap per integration key and one per caller IP.
+inbound_key_rate_limiter = RateLimiter(
+    limit=120,
+    window_seconds=60,
+    scope="inbound:key",
+    identifier_func=_inbound_key_identifier,
+)
+
+inbound_ip_rate_limiter = RateLimiter(
+    limit=60,
+    window_seconds=60,
+    scope="inbound:ip",
     identifier_func=get_client_ip,
 )

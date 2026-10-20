@@ -3,8 +3,8 @@ import {
   LoginPayload,
   RegisterPayload,
   TokenResponse,
-  User,
   UserMeResponse,
+  UserRegisterResponse,
   OrganizationSummary,
 } from '../types/auth';
 
@@ -17,10 +17,26 @@ export async function loginUser(payload: LoginPayload): Promise<TokenResponse> {
   return data;
 }
 
-export async function registerUser(payload: RegisterPayload): Promise<User> {
-  return await apiRequest<User>('/api/v1/auth/register', {
+export async function registerUser(payload: RegisterPayload): Promise<UserRegisterResponse> {
+  return await apiRequest<UserRegisterResponse>('/api/v1/auth/register', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export async function verifyEmailUser(email: string, code: string): Promise<TokenResponse> {
+  const data = await apiRequest<TokenResponse>('/api/v1/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  });
+  setTokens(data.access_token, data.refresh_token);
+  return data;
+}
+
+export async function resendVerificationOtp(email: string): Promise<{ message: string }> {
+  return await apiRequest<{ message: string }>('/api/v1/auth/resend-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
   });
 }
 

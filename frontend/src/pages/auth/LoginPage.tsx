@@ -32,6 +32,10 @@ export const LoginPage: React.FC = () => {
       await login({ email, password });
       navigate(redirectPath, { replace: true });
     } catch (err: any) {
+      if (err.message === 'email_not_verified' || err.message?.includes('email_not_verified')) {
+        navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+        return;
+      }
       setError(err.message || 'Invalid email or password. Please try again.');
     } finally {
       setIsSubmitting(false);

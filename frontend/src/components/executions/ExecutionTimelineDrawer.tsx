@@ -27,6 +27,7 @@ import {
 } from '../../types/execution';
 import { resumeExecution } from '../../services/executionService';
 import { useAuth } from '../../context/AuthContext';
+import { formatRunDuration } from '../../utils/formatRunDuration';
 
 interface ExecutionTimelineDrawerProps {
   run: WorkflowRunDetail | null;
@@ -259,7 +260,7 @@ export const ExecutionTimelineDrawer: React.FC<ExecutionTimelineDrawerProps> = (
                 Duration
               </span>
               <span className="font-semibold text-warm-900 dark:text-charcoal-100 text-[11px] font-mono">
-                {run.duration_ms != null ? `${(run.duration_ms / 1000).toFixed(2)}s` : 'N/A'}
+                {formatRunDuration(run)}
               </span>
             </div>
 

@@ -3,19 +3,18 @@ import asyncio
 import json
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
+
 import httpx
 import pytest
 from pydantic import ValidationError
 
 from app.schemas.ai import (
-    ALLOWED_LEAD_CATEGORIES,
     AIProviderConfig,
     LeadClassificationInput,
     LeadClassificationResult,
 )
 from app.services.ai.anthropic_provider import AnthropicProvider
 from app.services.ai.base import AIProviderResponse
-from app.services.ai.factory import AIProviderFactory
 from app.services.ai.mock_provider import MockAIProvider
 from app.services.ai.openai_provider import OpenAIProvider
 from app.services.ai.service import (
@@ -24,10 +23,10 @@ from app.services.ai.service import (
     extract_json_payload,
 )
 
-
 # ==============================================================================
 # 1. Strict Schema Validation Unit Tests
 # ==============================================================================
+
 
 def test_valid_schema_output():
     result = LeadClassificationResult(
@@ -127,6 +126,7 @@ def test_invalid_priority_rejected():
 # 2. Deterministic Mock Provider Unit Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_deterministic_mock_provider_exact_match():
     provider = MockAIProvider()
@@ -172,6 +172,7 @@ async def test_deterministic_mock_provider_tie_breaking():
 # 3. Deterministic Fallback Classifier Unit Tests
 # ==============================================================================
 
+
 def test_deterministic_fallback_classifier_behavior():
     inp = LeadClassificationInput(
         text="Urgent outage on production billing server",
@@ -204,6 +205,7 @@ def test_deterministic_fallback_classifier_empty_input_fails():
 # 4. Safe JSON Extraction & Parsing Unit Tests (Zero eval/exec/compile)
 # ==============================================================================
 
+
 def test_extract_json_clean():
     raw = '{"category": "sales", "confidence": 0.88}'
     extracted = extract_json_payload(raw)
@@ -218,7 +220,7 @@ def test_extract_json_markdown_wrapped():
 
 
 def test_extract_json_malformed_raises():
-    raw = 'not a valid json payload'
+    raw = "not a valid json payload"
     with pytest.raises(json.JSONDecodeError):
         extract_json_payload(raw)
 
@@ -227,6 +229,7 @@ def test_extract_json_malformed_raises():
 # 5. Mocked External Provider HTTP Tests (OpenAI & Anthropic)
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_openai_provider_success():
     provider = OpenAIProvider(api_key="sk-mock-valid-key")
@@ -234,17 +237,21 @@ async def test_openai_provider_success():
     cfg = AIProviderConfig(provider="openai", model="gpt-4o-mini")
 
     mock_resp_data = {
-        "choices": [{
-            "message": {
-                "content": json.dumps({
-                    "category": "sales",
-                    "priority": "medium",
-                    "confidence": 0.91,
-                    "reasoning": "Purchasing licenses indicates sales lead.",
-                    "suggested_action": "create_crm_lead",
-                })
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(
+                        {
+                            "category": "sales",
+                            "priority": "medium",
+                            "confidence": 0.91,
+                            "reasoning": "Purchasing licenses indicates sales lead.",
+                            "suggested_action": "create_crm_lead",
+                        }
+                    )
+                }
             }
-        }],
+        ],
         "usage": {"prompt_tokens": 40, "completion_tokens": 25, "total_tokens": 65},
     }
 
@@ -265,10 +272,14 @@ async def test_openai_provider_rate_limit():
     inp = LeadClassificationInput(text="Test rate limit handling")
     cfg = AIProviderConfig(provider="openai")
 
-    mock_err_resp = httpx.Response(429, json={"error": "Rate limit exceeded"}, request=httpx.Request("POST", "https://api.openai.com"))
+    mock_err_resp = httpx.Response(
+        429, json={"error": "Rate limit exceeded"}, request=httpx.Request("POST", "https://api.openai.com")
+    )
 
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        mock_post.side_effect = httpx.HTTPStatusError("Rate limit", request=mock_err_resp.request, response=mock_err_resp)
+        mock_post.side_effect = httpx.HTTPStatusError(
+            "Rate limit", request=mock_err_resp.request, response=mock_err_resp
+        )
         with pytest.raises(RuntimeError) as exc_info:
             await provider.classify(inp, cfg)
         assert "rate limit reached (HTTP 429)" in str(exc_info.value)
@@ -294,19 +305,25 @@ async def test_anthropic_provider_success():
     cfg = AIProviderConfig(provider="anthropic", model="claude-3-5-sonnet-20241022")
 
     mock_resp_data = {
-        "content": [{
-            "text": json.dumps({
-                "category": "technical",
-                "priority": "medium",
-                "confidence": 0.89,
-                "reasoning": "Inquiry regarding API integration.",
-                "suggested_action": "route_to_technical",
-            })
-        }],
+        "content": [
+            {
+                "text": json.dumps(
+                    {
+                        "category": "technical",
+                        "priority": "medium",
+                        "confidence": 0.89,
+                        "reasoning": "Inquiry regarding API integration.",
+                        "suggested_action": "route_to_technical",
+                    }
+                )
+            }
+        ],
         "usage": {"input_tokens": 55, "output_tokens": 30},
     }
 
-    mock_http_resp = httpx.Response(200, json=mock_resp_data, request=httpx.Request("POST", "https://api.anthropic.com"))
+    mock_http_resp = httpx.Response(
+        200, json=mock_resp_data, request=httpx.Request("POST", "https://api.anthropic.com")
+    )
 
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_http_resp
@@ -322,6 +339,7 @@ async def test_anthropic_provider_success():
 # ==============================================================================
 # 6. Service Fallback Triggers Unit Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_service_malformed_json_triggers_fallback():
@@ -344,12 +362,14 @@ async def test_service_schema_invalid_confidence_triggers_fallback():
     inp = LeadClassificationInput(text="Enterprise software inquiry")
 
     # Provider returns confidence 4.7 (invalid)
-    bad_json = json.dumps({
-        "category": "enterprise",
-        "priority": "high",
-        "confidence": 4.7,
-        "reasoning": "Bad confidence",
-    })
+    bad_json = json.dumps(
+        {
+            "category": "enterprise",
+            "priority": "high",
+            "confidence": 4.7,
+            "reasoning": "Bad confidence",
+        }
+    )
     mock_bad_resp = AIProviderResponse(raw_output=bad_json, provider="mock", total_tokens=10)
     with patch.object(MockAIProvider, "classify", new_callable=AsyncMock) as mock_classify:
         mock_classify.return_value = mock_bad_resp
@@ -391,6 +411,7 @@ async def test_service_both_provider_and_fallback_failure_raises():
 # ==============================================================================
 # 7. Security Invariants: Zero Secret Exposure & Zero Code Execution
 # ==============================================================================
+
 
 def test_zero_eval_exec_compile_in_all_ai_modules():
     ai_dir = Path("backend/app/services/ai") if Path("backend/app/services/ai").exists() else Path("app/services/ai")

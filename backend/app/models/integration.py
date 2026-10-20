@@ -1,9 +1,11 @@
 import uuid
-from typing import Any, Dict, Optional, TYPE_CHECKING
-from sqlalchemy import String, ForeignKey, LargeBinary, JSON, Uuid
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+from sqlalchemy import JSON, ForeignKey, LargeBinary, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
-from app.models.base import UUIDMixin, TimestampMixin
+from app.models.base import TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from app.models.organization import Organization
@@ -31,6 +33,14 @@ class Integration(Base, UUIDMixin, TimestampMixin):
         String(50),
         default="CONNECTED",
         nullable=False,
+    )
+    # Unguessable public identifier used in inbound URLs (portfolio form, later webhooks).
+    # It selects the integration only; authentication is a separate signed secret.
+    public_key: Mapped[Optional[str]] = mapped_column(
+        String(64),
+        nullable=True,
+        unique=True,
+        index=True,
     )
     credentials_encrypted: Mapped[Optional[bytes]] = mapped_column(
         LargeBinary,

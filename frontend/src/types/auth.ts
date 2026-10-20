@@ -6,6 +6,7 @@ export interface User {
   full_name: string;
   is_active: boolean;
   is_superuser: boolean;
+  is_verified?: boolean;
   created_at: string;
 }
 
@@ -43,6 +44,18 @@ export interface RegisterPayload {
   organization_name?: string;
 }
 
+export interface UserRegisterResponse {
+  message: string;
+  email: string;
+  requires_verification: boolean;
+  user_id: string;
+}
+
+export interface VerifyEmailPayload {
+  email: string;
+  code: string;
+}
+
 export interface AuthContextType {
   user: User | null;
   organizations: OrganizationSummary[];
@@ -51,7 +64,9 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (payload: LoginPayload) => Promise<void>;
-  register: (payload: RegisterPayload) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<UserRegisterResponse | void>;
+  verifyEmail?: (email: string, code: string) => Promise<void>;
+  resendVerificationCode?: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   switchOrganization: (organizationId: string) => void;
   refreshProfile: () => Promise<void>;

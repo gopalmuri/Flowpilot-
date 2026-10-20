@@ -25,9 +25,7 @@ async def create_authenticated_user(async_client: AsyncClient, name: str):
         "full_name": f"{name.capitalize()} User",
     }
     await async_client.post("/api/v1/auth/register", json=reg_payload)
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     return email, headers
@@ -147,14 +145,13 @@ def make_webhook_headers(
 # 1. Ingestion & HMAC Signature Verification
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_valid_signed_webhook_triggers_execution(async_client: AsyncClient):
     """Valid HMAC signature and timestamp trigger workflow execution successfully."""
     org_id, headers = await create_org_and_owner(async_client, "wb_success")
     secret = "secret_valid_123"
-    wf_id, webhook_key, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token=secret
-    )
+    wf_id, webhook_key, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token=secret)
 
     raw_body = json.dumps({"email": "lead@test.com"}).encode("utf-8")
     webhook_headers = make_webhook_headers(secret, raw_body)
@@ -178,9 +175,7 @@ async def test_public_webhook_rejects_unsigned(async_client: AsyncClient):
     """Public webhook route rejects requests without signature header with HTTP 401."""
     org_id, headers = await create_org_and_owner(async_client, "wb_unsigned")
     secret = "secret_unsigned_123"
-    wf_id, webhook_key, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token=secret
-    )
+    wf_id, webhook_key, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token=secret)
 
     raw_body = json.dumps({"email": "lead@test.com"}).encode("utf-8")
     ts = str(int(datetime.now(timezone.utc).timestamp()))
@@ -200,9 +195,7 @@ async def test_public_webhook_rejects_invalid_hmac(async_client: AsyncClient):
     """Public webhook route rejects invalid HMAC signatures with HTTP 401."""
     org_id, headers = await create_org_and_owner(async_client, "wb_invalid_sig")
     secret = "secret_valid_456"
-    wf_id, webhook_key, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token=secret
-    )
+    wf_id, webhook_key, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token=secret)
 
     raw_body = json.dumps({"email": "lead@test.com"}).encode("utf-8")
     wrong_sig = "sha256=" + "a" * 64
@@ -222,9 +215,7 @@ async def test_public_webhook_rejects_malformed_signature_format(async_client: A
     """Signatures without sha256= prefix or non-hex return HTTP 401."""
     org_id, headers = await create_org_and_owner(async_client, "wb_malformed_sig")
     secret = "secret_malformed_123"
-    wf_id, webhook_key, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token=secret
-    )
+    wf_id, webhook_key, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token=secret)
 
     raw_body = json.dumps({"email": "lead@test.com"}).encode("utf-8")
 
@@ -250,9 +241,7 @@ async def test_public_webhook_rejects_missing_and_expired_timestamp(async_client
     """Missing or expired (>300s) timestamps return HTTP 401."""
     org_id, headers = await create_org_and_owner(async_client, "wb_replay")
     secret = "secret_replay_123"
-    wf_id, webhook_key, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token=secret
-    )
+    wf_id, webhook_key, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token=secret)
 
     raw_body = json.dumps({"email": "lead@test.com"}).encode("utf-8")
 
@@ -326,9 +315,7 @@ async def test_public_webhook_inactive_or_draft_workflow_400(async_client: Async
 async def test_public_webhook_no_secret_configured_403(async_client: AsyncClient):
     """Workflow with no secret_token in its WEBHOOK_TRIGGER configuration returns HTTP 403."""
     org_id, headers = await create_org_and_owner(async_client, "wb_no_secret")
-    wf_id, webhook_key, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token=None
-    )
+    wf_id, webhook_key, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token=None)
 
     raw_body = json.dumps({"email": "test@test.com"}).encode("utf-8")
     ts = str(int(datetime.now(timezone.utc).timestamp()))
@@ -362,6 +349,7 @@ async def test_public_webhook_oversized_payload_413(async_client: AsyncClient):
 # 2. Idempotency & Concurrency Serialization
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_idempotency_repeated_identical_request_returns_original_run(
     async_client: AsyncClient,
@@ -369,9 +357,7 @@ async def test_idempotency_repeated_identical_request_returns_original_run(
     """Repeated request with same Idempotency-Key returns original run with idempotent: True."""
     org_id, headers = await create_org_and_owner(async_client, "wb_idem_repeat")
     secret = "secret_idem_123"
-    wf_id, webhook_key, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token=secret
-    )
+    wf_id, webhook_key, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token=secret)
 
     raw_body = json.dumps({"email": "repeat@example.com"}).encode("utf-8")
     idemp_key = f"repeat_key_{uuid.uuid4().hex}"
@@ -412,9 +398,7 @@ async def test_idempotency_concurrent_requests_serialize_and_execute_dag_once(
     """
     org_id, headers = await create_org_and_owner(async_client, "wb_concurrent")
     secret = "secret_concurrent_789"
-    wf_id, webhook_key, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token=secret
-    )
+    wf_id, webhook_key, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token=secret)
 
     raw_body = json.dumps({"email": "concurrent@example.com"}).encode("utf-8")
     idemp_key = f"concurrent_key_{uuid.uuid4().hex}"
@@ -500,6 +484,7 @@ async def test_idempotency_preserves_failed_run_no_retry(async_client: AsyncClie
 # 3. Key Rotation & Audit Logging
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_webhook_key_rotation_invalidates_old_and_activates_new(
     async_client: AsyncClient,
@@ -510,9 +495,7 @@ async def test_webhook_key_rotation_invalidates_old_and_activates_new(
     """
     org_id, headers = await create_org_and_owner(async_client, "wb_rotate")
     secret = "secret_rotate_123"
-    wf_id, old_key, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token=secret
-    )
+    wf_id, old_key, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token=secret)
 
     # Rotate key
     rot_res = await async_client.post(
@@ -554,9 +537,7 @@ async def test_webhook_key_rotation_audit_logging_and_zero_secret_in_audit(
     """Key rotation creates an AuditLog record without leaking secret tokens."""
     org_id, headers = await create_org_and_owner(async_client, "wb_audit_rot")
     secret = "super_private_secret_999"
-    wf_id, old_key, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token=secret
-    )
+    wf_id, old_key, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token=secret)
 
     rot_res = await async_client.post(
         f"/api/v1/organizations/{org_id}/workflows/{wf_id}/webhook/rotate-key",
@@ -596,6 +577,7 @@ async def test_webhook_key_rotation_audit_logging_and_zero_secret_in_audit(
 # 4. Zero Secret Exposure Verification
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_zero_secret_exposure_policy(async_client: AsyncClient):
     """
@@ -606,9 +588,7 @@ async def test_zero_secret_exposure_policy(async_client: AsyncClient):
     """
     org_id, headers = await create_org_and_owner(async_client, "wb_zero_secret")
     secret = "sk_live_super_sensitive_token_999888777"
-    wf_id, webhook_key, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token=secret
-    )
+    wf_id, webhook_key, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token=secret)
 
     # 1. Webhook inspection response
     insp_res = await async_client.get(
@@ -640,6 +620,7 @@ async def test_zero_secret_exposure_policy(async_client: AsyncClient):
 # 5. RBAC & Tenant Isolation
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_rbac_webhook_inspection_and_rotation_permissions(
     async_client: AsyncClient,
@@ -652,9 +633,7 @@ async def test_rbac_webhook_inspection_and_rotation_permissions(
     """
     org_id, owner_headers = await create_org_and_owner(async_client, "wb_rbac")
     secret = "secret_rbac_test"
-    wf_id, _, _ = await setup_webhook_workflow(
-        async_client, org_id, owner_headers, secret_token=secret
-    )
+    wf_id, _, _ = await setup_webhook_workflow(async_client, org_id, owner_headers, secret_token=secret)
 
     op_email, op_headers = await create_authenticated_user(async_client, "wb_op_user")
     view_email, view_headers = await create_authenticated_user(async_client, "wb_view_user")
@@ -706,9 +685,7 @@ async def test_tenant_isolation_cross_tenant_access(async_client: AsyncClient):
     org1_id, owner1_headers = await create_org_and_owner(async_client, "tenant1_wb")
     org2_id, owner2_headers = await create_org_and_owner(async_client, "tenant2_wb")
 
-    wf1_id, _, _ = await setup_webhook_workflow(
-        async_client, org1_id, owner1_headers, secret_token="tenant1_secret"
-    )
+    wf1_id, _, _ = await setup_webhook_workflow(async_client, org1_id, owner1_headers, secret_token="tenant1_secret")
 
     # Org 2 attempts to inspect Org 1's workflow -> 404
     cross_insp = await async_client.get(
@@ -737,14 +714,13 @@ async def test_tenant_isolation_cross_tenant_access(async_client: AsyncClient):
 # 6. Tenant-Scoped Webhook Route (Signed & Bearer Authenticated)
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_tenant_scoped_webhook_signed_success(async_client: AsyncClient):
     """Tenant-scoped webhook route succeeds when signed with valid HMAC signature."""
     org_id, headers = await create_org_and_owner(async_client, "wb_tenant_signed")
     secret = "secret_tenant_signed_123"
-    wf_id, _, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token=secret
-    )
+    wf_id, _, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token=secret)
 
     raw_body = json.dumps({"email": "tenant_signed@example.com"}).encode("utf-8")
     webhook_headers = make_webhook_headers(secret, raw_body)
@@ -766,9 +742,7 @@ async def test_tenant_scoped_webhook_bearer_auth_success(async_client: AsyncClie
     """Tenant-scoped webhook route succeeds with valid Organization Bearer auth."""
     org_id, headers = await create_org_and_owner(async_client, "wb_tenant_bearer")
     secret = "secret_tenant_bearer_123"
-    wf_id, _, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token=secret
-    )
+    wf_id, _, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token=secret)
 
     raw_body = json.dumps({"email": "tenant_bearer@example.com"}).encode("utf-8")
 
@@ -792,9 +766,7 @@ async def test_tenant_scoped_webhook_bearer_auth_success(async_client: AsyncClie
 async def test_tenant_scoped_webhook_unsigned_unauthorized_401(async_client: AsyncClient):
     """Tenant-scoped webhook without signature or bearer auth returns HTTP 401."""
     org_id, headers = await create_org_and_owner(async_client, "wb_tenant_unauth")
-    wf_id, _, _ = await setup_webhook_workflow(
-        async_client, org_id, headers, secret_token="secret_unauth"
-    )
+    wf_id, _, _ = await setup_webhook_workflow(async_client, org_id, headers, secret_token="secret_unauth")
 
     raw_body = json.dumps({"email": "unauth@example.com"}).encode("utf-8")
     resp = await async_client.post(

@@ -1,0 +1,29 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["alembic/versions", "venv"]
+
+[tool.ruff.lint]
+# Standard baseline: pycodestyle, pyflakes, import sorting, bugbear.
+select = ["E4", "E7", "E9", "F", "W", "I", "B"]
+ignore = [
+    "B008",  # FastAPI Depends(...) in argument defaults is the framework idiom
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011", "E402"]
+"scripts/**" = ["E402"]
+"alembic/env.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "scripts", "tests"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+explicit_package_bases = true
+plugins = ["pydantic.mypy"]
+exclude = ["^venv/", "^alembic/"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,23 +1,28 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.core.logging import setup_logging, logger
 from app.core.encryption import validate_production_key
+from app.core.logging import logger, setup_logging
 from app.core.middleware import SecurityHeadersMiddleware
 from app.routers import (
-    health,
-    auth,
-    organizations,
-    workflows,
-    executions,
-    webhooks,
-    approvals,
-    integrations,
-    audit,
     analytics,
+    approval_drafts,  # noqa: F401  (registers the draft endpoints on the shared /approvals router)
+    approvals,
+    audit,
+    auth,
+    deliveries,
+    executions,
+    gmail,
+    health,
+    inbound,
+    integrations,
+    organizations,
+    webhooks,
+    workflows,
 )
 
 
@@ -63,7 +68,10 @@ app.include_router(organizations.router, prefix=settings.API_V1_STR)
 app.include_router(workflows.router, prefix=settings.API_V1_STR)
 app.include_router(executions.router, prefix=settings.API_V1_STR)
 app.include_router(webhooks.router, prefix=settings.API_V1_STR)
+app.include_router(inbound.router, prefix=settings.API_V1_STR)
 app.include_router(approvals.router, prefix=settings.API_V1_STR)
+app.include_router(deliveries.router, prefix=settings.API_V1_STR)
+app.include_router(gmail.router, prefix=settings.API_V1_STR)
 app.include_router(integrations.router, prefix=settings.API_V1_STR)
 app.include_router(audit.router, prefix=settings.API_V1_STR)
 app.include_router(analytics.router, prefix=settings.API_V1_STR)

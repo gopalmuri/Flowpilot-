@@ -31,6 +31,7 @@ import {
   ExecutionFilterOptions,
 } from '../../services/executionService';
 import { ExecutionTimelineDrawer } from '../../components/executions/ExecutionTimelineDrawer';
+import { formatRunDuration } from '../../utils/formatRunDuration';
 
 const STATUS_FILTERS: { label: string; value: WorkflowRunStatus | 'ALL' }[] = [
   { label: 'All Statuses', value: 'ALL' },
@@ -220,18 +221,7 @@ export const ExecutionsPage: React.FC = () => {
     setTimeout(() => setCopiedId(null), 1500);
   };
 
-  const formatDuration = (run: WorkflowRun): string => {
-    if (run.duration_ms !== undefined && run.duration_ms !== null) {
-      if (run.duration_ms < 1000) return `${run.duration_ms}ms`;
-      return `${(run.duration_ms / 1000).toFixed(2)}s`;
-    }
-    if (!run.started_at) return '-';
-    const start = new Date(run.started_at).getTime();
-    const end = run.completed_at ? new Date(run.completed_at).getTime() : Date.now();
-    const diff = Math.max(0, end - start);
-    if (diff < 1000) return `${diff}ms`;
-    return `${(diff / 1000).toFixed(1)}s`;
-  };
+  const formatDuration = (run: WorkflowRun): string => formatRunDuration(run);
 
   const getStatusBadge = (status: WorkflowRunStatus) => {
     switch (status) {

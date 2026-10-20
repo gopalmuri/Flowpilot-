@@ -1,18 +1,15 @@
 import hashlib
 import hmac
-import secrets
-import time
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.logging import logger
-from app.engine.sanitizer import sanitize_error_message, sanitize_payload
 from app.models.base import utc_now
 from app.models.idempotency import IdempotencyRecord
 from app.models.workflow_run import WorkflowRun
@@ -30,9 +27,7 @@ def validate_payload_size(raw_body: bytes, max_bytes: int = MAX_PAYLOAD_SIZE_BYT
     Raises HTTP 413 Payload Too Large.
     """
     if len(raw_body) > max_bytes:
-        logger.warning(
-            f"Webhook payload rejected: size {len(raw_body)} bytes exceeds limit of {max_bytes} bytes"
-        )
+        logger.warning(f"Webhook payload rejected: size {len(raw_body)} bytes exceeds limit of {max_bytes} bytes")
         raise HTTPException(
             status_code=413,
             detail=f"Payload exceeds maximum limit of {max_bytes // 1024}KB",
@@ -56,11 +51,11 @@ def verify_timestamp(
 
     try:
         ts = float(timestamp_str.strip())
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Malformed X-Webhook-Timestamp header",
-        )
+        ) from exc
 
     current_ts = datetime.now(timezone.utc).timestamp()
     delta = current_ts - ts
@@ -136,7 +131,7 @@ def verify_hmac_signature(
     verify_timestamp(timestamp_str, tolerance_seconds)
 
     # Compute expected signature and perform constant-time comparison
-    expected_header = calculate_hmac_signature(secret_token, timestamp_str.strip(), raw_body)
+    expected_header = calculate_hmac_signature(secret_token, (timestamp_str or "").strip(), raw_body)
 
     if not hmac.compare_digest(expected_header.lower(), clean_sig.lower()):
         raise HTTPException(
@@ -163,7 +158,7 @@ def extract_signature_header(headers: Any) -> Optional[str]:
 
 
 def extract_webhook_secret_and_config(
-    steps: List[WorkflowStep],
+    steps: Sequence[WorkflowStep],
 ) -> Tuple[Optional[str], List[str]]:
     """
     Extracts the secret_token and allowed_methods from the WEBHOOK_TRIGGER step.
@@ -236,9 +231,7 @@ async def get_or_create_idempotent_run(
             await session.refresh(new_run)
             return new_run, True, False
 
-    scoped_key = format_scoped_idempotency_key(
-        operation_scope, workflow_id, client_idempotency_key
-    )
+    scoped_key = format_scoped_idempotency_key(operation_scope, workflow_id, client_idempotency_key)
 
     async with session_factory() as session:
         # 1. First, check if an IdempotencyRecord already exists
@@ -290,16 +283,12 @@ async def get_or_create_idempotent_run(
             await session.refresh(new_run)
             is_winner = True
             resolved_run = new_run
-            logger.info(
-                f"Idempotency record created: key='{scoped_key}', run_id='{new_run.id}' (execution winner)"
-            )
+            logger.info(f"Idempotency record created: key='{scoped_key}', run_id='{new_run.id}' (execution winner)")
 
         except IntegrityError:
             # Concurrent race condition: another request committed the key first!
             # The nested savepoint rolled back cleanly, leaving outer session valid.
-            logger.info(
-                f"Concurrent race condition caught on key='{scoped_key}'. Fetching winning record."
-            )
+            logger.info(f"Concurrent race condition caught on key='{scoped_key}'. Fetching winning record.")
             stmt = select(IdempotencyRecord).where(
                 IdempotencyRecord.organization_id == organization_id,
                 IdempotencyRecord.idempotency_key == scoped_key,

@@ -1,8 +1,13 @@
+import os
+
 import pytest
 import pytest_asyncio
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
+
 from app.core.config import settings
 
 
@@ -33,12 +38,23 @@ async def test_async_session_maker_lifecycle(db_engine):
     async with session_maker() as session:
         result = await session.execute(text("SELECT current_database(), current_user"))
         db_name, user_name = result.one()
-        assert db_name == settings.POSTGRES_DB
+        # The suite runs against an isolated `<database>_test` (see tests/conftest.py), not the development database.
+        assert db_name == make_url(settings.DATABASE_URL).database
         assert user_name == settings.POSTGRES_USER
+
+
+@pytest.mark.asyncio
+async def test_suite_runs_against_an_isolated_database(db_engine):
+    if os.environ.get("FLOWPILOT_TEST_USE_DEV_DB") == "1":
+        pytest.skip("explicitly opted out of database isolation")
+    async with db_engine.connect() as conn:
+        name = (await conn.execute(text("SELECT current_database()"))).scalar()
+    assert name != settings.POSTGRES_DB and str(name).endswith("_test")
 
 
 def _alembic_head() -> str:
     from pathlib import Path
+
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
@@ -65,7 +81,7 @@ async def test_database_connection_failure_handling():
         connect_args={"timeout": 1},
         poolclass=NullPool,
     )
-    with pytest.raises(Exception):
+    with pytest.raises((OSError, SQLAlchemyError)):
         async with bad_engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
     await bad_engine.dispose()

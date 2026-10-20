@@ -2,7 +2,8 @@ import uuid
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class WorkflowStatus(str, Enum):
@@ -26,14 +27,18 @@ class StepType(str, Enum):
     MOCK_CRM_CREATE = "MOCK_CRM_CREATE"
     SLACK_NOTIFICATION = "SLACK_NOTIFICATION"
     HUMAN_APPROVAL = "HUMAN_APPROVAL"
+    AI_ANALYZE_MESSAGE = "AI_ANALYZE_MESSAGE"
+    SEND_REPLY = "SEND_REPLY"
 
 
 # ---------------------------------------------------------
 # Step-Specific Configuration Schemas
 # ---------------------------------------------------------
 
+
 class WebhookTriggerConfig(BaseModel):
     """Configuration for inbound HTTP webhook trigger node."""
+
     secret_token: Optional[str] = Field(None, description="Optional HMAC or shared secret for payload verification")
     allowed_methods: List[str] = Field(default_factory=lambda: ["POST"], description="Allowed HTTP request methods")
     payload_schema: Optional[Dict[str, Any]] = Field(None, description="Optional JSON schema to validate payload")
@@ -43,6 +48,7 @@ class WebhookTriggerConfig(BaseModel):
 
 class ManualTriggerConfig(BaseModel):
     """Configuration for UI-initiated manual test trigger node."""
+
     form_fields: Optional[List[Dict[str, Any]]] = Field(None, description="Optional interactive form input definitions")
 
     model_config = ConfigDict(extra="allow")
@@ -53,6 +59,7 @@ class ValidateDataConfig(BaseModel):
     Configuration for data validation and schema sanitization node.
     Requires at least one of: 'schema', 'rules', or 'required_fields' (OR semantics).
     """
+
     schema_definition: Optional[Dict[str, Any]] = Field(None, alias="schema", description="JSON schema specification")
     rules: Optional[List[Dict[str, Any]]] = Field(None, description="List of discrete validation rule expressions")
     required_fields: Optional[List[str]] = Field(None, description="List of mandatory dictionary keys")
@@ -65,6 +72,7 @@ class AIClassificationConfig(BaseModel):
     Configuration for LLM classification node.
     Requires: 'prompt' or 'categories' (OR semantics; both can be provided).
     """
+
     prompt: Optional[str] = Field(None, description="Prompt instruction directing LLM classification criteria")
     categories: Optional[List[str]] = Field(None, description="Candidate target labels/categories for classification")
     model: Optional[str] = Field("gpt-4o-mini", description="Underlying model identifier")
@@ -78,6 +86,7 @@ class ConditionStepConfig(BaseModel):
     Configuration for conditional branching node.
     Requires at least one of: 'conditions', 'expression', or 'field' (OR semantics).
     """
+
     field: Optional[str] = Field(None, description="Variable or payload attribute path to evaluate")
     operator: Optional[str] = Field(None, description="Comparison operator (equals, greater_than, contains, etc.)")
     value: Optional[Any] = Field(None, description="Expected value to compare against")
@@ -92,6 +101,7 @@ class MockCRMCreateConfig(BaseModel):
     Configuration for CRM entity creation node.
     Requires at least one of: 'entity_type' or 'mapping' (OR semantics).
     """
+
     entity_type: Optional[str] = Field("lead", description="Target CRM entity type (lead, contact, deal)")
     mapping: Optional[Dict[str, str]] = Field(None, description="Field mapping from workflow context to CRM attributes")
 
@@ -103,6 +113,7 @@ class SlackNotificationConfig(BaseModel):
     Configuration for Slack messaging node.
     Requires at least one destination/content descriptor: 'channel', 'message', or 'webhook_url' (OR semantics).
     """
+
     channel: Optional[str] = Field(None, description="Target Slack channel name or ID (e.g. #sales-alerts)")
     webhook_url: Optional[str] = Field(None, description="Incoming Slack Webhook URL")
     message: Optional[str] = Field(None, description="Message text or markdown template")
@@ -115,6 +126,7 @@ class HumanApprovalConfig(BaseModel):
     Configuration for human approval guard node.
     Requires at least one of: 'approver_role', 'title', or 'timeout_hours' (OR semantics).
     """
+
     approver_role: Optional[str] = Field("MANAGER", description="Minimum role required to approve request")
     title: Optional[str] = Field(None, description="Human-readable title/summary of approval request")
     timeout_hours: Optional[int] = Field(24, ge=1, description="Auto-expiration timeout in hours")
@@ -125,6 +137,7 @@ class HumanApprovalConfig(BaseModel):
 # ---------------------------------------------------------
 # Workflow Core Schemas
 # ---------------------------------------------------------
+
 
 class WorkflowStepSchema(BaseModel):
     step_key: str = Field(..., min_length=1, max_length=100, description="Unique node key within version DAG")
@@ -155,12 +168,16 @@ class WorkflowUpdateRequest(BaseModel):
 
 
 class WorkflowVersionCreateRequest(BaseModel):
-    base_version_id: Optional[uuid.UUID] = Field(None, description="Optional version to clone steps and connections from")
+    base_version_id: Optional[uuid.UUID] = Field(
+        None, description="Optional version to clone steps and connections from"
+    )
 
 
 class WorkflowVersionUpdateRequest(BaseModel):
     steps: List[WorkflowStepSchema] = Field(default_factory=list, description="Array of DAG nodes")
-    connections: List[WorkflowConnectionSchema] = Field(default_factory=list, description="Array of directed connections")
+    connections: List[WorkflowConnectionSchema] = Field(
+        default_factory=list, description="Array of directed connections"
+    )
 
 
 class WorkflowValidationResult(BaseModel):

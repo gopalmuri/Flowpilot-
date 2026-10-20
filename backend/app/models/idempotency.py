@@ -1,8 +1,10 @@
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
-from sqlalchemy import String, ForeignKey, DateTime, UniqueConstraint, Index, Uuid
+
+from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
 from app.models.base import UUIDMixin, utc_now
 

@@ -6,6 +6,7 @@ import { DashboardLayout } from '../layouts/DashboardLayout';
 import { LandingPage } from '../pages/landing/LandingPage';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
+import { VerifyEmailPage } from '../pages/auth/VerifyEmailPage';
 import { DashboardPage } from '../pages/dashboard/DashboardPage';
 import { AnalyticsPage } from '../pages/analytics/AnalyticsPage';
 import { WorkflowsPage } from '../pages/workflows/WorkflowsPage';
@@ -47,6 +48,14 @@ export const AppRoutes: React.FC = () => {
         element={
           <PublicAuthRoute>
             <RegisterPage />
+          </PublicAuthRoute>
+        }
+      />
+      <Route
+        path="/verify-email"
+        element={
+          <PublicAuthRoute>
+            <VerifyEmailPage />
           </PublicAuthRoute>
         }
       />

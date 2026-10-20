@@ -1,14 +1,13 @@
 import uuid
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
-from app.models.approval import ApprovalRequest
 from app.models.audit_log import AuditLog
-from app.models.workflow_run import WorkflowRun, WorkflowStepRun
 
 
 async def create_authenticated_user(async_client: AsyncClient, name: str):
@@ -21,9 +20,7 @@ async def create_authenticated_user(async_client: AsyncClient, name: str):
         "full_name": f"{name.capitalize()} User",
     }
     await async_client.post("/api/v1/auth/register", json=reg_payload)
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     return email, password, headers
@@ -131,7 +128,7 @@ async def test_list_and_get_approval_details(async_client: AsyncClient):
     )
     assert run_res.status_code == 201
     run_data = run_res.json()
-    print("RUN_DATA_DEBUG:", [(s["step_key"], s["status"], s.get("output_data")) for s in run_data.get("step_runs", [])]); assert run_data["status"] == "PAUSED"
+    assert run_data["status"] == "PAUSED"
 
     # 2. List approvals (default status=PENDING)
     list_res = await async_client.get(
@@ -215,7 +212,7 @@ async def test_rbac_approvals_enforcement(async_client: AsyncClient):
         headers=owner_headers,
         json={"trigger_payload": {}},
     )
-    run_id = run_res.json()["id"]
+    _run_id = run_res.json()["id"]
 
     list_res = await async_client.get(
         f"/api/v1/organizations/{org_id}/approvals",
@@ -380,7 +377,7 @@ async def test_audit_logs_recorded_for_approvals(async_client: AsyncClient):
     wf_id = await setup_hitl_workflow(async_client, org_id, headers)
 
     # 1. Start run -> approval.requested
-    run = (
+    _run = (
         await async_client.post(
             f"/api/v1/organizations/{org_id}/workflows/{wf_id}/runs",
             headers=headers,
@@ -406,7 +403,7 @@ async def test_audit_logs_recorded_for_approvals(async_client: AsyncClient):
             AuditLog.resource_type == "approval_request",
         )
         logs = (await session.execute(stmt)).scalars().all()
-        actions = [l.action for l in logs]
+        actions = [entry.action for entry in logs]
         assert "approval.requested" in actions
         assert "approval.approved" in actions
     await engine.dispose()

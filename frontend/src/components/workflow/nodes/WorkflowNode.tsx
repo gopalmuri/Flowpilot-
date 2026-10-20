@@ -1,5 +1,13 @@
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
+import { branchHandlesFor } from '../../../utils/workflowGraphMapper';
+
+const BRANCH_HANDLE_COLORS: Record<string, string> = {
+  true: '!bg-brand-600 dark:!bg-brand-500',
+  approved: '!bg-brand-600 dark:!bg-brand-500',
+  false: '!bg-red-500',
+  rejected: '!bg-red-500',
+};
 import {
   Webhook,
   Play,
@@ -71,7 +79,6 @@ export const WorkflowNode: React.FC<NodeProps<any>> = memo(({ data, selected }) 
           iconClass: 'text-amber-600 dark:text-amber-400',
           summary: config.field ? `Check: ${config.field}` : 'Branching rules',
           isTrigger: false,
-          isBranching: true,
         };
       case StepType.MOCK_CRM_CREATE:
         return {
@@ -100,7 +107,7 @@ export const WorkflowNode: React.FC<NodeProps<any>> = memo(({ data, selected }) 
           icon: UserCheck,
           badgeClass: 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
           iconClass: 'text-amber-600 dark:text-amber-400',
-          summary: `Role: ${config.required_role || 'ADMIN'}`,
+          summary: `Role: ${config.approver_role || config.required_role || 'MANAGER'}`,
           isTrigger: false,
         };
       default:
@@ -117,6 +124,7 @@ export const WorkflowNode: React.FC<NodeProps<any>> = memo(({ data, selected }) 
   };
 
   const meta = getNodeMeta();
+  const branchHandles = branchHandlesFor(String(nodeData.step_type));
   const Icon = meta.icon;
 
   return (
@@ -158,21 +166,18 @@ export const WorkflowNode: React.FC<NodeProps<any>> = memo(({ data, selected }) 
         </div>
       </div>
 
-      {meta.isBranching ? (
-        <>
+      {branchHandles.length > 0 ? (
+        branchHandles.map((handleId, i) => (
           <Handle
+            key={handleId}
             type="source"
             position={Position.Bottom}
-            id="true"
-            className="!w-3 !h-3 !bg-brand-600 dark:!bg-brand-500 !border-2 !border-white dark:!border-charcoal-900 !-bottom-1.5 !left-[30%]"
+            id={handleId}
+            title={handleId}
+            style={{ left: `${((i + 1) * 100) / (branchHandles.length + 1)}%` }}
+            className={`!w-3 !h-3 !border-2 !border-white dark:!border-charcoal-900 !-bottom-1.5 ${BRANCH_HANDLE_COLORS[handleId] || '!bg-warm-400'}`}
           />
-          <Handle
-            type="source"
-            position={Position.Bottom}
-            id="false"
-            className="!w-3 !h-3 !bg-red-500 !border-2 !border-white dark:!border-charcoal-900 !-bottom-1.5 !left-[70%]"
-          />
-        </>
+        ))
       ) : (
         <Handle
           type="source"

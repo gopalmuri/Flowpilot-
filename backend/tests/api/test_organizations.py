@@ -1,4 +1,5 @@
 import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -16,9 +17,7 @@ async def create_authenticated_user(async_client: AsyncClient, name: str, org_na
         reg_payload["organization_name"] = org_name
 
     await async_client.post("/api/v1/auth/register", json=reg_payload)
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     return email, headers
@@ -234,7 +233,7 @@ async def test_member_removal_rules(async_client: AsyncClient):
         headers=owner_headers,
         json={"email": admin_email, "role": "ADMIN"},
     )
-    admin_user_id = admin_member_resp.json()["user_id"]
+    _admin_user_id = admin_member_resp.json()["user_id"]
 
     norm_member_resp = await async_client.post(
         f"/api/v1/organizations/{org_id}/members",

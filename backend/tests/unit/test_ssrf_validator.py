@@ -1,6 +1,8 @@
 import ipaddress
 import socket
+
 import pytest
+
 from app.core.ssrf import (
     SSRFValidationError,
     create_ssrf_safe_client,

@@ -89,4 +89,4 @@ if __name__ == "__main__":
     try:
         run(args.base_url, args.email, args.password, choice)
     except DemoError as exc:
-        raise SystemExit(f"[x] {exc}")
+        raise SystemExit(f"[x] {exc}") from exc

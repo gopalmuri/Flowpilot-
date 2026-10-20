@@ -71,15 +71,11 @@ def open_session(
         "create organization",
         ok=201,
     )["id"]
-    relogin = http.post(
-        "/auth/login", json={"email": email, "password": password, "organization_id": org_id}
-    )
+    relogin = http.post("/auth/login", json={"email": email, "password": password, "organization_id": org_id})
     headers = {"Authorization": f"Bearer {_check(relogin, 'login (org scope)')['access_token']}"}
     return Session(http=http, org_id=org_id, headers=headers)
 
 
 def find_workflow(session: Session, name: Optional[str] = None) -> Optional[Dict[str, Any]]:
-    items = session.request(
-        "GET", f"/organizations/{session.org_id}/workflows", params={"page_size": 100}
-    )["items"]
+    items = session.request("GET", f"/organizations/{session.org_id}/workflows", params={"page_size": 100})["items"]
     return next((w for w in items if w["name"] == (name or WORKFLOW_NAME)), None)

@@ -27,6 +27,10 @@ import {
   updateIntegration,
 } from '../../services/integrationService';
 import { IntegrationConnectModal } from '../../components/integrations/IntegrationConnectModal';
+import {
+  GmailIntegrationCard,
+  OAUTH_REASON_TEXT,
+} from '../../components/integrations/GmailIntegrationCard';
 
 export const IntegrationsPage: React.FC = () => {
   const { activeOrganization, activeRole } = useAuth();
@@ -54,7 +58,8 @@ export const IntegrationsPage: React.FC = () => {
     setIsLoading(true);
     try {
       const res = await listIntegrations(orgId);
-      setIntegrations(res.items || []);
+      // Gmail mailboxes are managed by the Gmail card (OAuth connect/disconnect), not the generic credential form.
+      setIntegrations((res.items || []).filter((i) => i.type !== 'GMAIL'));
     } catch (err: any) {
       setFeedback({
         type: 'error',
@@ -68,6 +73,26 @@ export const IntegrationsPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Result of the Google consent flow: the server redirects back here with a status flag (never a token).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get('gmail');
+    if (!outcome) return;
+    if (outcome === 'error') {
+      const reason = params.get('reason') || '';
+      setFeedback({
+        type: 'error',
+        message: `Gmail was not connected. ${OAUTH_REASON_TEXT[reason] ?? 'Please try again.'}`,
+      });
+    } else {
+      setFeedback({
+        type: 'success',
+        message: outcome === 'reconnected' ? 'Gmail mailbox reconnected.' : 'Gmail mailbox connected.',
+      });
+    }
+    window.history.replaceState({}, '', window.location.pathname);
+  }, []);
 
   const handleOpenConnect = (type: IntegrationType) => {
     setSelectedType(type);
@@ -264,6 +289,15 @@ export const IntegrationsPage: React.FC = () => {
               </button>
             </div>
           </div>
+          {orgId && (
+            <GmailIntegrationCard
+              organizationId={orgId}
+              organizationName={activeOrganization?.name}
+              canManage={canManage}
+              canSync={canTest}
+              onFeedback={(type, message) => setFeedback({ type, message })}
+            />
+          )}
         </div>
       </div>
 

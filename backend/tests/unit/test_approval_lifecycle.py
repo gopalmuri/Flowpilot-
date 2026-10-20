@@ -2,6 +2,7 @@ import asyncio
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import AsyncGenerator
+
 import pytest
 import pytest_asyncio
 from fastapi import HTTPException
@@ -12,7 +13,6 @@ from sqlalchemy.pool import NullPool
 from app.core.config import settings
 from app.engine.workflow_engine import WorkflowEngine
 from app.models.approval import ApprovalRequest
-from app.models.audit_log import AuditLog
 from app.models.organization import Organization
 from app.models.user import User
 from app.models.workflow import Workflow, WorkflowVersion
@@ -53,7 +53,9 @@ async def sample_approval_fixture(session_factory: async_sessionmaker[AsyncSessi
         session.add(wf)
         await session.flush()
 
-        version = WorkflowVersion(workflow_id=wf.id, version_number=1, status="PUBLISHED", created_by=user.id, definition={})
+        version = WorkflowVersion(
+            workflow_id=wf.id, version_number=1, status="PUBLISHED", created_by=user.id, definition={}
+        )
         session.add(version)
         await session.flush()
 
@@ -172,7 +174,7 @@ async def test_single_active_approval_creation_guarantee(session_factory, sample
     for the same (workflow_run_id, step_id) produce exactly one active PENDING approval.
     """
     data = sample_approval_fixture
-    engine = WorkflowEngine(session_factory=session_factory)
+    _engine = WorkflowEngine(session_factory=session_factory)
 
     # Clean up fixture approval to test creation from scratch
     async with session_factory() as session:
@@ -185,13 +187,17 @@ async def test_single_active_approval_creation_guarantee(session_factory, sample
     async def create_attempt():
         async with session_factory() as session:
             # Row lock WorkflowRun
-            run = await session.get(WorkflowRun, data["run_id"], with_for_update=True)
+            _run = await session.get(WorkflowRun, data["run_id"], with_for_update=True)
             # Check existing PENDING
-            existing_stmt = select(ApprovalRequest).where(
-                ApprovalRequest.workflow_run_id == data["run_id"],
-                ApprovalRequest.step_id == data["step_id"],
-                ApprovalRequest.status == "PENDING",
-            ).with_for_update()
+            existing_stmt = (
+                select(ApprovalRequest)
+                .where(
+                    ApprovalRequest.workflow_run_id == data["run_id"],
+                    ApprovalRequest.step_id == data["step_id"],
+                    ApprovalRequest.status == "PENDING",
+                )
+                .with_for_update()
+            )
             existing = (await session.execute(existing_stmt)).scalar_one_or_none()
             if not existing:
                 app_req = ApprovalRequest(
@@ -222,9 +228,7 @@ async def test_single_active_approval_creation_guarantee(session_factory, sample
 
 
 @pytest.mark.asyncio
-async def test_initial_approve_and_repeated_idempotency_after_completion(
-    session_factory, sample_approval_fixture
-):
+async def test_initial_approve_and_repeated_idempotency_after_completion(session_factory, sample_approval_fixture):
     """
     Initial APPROVE -> 200, initiates DAG traversal.
     Repeated APPROVE after run completion -> 200 idempotent (zero additional DAG traversals).
@@ -265,9 +269,7 @@ async def test_initial_approve_and_repeated_idempotency_after_completion(
 
 
 @pytest.mark.asyncio
-async def test_initial_reject_and_repeated_idempotency_after_completion(
-    session_factory, sample_approval_fixture
-):
+async def test_initial_reject_and_repeated_idempotency_after_completion(session_factory, sample_approval_fixture):
     """
     Initial REJECT -> 200, branches to 'rejected', non-fatal (run finishes COMPLETED).
     Repeated REJECT after run completion -> 200 idempotent (zero additional DAG traversals).
@@ -428,9 +430,7 @@ async def test_lazy_expiration_lifecycle(session_factory, sample_approval_fixtur
 
 
 @pytest.mark.asyncio
-async def test_concurrent_approval_resolution_produces_single_traversal(
-    session_factory, sample_approval_fixture
-):
+async def test_concurrent_approval_resolution_produces_single_traversal(session_factory, sample_approval_fixture):
     """
     Two concurrent calls to resume_run: exactly one executes the state transition and traversal,
     and both succeed with 200 OK without double execution.

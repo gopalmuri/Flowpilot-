@@ -15,6 +15,7 @@ import {
   MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { EDGE_STYLE, connectionToEdge, serializeGraph, stepToNode } from '../../utils/workflowGraphMapper';
 import {
   ArrowLeft,
   Save,
@@ -131,39 +132,8 @@ export const WorkflowEditorContent: React.FC = () => {
     const stepsList = version.steps || version.definition?.steps || [];
     const connectionsList = version.connections || version.definition?.connections || [];
 
-    const rawNodes = stepsList.map((step: any, idx: number) => ({
-      id: step.id || `node-${step.step_key}`,
-      type: 'workflowNode',
-      position: step.ui_position || step.position || { x: 250, y: 100 + idx * 140 },
-      data: {
-        step_key: step.step_key,
-        name: step.name,
-        step_type: step.step_type,
-        config: step.config || {},
-        error_policy: step.error_policy || { max_retries: 3, retry_delay_ms: 1000 },
-        timeout_seconds: step.timeout_seconds || 60,
-      },
-    }));
-
-    const rawEdges = connectionsList.map((conn: any, idx: number) => {
-      const srcId = conn.source_step_id || `node-${conn.source_step_key}`;
-      const tgtId = conn.target_step_id || `node-${conn.target_step_key}`;
-      return {
-        id: conn.id || `edge-${srcId}-${tgtId}-${idx}`,
-        source: srcId,
-        target: tgtId,
-        sourceHandle: conn.condition_branch === null ? undefined : String(conn.condition_branch),
-        label: conn.condition_label || (conn.condition_branch === null ? undefined : conn.condition_branch ? 'true' : 'false'),
-        type: 'smoothstep',
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 14,
-          height: 14,
-          color: '#69716C',
-        },
-        style: { strokeWidth: 1.5, stroke: '#69716C' },
-      };
-    });
+    const rawNodes = stepsList.map(stepToNode);
+    const rawEdges = connectionsList.map(connectionToEdge);
 
     setNodes(rawNodes);
     setEdges(rawEdges);
@@ -219,14 +189,9 @@ export const WorkflowEditorContent: React.FC = () => {
         const newEdges = addEdge(
           {
             ...params,
-            type: 'smoothstep',
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              width: 14,
-              height: 14,
-              color: '#69716C',
-            },
-            style: { strokeWidth: 1.5, stroke: '#69716C' },
+            label: params.sourceHandle || undefined,
+            data: { condition_label: params.sourceHandle ?? null },
+            ...EDGE_STYLE,
           },
           eds
         );
@@ -320,23 +285,7 @@ export const WorkflowEditorContent: React.FC = () => {
     setIsSaving(true);
     setError(null);
     try {
-      const definition = {
-        steps: nodes.map((n) => ({
-          id: n.id,
-          step_key: n.data.step_key,
-          name: n.data.name,
-          step_type: n.data.step_type,
-          config: n.data.config,
-          error_policy: n.data.error_policy,
-          timeout_seconds: n.data.timeout_seconds,
-          position: n.position,
-        })),
-        connections: edges.map((e) => ({
-          source_step_key: e.source.replace('node-', ''),
-          target_step_key: e.target.replace('node-', ''),
-          condition_branch: e.sourceHandle === 'true' ? true : e.sourceHandle === 'false' ? false : null,
-        })),
-      };
+      const definition = serializeGraph(nodes, edges);
 
       const payload: WorkflowVersionUpdateRequest = {
         steps: definition.steps as any,
@@ -603,6 +552,8 @@ export const WorkflowEditorContent: React.FC = () => {
                   onNodeClick={(_, node) => setSelectedNodeId(node.id)}
                   onPaneClick={() => setSelectedNodeId(null)}
                   fitView
+                  fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
+                  colorMode={isDark ? 'dark' : 'light'}
                   attributionPosition="bottom-left"
                   defaultEdgeOptions={{
                     type: 'smoothstep',
@@ -611,9 +562,9 @@ export const WorkflowEditorContent: React.FC = () => {
                   }}
                 >
                   <Background color={dotColor} gap={16} size={1} style={{ backgroundColor: canvasBg }} />
-                  <Controls className="!bg-white dark:!bg-charcoal-900 !border !border-warm-300 dark:!border-charcoal-750 !rounded-xl !shadow-subtle [&>button]:!border-b-warm-200 dark:[&>button]:!border-b-charcoal-800" />
+                  <Controls showInteractive={false} />
                   <MiniMap
-                    nodeColor={() => (isDark ? '#222925' : '#E8E5DF')}
+                    nodeColor={() => (isDark ? '#4B5A52' : '#C9C4B8')}
                     maskColor={isDark ? 'rgba(16, 21, 19, 0.75)' : 'rgba(245, 243, 238, 0.75)'}
                     className="!bg-white dark:!bg-charcoal-900 !border !border-warm-300 dark:!border-charcoal-750 !rounded-xl !shadow-subtle !hidden sm:!block"
                   />

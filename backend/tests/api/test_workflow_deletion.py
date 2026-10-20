@@ -16,7 +16,9 @@ async def _setup_org(client: AsyncClient):
     unique = uuid.uuid4().hex[:8]
     email, password = f"del_{unique}@flowpilot.internal", f"SecurePass_{unique}!123"
     await client.post("/api/v1/auth/register", json={"email": email, "password": password, "full_name": "Del User"})
-    token = (await client.post("/api/v1/auth/login", json={"email": email, "password": password})).json()["access_token"]
+    token = (await client.post("/api/v1/auth/login", json={"email": email, "password": password})).json()[
+        "access_token"
+    ]
     org_id = (
         await client.post(
             "/api/v1/organizations",
@@ -25,9 +27,7 @@ async def _setup_org(client: AsyncClient):
         )
     ).json()["id"]
     active = (
-        await client.post(
-            "/api/v1/auth/login", json={"email": email, "password": password, "organization_id": org_id}
-        )
+        await client.post("/api/v1/auth/login", json={"email": email, "password": password, "organization_id": org_id})
     ).json()["access_token"]
     return org_id, {"Authorization": f"Bearer {active}"}
 
@@ -37,14 +37,23 @@ async def _published_approval_workflow(client: AsyncClient, org_id: str, headers
     wf = (await client.post(base, headers=headers, json={"name": "Deletable Workflow"})).json()
     version_id = (await client.get(f"{base}/{wf['id']}/versions", headers=headers)).json()[0]["id"]
     steps = [
-        {"step_key": "hook", "step_type": "WEBHOOK_TRIGGER", "name": "Hook",
-         "config": {"allowed_methods": ["POST"], "secret_token": SECRET}},
-        {"step_key": "gate", "step_type": "HUMAN_APPROVAL", "name": "Gate",
-         "config": {"approver_role": "OWNER", "timeout_hours": 24}},
+        {
+            "step_key": "hook",
+            "step_type": "WEBHOOK_TRIGGER",
+            "name": "Hook",
+            "config": {"allowed_methods": ["POST"], "secret_token": SECRET},
+        },
+        {
+            "step_key": "gate",
+            "step_type": "HUMAN_APPROVAL",
+            "name": "Gate",
+            "config": {"approver_role": "OWNER", "timeout_hours": 24},
+        },
     ]
     connections = [{"source_step_key": "hook", "target_step_key": "gate"}]
-    put = await client.put(f"{base}/{wf['id']}/versions/{version_id}", headers=headers,
-                           json={"steps": steps, "connections": connections})
+    put = await client.put(
+        f"{base}/{wf['id']}/versions/{version_id}", headers=headers, json={"steps": steps, "connections": connections}
+    )
     assert put.status_code == 200
     pub = await client.post(f"{base}/{wf['id']}/versions/{version_id}/publish", headers=headers)
     assert pub.status_code == 200

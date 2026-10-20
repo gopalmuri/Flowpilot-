@@ -1,16 +1,18 @@
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
-from sqlalchemy import String, Text, Integer, ForeignKey, DateTime, Index, JSON, Uuid
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
-from app.models.base import UUIDMixin, TimestampMixin, utc_now
+from app.models.base import TimestampMixin, UUIDMixin, utc_now
 
 if TYPE_CHECKING:
+    from app.models.approval import ApprovalRequest
     from app.models.organization import Organization
     from app.models.workflow import Workflow, WorkflowVersion
     from app.models.workflow_step import WorkflowStep
-    from app.models.approval import ApprovalRequest
 
 
 class WorkflowRun(Base, UUIDMixin, TimestampMixin):

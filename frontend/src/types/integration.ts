@@ -1,4 +1,4 @@
-export type IntegrationType = 'MOCK_CRM' | 'SLACK';
+export type IntegrationType = 'MOCK_CRM' | 'SLACK' | 'GMAIL' | 'PORTFOLIO_FORM' | 'EMAIL_SENDER';
 export type IntegrationStatus = 'CONNECTED' | 'DISCONNECTED' | 'ERROR';
 
 export interface Integration {

@@ -17,7 +17,7 @@ import {
   listApprovals,
   rejectRequest,
 } from '../../services/approvalService';
-import { ApprovalActionModal } from '../../components/approvals/ApprovalActionModal';
+import { ApprovalActionModal, DraftDecisionExtra } from '../../components/approvals/ApprovalActionModal';
 
 export const ApprovalsPage: React.FC = () => {
   const { activeOrganization, activeRole } = useAuth();
@@ -74,13 +74,13 @@ export const ApprovalsPage: React.FC = () => {
     setSelectedApproval(null);
   };
 
-  const handleDecide = async (decision: 'APPROVE' | 'REJECT', comment?: string) => {
+  const handleDecide = async (decision: 'APPROVE' | 'REJECT', comment?: string, extra?: DraftDecisionExtra) => {
     if (!orgId || !selectedApproval) return;
     setIsSubmitting(true);
     setFeedback(null);
     try {
       if (decision === 'APPROVE') {
-        await approveRequest(orgId, selectedApproval.id, { comment });
+        await approveRequest(orgId, selectedApproval.id, { comment, ...extra });
         setFeedback({
           type: 'success',
           message: `Approval request for "${selectedApproval.step_key}" was successfully approved. The workflow run has been resumed.`,
@@ -257,11 +257,24 @@ export const ApprovalsPage: React.FC = () => {
               >
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2.5">
+                    {item.workflow_name && (
+                      <span className="font-semibold text-sm text-warm-900 dark:text-charcoal-100">{item.workflow_name}</span>
+                    )}
                     <span className="font-semibold text-sm text-warm-900 dark:text-charcoal-100 font-mono">{item.step_key}</span>
                     {getStatusBadge(item.status)}
-                    <span className="text-[11px] px-2 py-0.5 rounded bg-warm-100 dark:bg-charcoal-800 text-warm-700 dark:text-charcoal-300 border border-warm-300 dark:border-charcoal-700 font-mono uppercase">
-                      Requires: {item.required_role}
-                    </span>
+                    {item.draft_status && (
+                      <span
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/60"
+                        data-testid="draft-status-badge"
+                      >
+                        Reply draft: {item.draft_status.replace(/_/g, ' ').toLowerCase()}
+                      </span>
+                    )}
+                    {item.required_role && (
+                      <span className="text-[11px] px-2 py-0.5 rounded bg-warm-100 dark:bg-charcoal-800 text-warm-700 dark:text-charcoal-300 border border-warm-300 dark:border-charcoal-700 font-mono uppercase">
+                        Requires: {item.required_role}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-warm-500 dark:text-charcoal-400">
@@ -314,6 +327,8 @@ export const ApprovalsPage: React.FC = () => {
         onDecide={handleDecide}
         isSubmitting={isSubmitting}
         userRole={activeRole || 'MEMBER'}
+        organizationId={orgId}
+        onDraftChanged={loadData}
       />
     </div>
   );

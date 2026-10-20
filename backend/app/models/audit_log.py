@@ -1,8 +1,10 @@
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional, TYPE_CHECKING
-from sqlalchemy import String, ForeignKey, DateTime, Index, JSON, Uuid
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
 from app.models.base import UUIDMixin, utc_now
 
@@ -13,9 +15,7 @@ if TYPE_CHECKING:
 
 class AuditLog(Base, UUIDMixin):
     __tablename__ = "audit_logs"
-    __table_args__ = (
-        Index("idx_audit_logs_org_created", "organization_id", "created_at"),
-    )
+    __table_args__ = (Index("idx_audit_logs_org_created", "organization_id", "created_at"),)
 
     organization_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,

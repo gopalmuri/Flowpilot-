@@ -1,9 +1,8 @@
 from collections import defaultdict, deque
-from typing import Any, Dict, List, Set, Union
+from typing import Any, Dict, List, Set
+
 from app.schemas.workflow import (
     StepType,
-    WorkflowConnectionSchema,
-    WorkflowStepSchema,
     WorkflowValidationResult,
 )
 
@@ -17,7 +16,7 @@ TRIGGER_STEP_TYPES: Set[str] = {
 def validate_step_config(step_key: str, step_type: str, config: Dict[str, Any]) -> List[str]:
     """
     Validates required configuration attributes per step executor type.
-    
+
     Semantics for required fields:
     - AI_CLASSIFICATION: OR semantics (requires 'prompt' or 'categories'; both may be supplied)
     - SLACK_NOTIFICATION: OR semantics (requires 'channel', 'message', or 'webhook_url'; at least one must be supplied)
@@ -31,9 +30,7 @@ def validate_step_config(step_key: str, step_type: str, config: Dict[str, Any]) 
 
     if step_type == StepType.AI_CLASSIFICATION.value:
         if not config.get("prompt") and not config.get("categories"):
-            errors.append(
-                f"Step '{step_key}' ({step_type}) requires 'prompt' or 'categories' in configuration"
-            )
+            errors.append(f"Step '{step_key}' ({step_type}) requires 'prompt' or 'categories' in configuration")
     elif step_type == StepType.SLACK_NOTIFICATION.value:
         if not config.get("channel") and not config.get("message") and not config.get("webhook_url"):
             errors.append(
@@ -46,9 +43,7 @@ def validate_step_config(step_key: str, step_type: str, config: Dict[str, Any]) 
             )
     elif step_type == StepType.MOCK_CRM_CREATE.value:
         if not config.get("entity_type") and not config.get("mapping"):
-            errors.append(
-                f"Step '{step_key}' ({step_type}) requires 'entity_type' or 'mapping' in configuration"
-            )
+            errors.append(f"Step '{step_key}' ({step_type}) requires 'entity_type' or 'mapping' in configuration")
     elif step_type == StepType.VALIDATE_DATA.value:
         if not config.get("schema") and not config.get("rules") and not config.get("required_fields"):
             errors.append(

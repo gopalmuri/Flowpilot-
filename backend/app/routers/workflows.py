@@ -2,21 +2,20 @@ import math
 import secrets
 import uuid
 from typing import List, Optional, Tuple
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_active_user, get_org_context, require_role
 from app.core.database import get_db
-from app.models.membership import OrganizationMember, OrganizationRole
 from app.models.audit_log import AuditLog
+from app.models.membership import OrganizationMember, OrganizationRole
 from app.models.organization import Organization
 from app.models.user import User
 from app.models.workflow import Workflow, WorkflowVersion
 from app.models.workflow_step import WorkflowConnection, WorkflowStep
 from app.schemas.workflow import (
-    StepType,
     WorkflowConnectionResponse,
     WorkflowCreateRequest,
     WorkflowListResponse,
@@ -99,12 +98,9 @@ async def _get_workflow_or_404(
     workflow_id: uuid.UUID,
     for_update: bool = False,
 ) -> Workflow:
-    stmt = (
-        select(Workflow)
-        .where(
-            Workflow.id == workflow_id,
-            Workflow.organization_id == organization_id,
-        )
+    stmt = select(Workflow).where(
+        Workflow.id == workflow_id,
+        Workflow.organization_id == organization_id,
     )
     if for_update:
         stmt = stmt.with_for_update()
@@ -126,9 +122,7 @@ async def _get_version_or_404(
     version_id: uuid.UUID,
     for_update: bool = False,
 ) -> Tuple[Workflow, WorkflowVersion]:
-    workflow = await _get_workflow_or_404(
-        db, organization_id, workflow_id, for_update=for_update
-    )
+    workflow = await _get_workflow_or_404(db, organization_id, workflow_id, for_update=for_update)
 
     stmt = select(WorkflowVersion).where(
         WorkflowVersion.id == version_id,
@@ -152,17 +146,13 @@ async def _build_workflow_response(
     workflow: Workflow,
 ) -> WorkflowResponse:
     # Get version count
-    count_stmt = select(func.count(WorkflowVersion.id)).where(
-        WorkflowVersion.workflow_id == workflow.id
-    )
+    count_stmt = select(func.count(WorkflowVersion.id)).where(WorkflowVersion.workflow_id == workflow.id)
     version_count = await db.scalar(count_stmt) or 0
 
     # Get active version summary if exists
     active_summary = None
     if workflow.active_version_id:
-        v_stmt = select(WorkflowVersion).where(
-            WorkflowVersion.id == workflow.active_version_id
-        )
+        v_stmt = select(WorkflowVersion).where(WorkflowVersion.id == workflow.active_version_id)
         active_version = await db.scalar(v_stmt)
         if active_version:
             active_summary = WorkflowVersionSummaryResponse(
@@ -194,6 +184,7 @@ async def _build_workflow_response(
 # ==============================================================================
 # 1. Workflow CRUD Endpoints
 # ==============================================================================
+
 
 @router.post(
     "",
@@ -480,6 +471,7 @@ async def archive_workflow(
 # 2. Workflow Version Endpoints
 # ==============================================================================
 
+
 @router.get(
     "/{workflow_id}/versions",
     response_model=List[WorkflowVersionSummaryResponse],
@@ -521,9 +513,7 @@ async def get_workflow_version(
     """
     Retrieves full details for a workflow version, including all steps and connections.
     """
-    workflow, version = await _get_version_or_404(
-        db, organization_id, workflow_id, version_id
-    )
+    workflow, version = await _get_version_or_404(db, organization_id, workflow_id, version_id)
 
     steps_stmt = (
         select(WorkflowStep)
@@ -565,9 +555,7 @@ async def create_workflow_version(
     workflow = await _get_workflow_or_404(db, organization_id, workflow_id)
 
     # Server-side version number calculation
-    max_v_stmt = select(func.max(WorkflowVersion.version_number)).where(
-        WorkflowVersion.workflow_id == workflow_id
-    )
+    max_v_stmt = select(func.max(WorkflowVersion.version_number)).where(WorkflowVersion.workflow_id == workflow_id)
     max_version = await db.scalar(max_v_stmt) or 0
     next_version = max_version + 1
 
@@ -598,9 +586,7 @@ async def create_workflow_version(
             )
 
         # Clone steps
-        base_step_stmt = select(WorkflowStep).where(
-            WorkflowStep.workflow_version_id == base_version.id
-        )
+        base_step_stmt = select(WorkflowStep).where(WorkflowStep.workflow_version_id == base_version.id)
         base_steps = (await db.execute(base_step_stmt)).scalars().all()
 
         step_id_map = {}
@@ -619,9 +605,7 @@ async def create_workflow_version(
             new_steps.append(cloned_step)
 
         # Clone connections
-        base_conn_stmt = select(WorkflowConnection).where(
-            WorkflowConnection.workflow_version_id == base_version.id
-        )
+        base_conn_stmt = select(WorkflowConnection).where(WorkflowConnection.workflow_version_id == base_version.id)
         base_conns = (await db.execute(base_conn_stmt)).scalars().all()
 
         for bc in base_conns:
@@ -663,9 +647,7 @@ async def update_workflow_version(
     Updates the steps and connections of a draft workflow version.
     Published versions are strictly immutable and cannot be updated.
     """
-    workflow, version = await _get_version_or_404(
-        db, organization_id, workflow_id, version_id, for_update=True
-    )
+    workflow, version = await _get_version_or_404(db, organization_id, workflow_id, version_id, for_update=True)
 
     if version.status == WorkflowVersionStatus.PUBLISHED.value:
         raise HTTPException(
@@ -674,14 +656,8 @@ async def update_workflow_version(
         )
 
     # Clean existing steps and connections for this draft version
-    await db.execute(
-        delete(WorkflowConnection).where(
-            WorkflowConnection.workflow_version_id == version.id
-        )
-    )
-    await db.execute(
-        delete(WorkflowStep).where(WorkflowStep.workflow_version_id == version.id)
-    )
+    await db.execute(delete(WorkflowConnection).where(WorkflowConnection.workflow_version_id == version.id))
+    await db.execute(delete(WorkflowStep).where(WorkflowStep.workflow_version_id == version.id))
     await db.flush()
 
     # Re-insert steps
@@ -755,18 +731,12 @@ async def validate_workflow_version(
     Performs dry-run DAG validation for a workflow version.
     Returns HTTP 200 with valid, errors, and warnings.
     """
-    workflow, version = await _get_version_or_404(
-        db, organization_id, workflow_id, version_id
-    )
+    workflow, version = await _get_version_or_404(db, organization_id, workflow_id, version_id)
 
-    steps_stmt = select(WorkflowStep).where(
-        WorkflowStep.workflow_version_id == version.id
-    )
+    steps_stmt = select(WorkflowStep).where(WorkflowStep.workflow_version_id == version.id)
     steps = (await db.execute(steps_stmt)).scalars().all()
 
-    conns_stmt = select(WorkflowConnection).where(
-        WorkflowConnection.workflow_version_id == version.id
-    )
+    conns_stmt = select(WorkflowConnection).where(WorkflowConnection.workflow_version_id == version.id)
     conns = (await db.execute(conns_stmt)).scalars().all()
 
     step_id_to_key = {s.id: s.step_key for s in steps}
@@ -803,9 +773,7 @@ async def publish_workflow_version(
     If valid, sets version status to PUBLISHED, workflow status to ACTIVE, and commits.
     """
     # Use row lock to protect against concurrent publishing
-    workflow, version = await _get_version_or_404(
-        db, organization_id, workflow_id, version_id, for_update=True
-    )
+    workflow, version = await _get_version_or_404(db, organization_id, workflow_id, version_id, for_update=True)
 
     if version.status == WorkflowVersionStatus.PUBLISHED.value:
         raise HTTPException(
@@ -814,14 +782,10 @@ async def publish_workflow_version(
         )
 
     # Load steps and connections
-    steps_stmt = select(WorkflowStep).where(
-        WorkflowStep.workflow_version_id == version.id
-    )
+    steps_stmt = select(WorkflowStep).where(WorkflowStep.workflow_version_id == version.id)
     steps = (await db.execute(steps_stmt)).scalars().all()
 
-    conns_stmt = select(WorkflowConnection).where(
-        WorkflowConnection.workflow_version_id == version.id
-    )
+    conns_stmt = select(WorkflowConnection).where(WorkflowConnection.workflow_version_id == version.id)
     conns = (await db.execute(conns_stmt)).scalars().all()
 
     step_id_to_key = {s.id: s.step_key for s in steps}

@@ -12,6 +12,8 @@ import {
   loginUser,
   logoutUser,
   registerUser,
+  resendVerificationOtp,
+  verifyEmailUser,
 } from '../services/authService';
 import {
   clearAuthStorage,
@@ -140,20 +142,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [refreshProfile]
   );
 
-  // Register handler
+  // Register handler - sends verification OTP
   const register = useCallback(
     async (payload: RegisterPayload) => {
       setIsLoading(true);
       try {
-        await registerUser(payload);
-        // Automatically login upon successful registration
-        await loginUser({ email: payload.email, password: payload.password });
+        return await registerUser(payload);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  // Email verification handler
+  const verifyEmail = useCallback(
+    async (email: string, code: string) => {
+      setIsLoading(true);
+      try {
+        await verifyEmailUser(email, code);
         await refreshProfile();
       } finally {
         setIsLoading(false);
       }
     },
     [refreshProfile]
+  );
+
+  // Resend OTP handler
+  const resendVerificationCode = useCallback(
+    async (email: string) => {
+      await resendVerificationOtp(email);
+    },
+    []
   );
 
   // Logout handler
@@ -183,6 +204,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isLoading,
     login,
     register,
+    verifyEmail,
+    resendVerificationCode,
     logout,
     switchOrganization,
     refreshProfile,

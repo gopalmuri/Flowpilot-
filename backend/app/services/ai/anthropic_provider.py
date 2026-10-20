@@ -1,7 +1,9 @@
 import json
 import time
 from typing import Optional
+
 import httpx
+
 from app.schemas.ai import AIProviderConfig, LeadClassificationInput
 from app.services.ai.base import AIProviderResponse, BaseAIProvider
 

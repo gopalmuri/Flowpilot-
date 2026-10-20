@@ -129,8 +129,18 @@ git pull origin main
 docker compose -f docker-compose.prod.yml build
 
 # Recreate containers with zero downtime
-docker compose -f docker-compose.prod.yml up -d --no-deps backend celery_worker frontend
+docker compose -f docker-compose.prod.yml up -d --no-deps backend celery_worker celery_beat frontend
 ```
+
+### Scheduler (Celery Beat)
+`celery_beat` is a separate service that runs the periodic tasks (outbound-delivery relay, stale-delivery recovery,
+approval-resume recovery). Rules:
+- Exactly one instance per environment. The service has a fixed `container_name`, so `--scale celery_beat=2` fails
+  instead of duplicating it. Do not add it to an autoscaling group or run it inside the worker (`-B`).
+- It keeps its schedule file in `/tmp` (not persisted). That is intentional: all schedules are fixed intervals
+  defined in code, so a restart simply resumes them.
+- If beat is down, nothing is lost: deliveries stay committed in `outbound_deliveries`, workers still recover once at
+  start, and the relay catches up (rows are re-enqueued when their enqueue is older than 60 s) as soon as beat returns.
 
 ### Rollback Procedure
 ```bash

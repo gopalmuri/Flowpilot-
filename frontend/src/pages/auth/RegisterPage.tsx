@@ -44,7 +44,7 @@ export const RegisterPage: React.FC = () => {
         password,
         organization_name: orgName.trim() || undefined,
       });
-      navigate('/dashboard');
+      navigate(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please verify your details.');
     } finally {

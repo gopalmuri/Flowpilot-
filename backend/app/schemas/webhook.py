@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class WebhookResponse(BaseModel):
@@ -22,6 +23,7 @@ class WebhookDetailsResponse(BaseModel):
     STRICT ZERO-SECRET POLICY: Neither secret_token nor secret_preview
     is ever returned. Only boolean has_secret_token is exposed.
     """
+
     model_config = ConfigDict(from_attributes=True)
 
     webhook_url: str
@@ -36,6 +38,7 @@ class WebhookKeyRotateResponse(BaseModel):
     Response returned upon rotating the public webhook key.
     Secrets are never included.
     """
+
     model_config = ConfigDict(from_attributes=True)
 
     webhook_key: str

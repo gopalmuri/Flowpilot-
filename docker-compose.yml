@@ -99,6 +99,38 @@ services:
     networks:
       - flowpilot-network
 
+
+  # The scheduler. Run EXACTLY ONE of these: a second beat would enqueue every periodic task twice.
+  # The fixed container_name makes `docker compose up --scale celery_beat=2` fail instead of duplicating it.
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: flowpilot-celery-beat
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-flowpilot_admin}:${POSTGRES_PASSWORD:-flowpilot_secret_password}@postgres:5432/${POSTGRES_DB:-flowpilot}
+      SYNC_DATABASE_URL: postgresql://${POSTGRES_USER:-flowpilot_admin}:${POSTGRES_PASSWORD:-flowpilot_secret_password}@postgres:5432/${POSTGRES_DB:-flowpilot}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - flowpilot-network
+
   frontend:
     build:
       context: ./frontend

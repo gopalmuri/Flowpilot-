@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -7,22 +7,40 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import { ApprovalRequest } from '../../types/approval';
+import { ApprovalRequest, ApprovalReview } from '../../types/approval';
+import {
+  getApprovalReview,
+  regenerateDraft,
+  requestDraftRevision,
+  saveDraftEdit,
+} from '../../services/approvalService';
+import { DraftReviewPanel } from './DraftReviewPanel';
+
+export interface DraftDecisionExtra {
+  reviewed_version?: number;
+  edited_content?: string;
+}
 
 interface ApprovalActionModalProps {
   isOpen: boolean;
   onClose: () => void;
   approval: ApprovalRequest | null;
-  onDecide: (decision: 'APPROVE' | 'REJECT', comment?: string) => Promise<void>;
+  onDecide: (decision: 'APPROVE' | 'REJECT', comment?: string, extra?: DraftDecisionExtra) => Promise<void>;
   isSubmitting?: boolean;
   userRole?: string;
+  /** Needed to load the reply-draft review; approvals without a draft do not use it. */
+  organizationId?: string;
+  /** Called after a draft action (edit, revision, regenerate) so the lists can refresh. */
+  onDraftChanged?: () => void;
 }
 
 const ROLE_RANKS: Record<string, number> = {
   VIEWER: 0,
   MEMBER: 1,
-  ADMIN: 2,
-  OWNER: 3,
+  OPERATOR: 1,
+  MANAGER: 2,
+  ADMIN: 3,
+  OWNER: 4,
 };
 
 export const ApprovalActionModal: React.FC<ApprovalActionModalProps> = ({
@@ -32,28 +50,132 @@ export const ApprovalActionModal: React.FC<ApprovalActionModalProps> = ({
   onDecide,
   isSubmitting = false,
   userRole = 'MEMBER',
+  organizationId,
+  onDraftChanged,
 }) => {
   const [comment, setComment] = useState('');
   const [activeDecision, setActiveDecision] = useState<'APPROVE' | 'REJECT' | null>(null);
+  const [review, setReview] = useState<ApprovalReview | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [editedText, setEditedText] = useState('');
+  const [revisionText, setRevisionText] = useState('');
+  const [draftBusy, setDraftBusy] = useState(false);
+  const [reeditMode, setReeditMode] = useState(false);
+
+  const approvalId = approval?.id;
+  const hasDraft = Boolean(approval?.draft_id);
+
+  const applyReview = (next: ApprovalReview) => {
+    setReview(next);
+    const cur = next.draft?.versions.find((v) => v.version_number === next.draft?.current_version);
+    setEditedText(cur?.content ?? '');
+  };
+
+  useEffect(() => {
+    if (!isOpen || !approvalId || !hasDraft || !organizationId) {
+      setReview(null);
+      setReviewError(null);
+      return;
+    }
+    let cancelled = false;
+    setReviewLoading(true);
+    setReviewError(null);
+    getApprovalReview(organizationId, approvalId)
+      .then((r) => {
+        if (!cancelled) applyReview(r);
+      })
+      .catch((err: any) => {
+        if (!cancelled) setReviewError(err?.message || 'Failed to load the reply draft.');
+      })
+      .finally(() => {
+        if (!cancelled) setReviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, approvalId, hasDraft, organizationId]);
 
   if (!isOpen || !approval) {
     return null;
   }
 
   const userRank = ROLE_RANKS[userRole?.toUpperCase()] ?? 0;
-  const requiredRank = ROLE_RANKS[approval.required_role?.toUpperCase()] ?? 1;
+  const requiredRank = ROLE_RANKS[(approval.required_role ?? '').toUpperCase()] ?? 1;
   const hasRolePermission = userRank >= requiredRank;
   const isPending = approval.status === 'PENDING';
   const isExpired = approval.expires_at ? new Date(approval.expires_at) < new Date() : false;
   const canDecide = hasRolePermission && isPending && !isExpired;
 
+  const draft = review?.draft ?? null;
+  const currentVersionText = draft?.versions.find((v) => v.version_number === draft.current_version)?.content ?? '';
+  const draftEdited = Boolean(draft) && editedText.trim() !== currentVersionText.trim();
+  // A draft approval is only possible once the reviewer can see the exact text and it is awaiting approval.
+  const draftBlocksApproval = hasDraft && (reviewLoading || !draft || draft.status !== 'PENDING_APPROVAL');
+
   const handleAction = async (decision: 'APPROVE' | 'REJECT') => {
     setActiveDecision(decision);
     try {
-      await onDecide(decision, comment.trim() ? comment.trim() : undefined);
+      let extra: DraftDecisionExtra | undefined;
+      if (decision === 'APPROVE' && draft) {
+        extra = {
+          reviewed_version: draft.current_version,
+          ...(draftEdited ? { edited_content: editedText.trim() } : {}),
+        };
+      }
+      await onDecide(decision, comment.trim() ? comment.trim() : undefined, extra);
       onClose();
     } finally {
       setActiveDecision(null);
+    }
+  };
+
+  const runDraftAction = async (action: () => Promise<ApprovalReview>, after?: () => void) => {
+    setDraftBusy(true);
+    setReviewError(null);
+    try {
+      applyReview(await action());
+      onDraftChanged?.();
+      after?.();
+    } catch (err: any) {
+      setReviewError(err?.message || 'The draft action failed.');
+    } finally {
+      setDraftBusy(false);
+    }
+  };
+
+  const handleSaveEdit = () => {
+    if (!organizationId || !approvalId || !draft) return;
+    void runDraftAction(() => saveDraftEdit(organizationId, approvalId, editedText.trim(), draft.current_version));
+  };
+
+  const handleRequestRevision = () => {
+    if (!organizationId || !approvalId) return;
+    void runDraftAction(
+      () => requestDraftRevision(organizationId, approvalId, revisionText.trim()),
+      () => setRevisionText('')
+    );
+  };
+
+  const handleRegenerate = () => {
+    if (!organizationId || !approvalId || !draft) return;
+    void runDraftAction(() => regenerateDraft(organizationId, approvalId, draft.current_version));
+  };
+
+  const handleReeditApproved = async () => {
+    // Editing approved text invalidates the approval server-side and opens a new one, so this modal is done.
+    if (!organizationId || !approvalId || !draft) return;
+    setDraftBusy(true);
+    setReviewError(null);
+    try {
+      await saveDraftEdit(organizationId, approvalId, editedText.trim(), draft.current_version);
+      onDraftChanged?.();
+      setReeditMode(false);
+      onClose();
+    } catch (err: any) {
+      setReviewError(err?.message || 'The draft action failed.');
+    } finally {
+      setDraftBusy(false);
     }
   };
 
@@ -125,7 +247,9 @@ export const ApprovalActionModal: React.FC<ApprovalActionModalProps> = ({
                 <span>Approval Consequence &amp; Governance</span>
               </div>
               <p className="text-warm-700 dark:text-charcoal-300">
-                Approving this request will allow the workflow to continue to the configured downstream actions.
+                {hasDraft
+                  ? 'Approving authorises exactly the reply text shown below. Any edit you make is approved instead of the AI draft, and changing the text later cancels the approval.'
+                  : 'Approving this request will allow the workflow to continue to the configured downstream actions.'}
               </p>
               <p className="text-warm-500 dark:text-charcoal-400 pt-1 text-[11px] border-t border-brand-200/60 dark:border-brand-900/60">
                 Rejecting this request will halt the workflow or execute configured fallback actions.
@@ -141,7 +265,7 @@ export const ApprovalActionModal: React.FC<ApprovalActionModalProps> = ({
             </div>
             <div className="p-3 bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 rounded-xl">
               <div className="text-[11px] font-medium text-warm-500 dark:text-charcoal-400">Required Role</div>
-              <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 mt-1 uppercase">{approval.required_role}</div>
+              <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 mt-1 uppercase">{approval.required_role || 'Any reviewer'}</div>
             </div>
             <div className="p-3 bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 rounded-xl">
               <div className="text-[11px] font-medium text-warm-500 dark:text-charcoal-400">Requested At</div>
@@ -156,6 +280,80 @@ export const ApprovalActionModal: React.FC<ApprovalActionModalProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Reply draft review (message, AI analysis, versioned draft) */}
+          {hasDraft && reviewLoading && (
+            <p className="text-xs text-warm-500 dark:text-charcoal-400" role="status">
+              Loading reply draft&hellip;
+            </p>
+          )}
+          {hasDraft && reviewError && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300 text-xs" role="alert">
+              {reviewError}
+            </div>
+          )}
+          {review && draft && (
+            <DraftReviewPanel
+              review={review}
+              canAct={canDecide}
+              editedText={editedText}
+              onEditedTextChange={setEditedText}
+              revisionText={revisionText}
+              onRevisionTextChange={setRevisionText}
+              busy={draftBusy || isSubmitting}
+              onSaveEdit={handleSaveEdit}
+              onRequestRevision={handleRequestRevision}
+              onRegenerate={handleRegenerate}
+            />
+          )}
+          {(draft?.status === 'APPROVED' || draft?.status === 'SEND_FAILED') && hasRolePermission && (
+            <div className="text-left">
+              {reeditMode ? (
+                <div className="space-y-2">
+                  <label htmlFor="reedit-text" className="block text-xs font-medium text-warm-700 dark:text-charcoal-300">
+                    New text (the current approval will be cancelled and a new approval opened)
+                  </label>
+                  <textarea
+                    id="reedit-text"
+                    rows={8}
+                    value={editedText}
+                    onChange={(e) => setEditedText(e.target.value)}
+                    disabled={draftBusy}
+                    maxLength={3000}
+                    className="w-full px-3 py-2.5 bg-white dark:bg-charcoal-950 border border-warm-200 dark:border-charcoal-750 rounded-xl text-xs font-mono"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleReeditApproved}
+                      disabled={draftBusy || !draftEdited || !editedText.trim()}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50"
+                    >
+                      Cancel approval &amp; save new version
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReeditMode(false);
+                        setEditedText(currentVersionText);
+                      }}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-warm-100 dark:bg-charcoal-800 text-warm-700 dark:text-charcoal-300"
+                    >
+                      Keep approved text
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setReeditMode(true)}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-warm-100 dark:bg-charcoal-800 hover:bg-warm-200 dark:hover:bg-charcoal-750 text-warm-700 dark:text-charcoal-300"
+                >
+                  Edit approved text (needs a new approval)
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Context Snapshot JSON card */}
           <div className="text-left">
@@ -222,20 +420,29 @@ export const ApprovalActionModal: React.FC<ApprovalActionModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleAction('REJECT')}
-                disabled={isSubmitting}
+                disabled={isSubmitting || draftBusy}
                 className="w-full sm:w-auto flex items-center justify-center space-x-1.5 px-4 py-2.5 text-xs font-semibold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 dark:bg-red-950/40 dark:hover:bg-red-900/50 dark:text-red-300 dark:border-red-800/60 rounded-xl transition-colors disabled:opacity-50"
               >
                 <XCircle className="w-4 h-4" />
-                <span>{isSubmitting && activeDecision === 'REJECT' ? 'Rejecting...' : 'Reject Step'}</span>
+                <span>{isSubmitting && activeDecision === 'REJECT' ? 'Rejecting...' : hasDraft ? 'Reject Draft' : 'Reject Step'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleAction('APPROVE')}
-                disabled={isSubmitting}
+                disabled={isSubmitting || draftBusy || draftBlocksApproval}
+                title={draftBlocksApproval ? 'The draft must be awaiting approval (not under revision) to approve it' : undefined}
                 className="w-full sm:w-auto flex items-center justify-center space-x-1.5 px-4 py-2.5 text-xs font-semibold bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white rounded-xl shadow-subtle transition-colors disabled:opacity-50"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{isSubmitting && activeDecision === 'APPROVE' ? 'Approving...' : 'Approve & Resume'}</span>
+                <span>
+                  {isSubmitting && activeDecision === 'APPROVE'
+                    ? 'Approving...'
+                    : hasDraft
+                      ? draftEdited
+                        ? 'Approve My Edited Version'
+                        : 'Approve This Text'
+                      : 'Approve & Resume'}
+                </span>
               </button>
             </div>
           )}

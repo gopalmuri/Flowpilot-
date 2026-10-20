@@ -24,7 +24,7 @@ help:
 
 setup:
 	test -f .env || cp .env.example .env
-	cd backend && python -m venv venv && ./venv/bin/pip install -r requirements.txt
+	cd backend && python -m venv venv && ./venv/bin/pip install -r requirements-dev.txt
 	cd frontend && npm install
 
 test-local:
