@@ -49,6 +49,7 @@ export interface UserRegisterResponse {
   email: string;
   requires_verification: boolean;
   user_id: string;
+  dev_otp?: string | null;
 }
 
 export interface VerifyEmailPayload {

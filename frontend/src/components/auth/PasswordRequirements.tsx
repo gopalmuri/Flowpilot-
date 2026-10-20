@@ -21,7 +21,7 @@ export const PasswordRequirements: React.FC<PasswordRequirementsProps> = ({
     { label: 'One uppercase letter (A-Z)', met: hasUppercase },
     { label: 'One lowercase letter (a-z)', met: hasLowercase },
     { label: 'One numeric digit (0-9)', met: hasNumber },
-    { label: 'One special character (!@#$%^&*)', met: hasSpecial },
+    { label: 'One special character (!@#$%^&*-_=+ etc.)', met: hasSpecial },
   ];
 
   return (

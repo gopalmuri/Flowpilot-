@@ -123,7 +123,7 @@ class RateLimiter:
 
 # Predefined rate limiter dependencies
 login_rate_limiter = RateLimiter(
-    limit=5,
+    limit=60 if settings.ENVIRONMENT != "production" else 5,
     window_seconds=60,
     scope="auth:login",
     identifier_func=get_client_ip,
@@ -137,8 +137,8 @@ refresh_rate_limiter = RateLimiter(
 )
 
 register_rate_limiter = RateLimiter(
-    limit=3,
-    window_seconds=3600,
+    limit=50 if settings.ENVIRONMENT != "production" else 5,
+    window_seconds=60 if settings.ENVIRONMENT != "production" else 3600,
     scope="auth:register",
     identifier_func=get_client_ip,
 )

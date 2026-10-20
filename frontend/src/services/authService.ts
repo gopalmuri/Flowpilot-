@@ -33,8 +33,8 @@ export async function verifyEmailUser(email: string, code: string): Promise<Toke
   return data;
 }
 
-export async function resendVerificationOtp(email: string): Promise<{ message: string }> {
-  return await apiRequest<{ message: string }>('/api/v1/auth/resend-otp', {
+export async function resendVerificationOtp(email: string): Promise<{ message: string; dev_otp?: string | null }> {
+  return await apiRequest<{ message: string; dev_otp?: string | null }>('/api/v1/auth/resend-otp', {
     method: 'POST',
     body: JSON.stringify({ email }),
   });

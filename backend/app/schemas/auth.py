@@ -66,6 +66,7 @@ class UserRegisterResponse(BaseModel):
     email: str
     requires_verification: bool = True
     user_id: uuid.UUID
+    dev_otp: Optional[str] = None
 
 
 class VerifyEmailRequest(BaseModel):
@@ -75,6 +76,11 @@ class VerifyEmailRequest(BaseModel):
 
 class ResendOtpRequest(BaseModel):
     email: EmailStr
+
+
+class ResendOtpResponse(BaseModel):
+    message: str
+    dev_otp: Optional[str] = None
 
 
 

@@ -8,12 +8,14 @@ import { PrimaryButton } from '../../components/auth/PrimaryButton';
 import { ArrowRight, CheckCircle2, Mail, RefreshCw } from 'lucide-react';
 
 export const VerifyEmailPage: React.FC = () => {
-  const { verifyEmail, resendVerificationCode } = useAuth();
+  const { verifyEmail } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const emailParam = searchParams.get('email') || '';
+  const initialDevOtp = searchParams.get('dev_otp') || null;
   const [email, setEmail] = useState(emailParam);
+  const [devOtp, setDevOtp] = useState<string | null>(initialDevOtp);
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -104,10 +106,9 @@ export const VerifyEmailPage: React.FC = () => {
     setIsResending(true);
 
     try {
-      if (resendVerificationCode) {
-        await resendVerificationCode(email.trim());
-      } else {
-        await resendVerificationOtp(email.trim());
+      const res = await resendVerificationOtp(email.trim());
+      if (res && res.dev_otp) {
+        setDevOtp(res.dev_otp);
       }
       setSuccessMsg('A new 6-digit verification code has been sent.');
       setCountdown(60);
@@ -161,6 +162,30 @@ export const VerifyEmailPage: React.FC = () => {
         error={error}
         footer={footerLink}
       >
+        {devOtp && (
+          <div className="mb-5 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex items-center justify-between gap-3 animate-in fade-in">
+            <div className="text-left">
+              <div className="font-semibold text-[11px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                Dev Mode (SMTP not set in .env)
+              </div>
+              <div className="text-xs mt-0.5">
+                Your verification code is: <strong className="font-mono text-sm tracking-widest text-amber-950 dark:text-amber-100">{devOtp}</strong>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const split = devOtp.slice(0, 6).split('');
+                setDigits(split);
+                inputRefs.current[5]?.focus();
+              }}
+              className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-xs transition-colors cursor-pointer shrink-0 shadow-sm"
+            >
+              Auto-fill Code
+            </button>
+          </div>
+        )}
+
         {successMsg && (
           <div className="mb-5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />

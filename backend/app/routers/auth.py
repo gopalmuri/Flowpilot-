@@ -34,6 +34,7 @@ from app.schemas.auth import (
     LogoutRequest,
     RefreshTokenRequest,
     ResendOtpRequest,
+    ResendOtpResponse,
     TokenResponse,
     UserLoginRequest,
     UserMeResponse,
@@ -95,7 +96,19 @@ async def register_user(
     email_clean = req.email.strip().lower()
     stmt = select(User).where(User.email == email_clean)
     existing = await db.execute(stmt)
-    if existing.scalar_one_or_none() is not None:
+    existing_user = existing.scalar_one_or_none()
+    if existing_user is not None:
+        if not existing_user.is_verified:
+            # User already registered but pending email verification: refresh OTP and continue flow
+            _, otp_code = await create_or_refresh_verification(db, existing_user)
+            dev_otp = otp_code if (settings.ENVIRONMENT != "production" and not settings.SMTP_USER) else None
+            return UserRegisterResponse(
+                message="Account already created and awaiting verification. A new verification code has been sent.",
+                email=existing_user.email,
+                requires_verification=True,
+                user_id=existing_user.id,
+                dev_otp=dev_otp,
+            )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A user with this email address already exists",
@@ -133,13 +146,15 @@ async def register_user(
     await db.refresh(new_user)
 
     # Generate and send 6-digit OTP verification email
-    await create_or_refresh_verification(db, new_user)
+    _, otp_code = await create_or_refresh_verification(db, new_user)
+    dev_otp = otp_code if (settings.ENVIRONMENT != "production" and not settings.SMTP_USER) else None
 
     return UserRegisterResponse(
         message="Verification code sent. Please check your email to complete registration.",
         email=new_user.email,
         requires_verification=True,
         user_id=new_user.id,
+        dev_otp=dev_otp,
     )
 
 
@@ -240,6 +255,7 @@ async def verify_email(
 
 @router.post(
     "/resend-otp",
+    response_model=ResendOtpResponse,
     summary="Resend 6-digit verification code",
 )
 async def resend_verification_otp(
@@ -261,7 +277,7 @@ async def resend_verification_otp(
         )
 
     if user.is_verified:
-        return {"message": "Email is already verified. You can log in directly."}
+        return ResendOtpResponse(message="Email is already verified. You can log in directly.")
 
     v_stmt = select(EmailVerification).where(EmailVerification.user_id == user.id)
     v_res = await db.execute(v_stmt)
@@ -276,8 +292,12 @@ async def resend_verification_otp(
                 detail=f"Please wait {remaining} seconds before requesting a new code.",
             )
 
-    await create_or_refresh_verification(db, user)
-    return {"message": "A new verification code has been sent."}
+    _, otp_code = await create_or_refresh_verification(db, user)
+    dev_otp = otp_code if (settings.ENVIRONMENT != "production" and not settings.SMTP_USER) else None
+    return ResendOtpResponse(
+        message="A new verification code has been sent.",
+        dev_otp=dev_otp,
+    )
 
 
 @router.post(
