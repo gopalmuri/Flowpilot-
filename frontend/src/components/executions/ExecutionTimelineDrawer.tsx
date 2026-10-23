@@ -27,6 +27,9 @@ import {
 } from '../../types/execution';
 import { resumeExecution } from '../../services/executionService';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { formatRunDuration } from '../../utils/formatRunDuration';
+import { RunExplainPanel } from './RunExplainPanel';
 
 interface ExecutionTimelineDrawerProps {
   run: WorkflowRunDetail | null;
@@ -70,7 +73,8 @@ export const ExecutionTimelineDrawer: React.FC<ExecutionTimelineDrawerProps> = (
   onCancel,
   isCancelling = false,
 }) => {
-  const { activeOrganization } = useAuth();
+  const { activeOrganization, activeRole } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
   const [copiedCorrId, setCopiedCorrId] = useState<boolean>(false);
   const [isResuming, setIsResuming] = useState<boolean>(false);
@@ -97,10 +101,11 @@ export const ExecutionTimelineDrawer: React.FC<ExecutionTimelineDrawerProps> = (
     setResumeMessage(null);
     try {
       await resumeExecution(activeOrganization.id, run.id, true, 'Resumed via Control Plane');
+      showSuccess('Resumption dispatched to engine.', 'Execution Resumed');
       setResumeMessage('Resumption dispatched to engine.');
       setTimeout(() => setResumeMessage(null), 3000);
     } catch (err: any) {
-      alert(err?.response?.data?.detail || 'Failed to resume execution.');
+      showError(err.message || 'Failed to resume execution.', 'Resumption Failed');
     } finally {
       setIsResuming(false);
     }
@@ -259,7 +264,7 @@ export const ExecutionTimelineDrawer: React.FC<ExecutionTimelineDrawerProps> = (
                 Duration
               </span>
               <span className="font-semibold text-warm-900 dark:text-charcoal-100 text-[11px] font-mono">
-                {run.duration_ms != null ? `${(run.duration_ms / 1000).toFixed(2)}s` : 'N/A'}
+                {formatRunDuration(run)}
               </span>
             </div>
 
@@ -372,6 +377,16 @@ export const ExecutionTimelineDrawer: React.FC<ExecutionTimelineDrawerProps> = (
                 <span className="text-xs text-brand-600 font-medium block">{resumeMessage}</span>
               )}
             </div>
+          )}
+
+          {run.status === 'FAILED' && activeOrganization && (
+            <RunExplainPanel
+              key={run.id}
+              organizationId={activeOrganization.id}
+              workflowId={run.workflow_id}
+              runId={run.id}
+              canEdit={activeRole === 'OWNER' || activeRole === 'ADMIN' || activeRole === 'MANAGER'}
+            />
           )}
 
           {/* Human Review & Approvals History */}

@@ -50,9 +50,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # 1. Strict-Transport-Security (HSTS)
         if is_production or force_https:
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=63072000; includeSubDomains; preload"
-            )
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
 
         # 2. Prevent MIME-sniffing
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -64,9 +62,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
         # 5. Permissions Policy
-        response.headers["Permissions-Policy"] = (
-            "camera=(), microphone=(), geolocation=(), payment=()"
-        )
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
 
         # 6. Disable legacy XSS filter in favor of CSP
         response.headers["X-XSS-Protection"] = "0"

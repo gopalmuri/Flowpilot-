@@ -1,7 +1,8 @@
 from typing import Optional
+
 from app.core.config import settings
-from app.services.ai.anthropic_provider import AnthropicProvider
 from app.services.ai.base import BaseAIProvider
+from app.services.ai.grok_provider import GrokProvider, GroqProvider
 from app.services.ai.mock_provider import MockAIProvider
 from app.services.ai.openai_provider import OpenAIProvider
 
@@ -33,10 +34,12 @@ class AIProviderFactory:
         elif selected == "openai":
             key = api_key or settings.OPENAI_API_KEY
             return OpenAIProvider(api_key=key)
-        elif selected == "anthropic":
-            key = api_key or settings.ANTHROPIC_API_KEY
-            return AnthropicProvider(api_key=key)
+        elif selected == "groq":
+            return GroqProvider()
+        elif selected == "grok":
+            return GrokProvider(api_key=api_key or settings.GROK_API_KEY)
         else:
             raise ValueError(
-                f"Unsupported AI provider '{selected}'. Supported providers: ['mock', 'openai', 'anthropic']"
+                f"Unsupported AI provider '{selected}'. Supported providers: ['mock', 'openai', 'groq', 'grok']"
             )
+

@@ -4,6 +4,7 @@ import {
   Play,
   CheckCircle2,
   Sparkles,
+  ScanSearch,
   GitFork,
   Database,
   MessageSquare,
@@ -58,6 +59,15 @@ const PALETTE_ITEMS: PaletteItem[] = [
     badgeClass: 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/60',
     iconClass: 'text-teal-600 dark:text-teal-400',
     description: 'Classify content using LLM model triage',
+  },
+  {
+    type: StepType.AI_EXTRACT_DATA,
+    label: 'AI pulls out key details',
+    category: 'Intelligence',
+    icon: ScanSearch,
+    badgeClass: 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/60',
+    iconClass: 'text-teal-600 dark:text-teal-400',
+    description: 'Extract names, amounts and dates from free text',
   },
   {
     type: StepType.CONDITION,

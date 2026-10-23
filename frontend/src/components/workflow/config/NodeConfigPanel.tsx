@@ -7,6 +7,33 @@ import {
 import { StepType } from '../../../types/workflow';
 import { WorkflowNodeData } from '../../../utils/workflowGraphValidator';
 
+const FieldsListInput: React.FC<{
+  nodeId: string;
+  value: string[];
+  disabled: boolean;
+  onChange: (fields: string[]) => void;
+}> = ({ nodeId, value, disabled, onChange }) => {
+  const [text, setText] = React.useState<string>(value.join(', '));
+  React.useEffect(() => {
+    setText(value.join(', '));
+    // Re-sync only when a different step is selected, not on every keystroke.
+  }, [nodeId]);
+  return (
+    <input
+      id={`extract-fields-${nodeId}`}
+      type="text"
+      placeholder="name, company, amount, due date"
+      value={text}
+      disabled={disabled}
+      onChange={(e) => {
+        setText(e.target.value);
+        onChange(e.target.value.split(',').map((s) => s.trim()).filter(Boolean));
+      }}
+      className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600"
+    />
+  );
+};
+
 interface NodeConfigPanelProps {
   selectedNode: Node<WorkflowNodeData> | null;
   onClose: () => void;
@@ -153,7 +180,6 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
                 <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
                 <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
                 <option value="gpt-4o-mini">GPT-4o Mini</option>
-                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
               </select>
             </div>
 
@@ -169,6 +195,29 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
                 onChange={(e) => handleConfigChange('prompt', e.target.value)}
                 className="w-full px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600 resize-none font-mono"
               />
+            </div>
+          </div>
+        );
+
+      case StepType.AI_EXTRACT_DATA:
+        return (
+          <div className="space-y-4">
+            <div>
+              <label
+                htmlFor={`extract-fields-${id}`}
+                className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1"
+              >
+                Details for the AI to pull out (comma-separated)
+              </label>
+              <FieldsListInput
+                nodeId={id}
+                value={Array.isArray(config.fields) ? config.fields : []}
+                disabled={isReadOnly}
+                onChange={(fields) => handleConfigChange('fields', fields)}
+              />
+              <p className="text-[10px] text-warm-500 dark:text-charcoal-400 mt-1">
+                For example: name, company, amount. Add at least one.
+              </p>
             </div>
           </div>
         );

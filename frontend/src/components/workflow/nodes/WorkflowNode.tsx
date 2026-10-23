@@ -1,10 +1,21 @@
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
+import { branchHandlesFor } from '../../../utils/workflowGraphMapper';
+
+const BRANCH_HANDLE_COLORS: Record<string, string> = {
+  true: '!bg-brand-600 dark:!bg-brand-500',
+  approved: '!bg-brand-600 dark:!bg-brand-500',
+  false: '!bg-red-500',
+  rejected: '!bg-red-500',
+};
 import {
   Webhook,
   Play,
   CheckCircle2,
   Sparkles,
+  ScanSearch,
+  Mail,
+  Send,
   GitFork,
   Database,
   MessageSquare,
@@ -62,6 +73,38 @@ export const WorkflowNode: React.FC<NodeProps<any>> = memo(({ data, selected }) 
           summary: config.model ? `Model: ${config.model}` : 'LLM categorization',
           isTrigger: false,
         };
+      case StepType.AI_EXTRACT_DATA:
+        return {
+          label: 'AI pulls out key details',
+          category: 'Intelligence',
+          icon: ScanSearch,
+          badgeClass: 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/60',
+          iconClass: 'text-teal-600 dark:text-teal-400',
+          summary: Array.isArray(config.fields) && config.fields.length
+            ? `Pulls out: ${config.fields.join(', ')}`
+            : 'Extract details from text',
+          isTrigger: false,
+        };
+      case StepType.AI_ANALYZE_MESSAGE:
+        return {
+          label: 'AI reads a message',
+          category: 'Intelligence',
+          icon: Mail,
+          badgeClass: 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/60',
+          iconClass: 'text-teal-600 dark:text-teal-400',
+          summary: 'Reads the message and drafts a reply',
+          isTrigger: false,
+        };
+      case StepType.SEND_REPLY:
+        return {
+          label: 'Send the approved reply',
+          category: 'Integration',
+          icon: Send,
+          badgeClass: 'bg-brand-50 dark:bg-brand-900/30 text-brand-800 dark:text-brand-400 border-brand-200 dark:border-brand-800/50',
+          iconClass: 'text-brand-600 dark:text-brand-400',
+          summary: 'Sends the reply once approved',
+          isTrigger: false,
+        };
       case StepType.CONDITION:
         return {
           label: 'Condition',
@@ -71,7 +114,6 @@ export const WorkflowNode: React.FC<NodeProps<any>> = memo(({ data, selected }) 
           iconClass: 'text-amber-600 dark:text-amber-400',
           summary: config.field ? `Check: ${config.field}` : 'Branching rules',
           isTrigger: false,
-          isBranching: true,
         };
       case StepType.MOCK_CRM_CREATE:
         return {
@@ -100,7 +142,7 @@ export const WorkflowNode: React.FC<NodeProps<any>> = memo(({ data, selected }) 
           icon: UserCheck,
           badgeClass: 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
           iconClass: 'text-amber-600 dark:text-amber-400',
-          summary: `Role: ${config.required_role || 'ADMIN'}`,
+          summary: `Role: ${config.approver_role || config.required_role || 'MANAGER'}`,
           isTrigger: false,
         };
       default:
@@ -117,16 +159,22 @@ export const WorkflowNode: React.FC<NodeProps<any>> = memo(({ data, selected }) 
   };
 
   const meta = getNodeMeta();
+  const branchHandles = branchHandlesFor(String(nodeData.step_type));
   const Icon = meta.icon;
+
+  const isPreview = Boolean(nodeData.isPreview);
 
   return (
     <div
       className={`min-w-[220px] max-w-[280px] rounded-xl bg-white dark:bg-charcoal-900 border transition-all duration-150 shadow-subtle ${
-        selected
+        isPreview
+          ? 'border-dashed border-teal-500 dark:border-teal-400 ring-2 ring-teal-500/30'
+          : selected
           ? 'border-brand-600 dark:border-brand-500 ring-2 ring-brand-500/20'
           : 'border-warm-300 dark:border-charcoal-750 hover:border-warm-400 dark:hover:border-charcoal-700'
       }`}
     >
+
       {!meta.isTrigger && (
         <Handle
           type="target"
@@ -150,29 +198,28 @@ export const WorkflowNode: React.FC<NodeProps<any>> = memo(({ data, selected }) 
       </div>
 
       <div className="p-3 text-[11px] text-warm-600 dark:text-charcoal-400 space-y-1">
-        <div className="font-mono text-[10px] text-warm-500 dark:text-charcoal-500 truncate">
-          key: {nodeData.step_key}
-        </div>
+        {!nodeData.hideKey && (
+          <div className="font-mono text-[10px] text-warm-500 dark:text-charcoal-500 truncate">
+            key: {nodeData.step_key}
+          </div>
+        )}
         <div className="text-warm-700 dark:text-charcoal-300 truncate">
           {meta.summary}
         </div>
       </div>
 
-      {meta.isBranching ? (
-        <>
+      {branchHandles.length > 0 ? (
+        branchHandles.map((handleId, i) => (
           <Handle
+            key={handleId}
             type="source"
             position={Position.Bottom}
-            id="true"
-            className="!w-3 !h-3 !bg-brand-600 dark:!bg-brand-500 !border-2 !border-white dark:!border-charcoal-900 !-bottom-1.5 !left-[30%]"
+            id={handleId}
+            title={handleId}
+            style={{ left: `${((i + 1) * 100) / (branchHandles.length + 1)}%` }}
+            className={`!w-3 !h-3 !border-2 !border-white dark:!border-charcoal-900 !-bottom-1.5 ${BRANCH_HANDLE_COLORS[handleId] || '!bg-warm-400'}`}
           />
-          <Handle
-            type="source"
-            position={Position.Bottom}
-            id="false"
-            className="!w-3 !h-3 !bg-red-500 !border-2 !border-white dark:!border-charcoal-900 !-bottom-1.5 !left-[70%]"
-          />
-        </>
+        ))
       ) : (
         <Handle
           type="source"

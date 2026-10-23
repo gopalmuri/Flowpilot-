@@ -1,12 +1,13 @@
 import ipaddress
 import socket
-from typing import List, Optional, Set, Tuple
+from typing import List, Set, Tuple
 from urllib.parse import urlparse
+
 import httpx
 
 CLOUD_METADATA_IPS: Set[str] = {
     "169.254.169.254",  # AWS, GCP, Azure, OpenStack instance metadata
-    "fd00:ec2::254",    # AWS IPv6 metadata
+    "fd00:ec2::254",  # AWS IPv6 metadata
 }
 
 BLOCKED_HOSTNAMES: Set[str] = {
@@ -18,6 +19,7 @@ BLOCKED_HOSTNAMES: Set[str] = {
 
 class SSRFValidationError(ValueError):
     """Raised when an outbound URL fails SSRF security checks."""
+
     pass
 
 
@@ -127,7 +129,7 @@ def validate_outbound_url(
             proto=socket.IPPROTO_TCP,
         )
     except socket.gaierror as e:
-        raise SSRFValidationError(f"DNS resolution failed for host '{hostname}': {str(e)}")
+        raise SSRFValidationError(f"DNS resolution failed for host '{hostname}': {str(e)}") from e
 
     if not addr_info:
         raise SSRFValidationError(f"No IP addresses resolved for host '{hostname}'")
@@ -137,8 +139,8 @@ def validate_outbound_url(
         ip_str = info[4][0]
         try:
             ip_obj = ipaddress.ip_address(ip_str)
-        except ValueError:
-            raise SSRFValidationError(f"Invalid resolved IP '{ip_str}'")
+        except ValueError as exc:
+            raise SSRFValidationError(f"Invalid resolved IP '{ip_str}'") from exc
 
         if not allow_local_mock and is_ip_blocked(ip_obj):
             raise SSRFValidationError(
@@ -146,7 +148,7 @@ def validate_outbound_url(
             )
 
         if ip_str not in resolved_ips:
-            resolved_ips.append(ip_str)
+            resolved_ips.append(str(ip_str))
 
     return hostname, resolved_ips
 

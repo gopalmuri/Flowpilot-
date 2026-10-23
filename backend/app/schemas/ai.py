@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -93,7 +94,7 @@ class LeadClassificationResult(BaseModel):
     tokens_used: int = Field(default=0, ge=0, description="Total tokens consumed")
     prompt_tokens: int = Field(default=0, ge=0, description="Prompt tokens consumed")
     completion_tokens: int = Field(default=0, ge=0, description="Completion tokens consumed")
-    provider: str = Field(..., min_length=1, description="Provider used (e.g. mock, openai, anthropic, fallback)")
+    provider: str = Field(..., min_length=1, description="Provider used (e.g. mock, openai, grok, fallback)")
     model: str = Field(..., min_length=1, description="Model identifier")
     latency_ms: int = Field(default=0, ge=0, description="Call latency in milliseconds")
     is_fallback: bool = Field(default=False, description="True if produced by deterministic fallback classifier")
@@ -104,9 +105,7 @@ class LeadClassificationResult(BaseModel):
     def validate_category(cls, v: str) -> str:
         clean = v.strip().lower()
         if clean not in ALLOWED_LEAD_CATEGORIES:
-            raise ValueError(
-                f"Unknown category '{v}'. Allowed categories are: {sorted(ALLOWED_LEAD_CATEGORIES)}"
-            )
+            raise ValueError(f"Unknown category '{v}'. Allowed categories are: {sorted(ALLOWED_LEAD_CATEGORIES)}")
         return clean
 
     @field_validator("priority")
@@ -114,9 +113,7 @@ class LeadClassificationResult(BaseModel):
     def validate_priority(cls, v: str) -> str:
         clean = v.strip().lower()
         if clean not in ALLOWED_PRIORITIES:
-            raise ValueError(
-                f"Unknown priority '{v}'. Allowed priorities are: {sorted(ALLOWED_PRIORITIES)}"
-            )
+            raise ValueError(f"Unknown priority '{v}'. Allowed priorities are: {sorted(ALLOWED_PRIORITIES)}")
         return clean
 
 
@@ -130,3 +127,86 @@ class AIProviderConfig(BaseModel):
     timeout_seconds: float = Field(default=10.0, gt=0.0, description="Request timeout in seconds")
     # Strict Zero-Secret-Exposure: api_key is excluded from serialization and string repr
     api_key: Optional[str] = Field(default=None, repr=False, exclude=True)
+
+
+# ---------------------------------------------------------
+# Inbound message analysis (multi-channel communication)
+# ---------------------------------------------------------
+
+
+class InquiryCategory(str, Enum):
+    NEW_PROJECT = "new_project"
+    PRODUCT_QUESTION = "product_question"
+    PRICING_REQUEST = "pricing_request"
+    SUPPORT_REQUEST = "support_request"
+    PARTNERSHIP = "partnership"
+    RECRUITMENT = "recruitment"
+    SPAM = "spam"
+    OTHER = "other"
+
+
+class InquiryUrgency(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class RecommendedAction(str, Enum):
+    DRAFT_REPLY = "draft_reply"
+    ASK_CLARIFICATION = "ask_clarification"
+    ESCALATE_HUMAN = "escalate_human"
+    IGNORE = "ignore"
+
+
+class MessageAnalysisInput(BaseModel):
+    """Everything the analysis sees. `message_text` is untrusted visitor content."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    channel: str
+    message_text: str = Field(..., min_length=1)
+    sender_name: Optional[str] = None
+    subject: Optional[str] = None
+    business_profile: Optional[str] = Field(
+        None, max_length=6000, description="Verified facts about the business. The only source for claims in a draft."
+    )
+    # Revision only: the authenticated reviewer's instructions and the draft to improve.
+    revision_instructions: Optional[str] = Field(None, max_length=2000)
+    previous_draft: Optional[str] = Field(None, max_length=3000)
+
+
+class MessageAnalysisResult(BaseModel):
+    """Validated structured output. It is data only: nothing in it can trigger an action."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    category: InquiryCategory
+    summary: str = Field(..., min_length=1, max_length=600)
+    requirements: List[str] = Field(default_factory=list, max_length=15)
+    missing_information: List[str] = Field(default_factory=list, max_length=15)
+    urgency: InquiryUrgency = InquiryUrgency.MEDIUM
+    recommended_action: RecommendedAction
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    uncertainty_notes: Optional[str] = Field(None, max_length=600)
+    injection_suspected: bool = False
+    reply_draft: Optional[str] = Field(None, max_length=3000)
+
+    # Set by the server after validation, never by the model.
+    risk_flags: List[str] = Field(default_factory=list)
+    needs_human_attention: bool = False
+    provider: str = "unknown"
+    model: str = "unknown"
+    tokens_used: int = 0
+    latency_ms: int = 0
+    is_fallback: bool = False
+    fallback_reason: Optional[str] = None
+
+    @field_validator("category", "urgency", "recommended_action", mode="before")
+    @classmethod
+    def _normalise_enum(cls, v: Any) -> Any:
+        return v.strip().lower() if isinstance(v, str) else v
+
+    @field_validator("requirements", "missing_information", mode="after")
+    @classmethod
+    def _clip_items(cls, v: List[str]) -> List[str]:
+        return [str(i).strip()[:300] for i in v if str(i).strip()]

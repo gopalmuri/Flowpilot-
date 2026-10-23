@@ -1,24 +1,23 @@
-from app.core.rate_limit import public_webhook_rate_limiter, tenant_webhook_rate_limiter
 import json
 import secrets
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from app.workers.tasks import execute_workflow_run
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.api.deps import get_current_active_user, get_org_context, require_role
+from app.api.deps import get_current_active_user, require_role
 from app.core.database import async_session_maker, get_db
 from app.core.logging import logger
+from app.core.rate_limit import public_webhook_rate_limiter
 from app.core.security import decode_token, is_access_token_revoked
-from app.engine.sanitizer import sanitize_error_message, sanitize_payload
+from app.engine.sanitizer import sanitize_payload
 from app.engine.workflow_engine import WorkflowEngine
 from app.models.audit_log import AuditLog
 from app.models.base import utc_now
-from app.models.organization import Organization
 from app.models.membership import OrganizationMember, OrganizationRole
+from app.models.organization import Organization
 from app.models.user import User
 from app.models.workflow import Workflow, WorkflowVersion
 from app.models.workflow_step import WorkflowStep
@@ -34,6 +33,7 @@ from app.services.webhook_service import (
     validate_payload_size,
     verify_hmac_signature,
 )
+from app.workers.tasks import execute_workflow_run
 
 router = APIRouter(tags=["Webhooks"])
 
@@ -92,7 +92,7 @@ async def _authenticate_tenant_webhook(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=str(e),
                 headers={"WWW-Authenticate": "Bearer"},
-            )
+            ) from e
         jti = payload.get("jti")
         if jti and await is_access_token_revoked(jti):
             raise HTTPException(
@@ -108,11 +108,11 @@ async def _authenticate_tenant_webhook(
             )
         try:
             user_id = uuid.UUID(user_id_str)
-        except ValueError:
+        except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid user identifier",
-            )
+            ) from exc
 
         stmt = select(OrganizationMember).where(
             OrganizationMember.organization_id == organization_id,
@@ -146,6 +146,7 @@ async def _authenticate_tenant_webhook(
 # 1. Public Direct Ingestion Route
 # ==============================================================================
 
+
 @router.post(
     "/webhooks/{webhook_key}",
     response_model=WebhookResponse,
@@ -156,7 +157,9 @@ async def handle_public_webhook(
     webhook_key: str,
     request: Request,
     response: Response,
-    async_dispatch: bool = Query(False, description="Dispatch execution to Celery background workers and return 202 Accepted"),
+    async_dispatch: bool = Query(
+        False, description="Dispatch execution to Celery background workers and return 202 Accepted"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -204,9 +207,7 @@ async def handle_public_webhook(
         )
 
     # 2. Extract configuration & secret_token
-    steps_stmt = select(WorkflowStep).where(
-        WorkflowStep.workflow_version_id == version.id
-    )
+    steps_stmt = select(WorkflowStep).where(WorkflowStep.workflow_version_id == version.id)
     steps = (await db.execute(steps_stmt)).scalars().all()
     secret_token, allowed_methods = extract_webhook_secret_and_config(steps)
 
@@ -235,11 +236,11 @@ async def handle_public_webhook(
     # 4. Parse JSON payload
     try:
         payload = json.loads(raw_body.decode("utf-8")) if raw_body else {}
-    except Exception:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid JSON payload",
-        )
+        ) from exc
 
     if not isinstance(payload, dict):
         raise HTTPException(
@@ -309,6 +310,7 @@ async def handle_public_webhook(
 # 2. Tenant-Scoped Webhook Ingestion Route
 # ==============================================================================
 
+
 @router.post(
     "/organizations/{organization_id}/workflows/{workflow_id}/webhook",
     response_model=WebhookResponse,
@@ -320,7 +322,9 @@ async def handle_tenant_webhook(
     workflow_id: uuid.UUID,
     request: Request,
     response: Response,
-    async_dispatch: bool = Query(False, description="Dispatch execution to Celery background workers and return 202 Accepted"),
+    async_dispatch: bool = Query(
+        False, description="Dispatch execution to Celery background workers and return 202 Accepted"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -368,9 +372,7 @@ async def handle_tenant_webhook(
             detail="Active workflow version is not in PUBLISHED status",
         )
 
-    steps_stmt = select(WorkflowStep).where(
-        WorkflowStep.workflow_version_id == version.id
-    )
+    steps_stmt = select(WorkflowStep).where(WorkflowStep.workflow_version_id == version.id)
     steps = (await db.execute(steps_stmt)).scalars().all()
     secret_token, allowed_methods = extract_webhook_secret_and_config(steps)
 
@@ -393,11 +395,11 @@ async def handle_tenant_webhook(
     # Parse JSON
     try:
         payload = json.loads(raw_body.decode("utf-8")) if raw_body else {}
-    except Exception:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid JSON payload",
-        )
+        ) from exc
 
     if not isinstance(payload, dict):
         raise HTTPException(
@@ -465,6 +467,7 @@ async def handle_tenant_webhook(
 # 3. Webhook Inspection Route (Strict Zero-Secret Exposure)
 # ==============================================================================
 
+
 @router.get(
     "/organizations/{organization_id}/workflows/{workflow_id}/webhook",
     response_model=WebhookDetailsResponse,
@@ -474,12 +477,14 @@ async def inspect_webhook(
     organization_id: uuid.UUID,
     workflow_id: uuid.UUID,
     org_context: Tuple[Organization, OrganizationMember] = Depends(
-        require_role([
-            OrganizationRole.OWNER,
-            OrganizationRole.ADMIN,
-            OrganizationRole.MANAGER,
-            OrganizationRole.OPERATOR,
-        ])
+        require_role(
+            [
+                OrganizationRole.OWNER,
+                OrganizationRole.ADMIN,
+                OrganizationRole.MANAGER,
+                OrganizationRole.OPERATOR,
+            ]
+        )
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -504,9 +509,7 @@ async def inspect_webhook(
     allowed_methods = ["POST"]
 
     if workflow.active_version_id:
-        steps_stmt = select(WorkflowStep).where(
-            WorkflowStep.workflow_version_id == workflow.active_version_id
-        )
+        steps_stmt = select(WorkflowStep).where(WorkflowStep.workflow_version_id == workflow.active_version_id)
         steps = (await db.execute(steps_stmt)).scalars().all()
         secret_token, methods = extract_webhook_secret_and_config(steps)
         has_secret_token = bool(secret_token)
@@ -527,6 +530,7 @@ async def inspect_webhook(
 # 4. Webhook Key Rotation Route
 # ==============================================================================
 
+
 @router.post(
     "/organizations/{organization_id}/workflows/{workflow_id}/webhook/rotate-key",
     response_model=WebhookKeyRotateResponse,
@@ -536,11 +540,13 @@ async def rotate_webhook_key(
     organization_id: uuid.UUID,
     workflow_id: uuid.UUID,
     org_context: Tuple[Organization, OrganizationMember] = Depends(
-        require_role([
-            OrganizationRole.OWNER,
-            OrganizationRole.ADMIN,
-            OrganizationRole.MANAGER,
-        ])
+        require_role(
+            [
+                OrganizationRole.OWNER,
+                OrganizationRole.ADMIN,
+                OrganizationRole.MANAGER,
+            ]
+        )
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),

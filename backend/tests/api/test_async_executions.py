@@ -1,8 +1,9 @@
 import json
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, Any, Tuple
-from unittest.mock import patch, MagicMock
+from typing import Any, Dict, Tuple
+from unittest.mock import MagicMock, patch
+
 import pytest
 from httpx import AsyncClient
 
@@ -19,9 +20,7 @@ async def create_authenticated_user(async_client: AsyncClient, name: str):
         "full_name": f"{name.capitalize()} User",
     }
     await async_client.post("/api/v1/auth/register", json=reg_payload)
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     return email, password, headers
@@ -136,6 +135,7 @@ async def setup_webhook_workflow(
 # ==============================================================================
 # Async Execution API Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_trigger_workflow_run_async_dispatch_query(async_client: AsyncClient):

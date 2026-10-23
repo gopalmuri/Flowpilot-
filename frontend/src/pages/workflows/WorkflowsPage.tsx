@@ -17,8 +17,11 @@ import {
   Terminal,
   X,
   Edit2,
+  Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import {
   listWorkflows,
   createWorkflow,
@@ -26,18 +29,27 @@ import {
   enableWorkflow,
   disableWorkflow,
   updateWorkflow,
+  getAITemplates,
 } from '../../services/workflowService';
 import { triggerExecution } from '../../services/executionService';
 import { Workflow, WorkflowStatus, WorkflowCreateRequest } from '../../types/workflow';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { AIWorkflowTemplate } from '../../types/workflowAI';
+import { EXAMPLE_PROMPTS } from '../../components/workflow/ai/examplePrompts';
 
 export const WorkflowsPage: React.FC = () => {
   const navigate = useNavigate();
   const { activeOrganization, activeRole } = useAuth();
+  const { showSuccess, showError, showWarning, showInfo, confirm } = useToast();
 
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Prompt-first hero
+  const [heroPrompt, setHeroPrompt] = useState<string>('');
+  const [templates, setTemplates] = useState<AIWorkflowTemplate[]>([]);
+  const heroInputRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -93,6 +105,29 @@ export const WorkflowsPage: React.FC = () => {
     fetchWorkflows();
   }, [fetchWorkflows]);
 
+  // Templates are a nice-to-have: if they cannot load, the row simply does not appear.
+  useEffect(() => {
+    if (!activeOrganization) return;
+    let cancelled = false;
+    Promise.resolve()
+      .then(() => getAITemplates(activeOrganization.id))
+      .then((items) => {
+        if (!cancelled) setTemplates(Array.isArray(items) ? items.slice(0, 6) : []);
+      })
+      .catch(() => {
+        if (!cancelled) setTemplates([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeOrganization]);
+
+  const startAIBuild = (prompt: string) => {
+    const text = prompt.trim();
+    if (!text) return;
+    navigate('/workflows/new/ai', { state: { prompt: text } });
+  };
+
   // Close overflow menu on outside click
   useEffect(() => {
     const handleDocClick = () => setOpenMenuId(null);
@@ -134,8 +169,9 @@ export const WorkflowsPage: React.FC = () => {
       });
       setWorkflows((prev) => prev.map((w) => (w.id === updated.id ? { ...w, ...updated } : w)));
       setEditingWorkflow(null);
+      showSuccess(`Workflow "${updated.name}" updated successfully.`);
     } catch (err: any) {
-      alert(err?.response?.data?.detail || 'Failed to update workflow metadata.');
+      showError(err.message || 'Failed to update workflow metadata.');
     } finally {
       setIsUpdating(false);
     }
@@ -156,13 +192,15 @@ export const WorkflowsPage: React.FC = () => {
 
       const res = await triggerExecution(activeOrganization.id, runningWorkflow.id, parsedPayload);
       setRunSuccessMsg(`Execution triggered successfully! Correlation ID: ${res.correlation_id}`);
+      showSuccess(`Execution dispatched for "${runningWorkflow.name}". Correlation ID: ${res.correlation_id}`);
       setTimeout(() => {
         setRunningWorkflow(null);
         setRunSuccessMsg(null);
         navigate(`/executions?search=${encodeURIComponent(res.correlation_id)}`);
       }, 1200);
     } catch (err: any) {
-      setRunErrorMsg(err?.response?.data?.detail || err.message || 'Failed to trigger workflow run.');
+      setRunErrorMsg(err.message || 'Failed to trigger workflow run.');
+      showError(err.message || 'Failed to trigger workflow run.');
     } finally {
       setIsRunning(false);
     }
@@ -170,34 +208,59 @@ export const WorkflowsPage: React.FC = () => {
 
   const handleToggleStatus = async (wf: Workflow) => {
     if (!activeOrganization || !canEdit) return;
+
+    // Check if activating a workflow that has no active published version
+    if (wf.status !== WorkflowStatus.ACTIVE && !wf.active_version_id) {
+      showWarning(
+        `"${wf.name}" is currently in draft and cannot be activated without a published version. Open the Visual Editor and click "Publish Version" first.`,
+        'Published Version Required',
+        {
+          label: 'Open Visual Editor',
+          onClick: () => navigate(`/workflows/${wf.id}`),
+        }
+      );
+      return;
+    }
+
     setActionWorkflowId(wf.id);
     try {
       if (wf.status === WorkflowStatus.ACTIVE) {
         await disableWorkflow(activeOrganization.id, wf.id);
+        showInfo(`"${wf.name}" is now paused. No new executions will be scheduled.`, 'Workflow Paused');
       } else {
         await enableWorkflow(activeOrganization.id, wf.id);
+        showSuccess(`"${wf.name}" has been activated successfully.`, 'Workflow Activated');
       }
       await fetchWorkflows();
     } catch (err: any) {
-      alert(err?.response?.data?.detail || 'Status toggle failed.');
+      showError(err.message || 'Status toggle failed.', 'Action Failed');
     } finally {
       setActionWorkflowId(null);
     }
   };
 
-  const handleArchive = async (wf: Workflow) => {
+  const handleArchive = (wf: Workflow) => {
     if (!activeOrganization || !canEdit) return;
-    if (!window.confirm(`Are you sure you want to archive "${wf.name}"?`)) return;
 
-    setActionWorkflowId(wf.id);
-    try {
-      await archiveWorkflow(activeOrganization.id, wf.id);
-      await fetchWorkflows();
-    } catch (err: any) {
-      alert(err?.response?.data?.detail || 'Failed to archive workflow.');
-    } finally {
-      setActionWorkflowId(null);
-    }
+    confirm({
+      title: 'Archive Workflow',
+      message: `Are you sure you want to archive "${wf.name}"? Active triggers will be paused, while version history and execution records will be preserved.`,
+      confirmLabel: 'Archive Workflow',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+      onConfirm: async () => {
+        setActionWorkflowId(wf.id);
+        try {
+          await archiveWorkflow(activeOrganization.id, wf.id);
+          showSuccess(`Workflow "${wf.name}" has been archived.`, 'Archived');
+          await fetchWorkflows();
+        } catch (err: any) {
+          showError(err.message || 'Failed to archive workflow.', 'Archive Failed');
+        } finally {
+          setActionWorkflowId(null);
+        }
+      },
+    });
   };
 
   const filteredWorkflows = useMemo(() => {
@@ -242,7 +305,7 @@ export const WorkflowsPage: React.FC = () => {
             Workflow Orchestration
           </h1>
           <p className="text-xs sm:text-sm text-warm-600 dark:text-charcoal-400 mt-1 max-w-xl">
-            Design deterministic automation pipelines with validation, AI classification, and human approvals.
+            Describe a process in plain English, review the steps, and turn it on when you are ready.
           </p>
         </div>
 
@@ -250,13 +313,117 @@ export const WorkflowsPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white text-xs font-semibold shadow-subtle transition-all cursor-pointer flex-shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-warm-100 hover:bg-warm-200 dark:bg-charcoal-850 dark:hover:bg-charcoal-800 border border-warm-300 dark:border-charcoal-750 text-warm-800 dark:text-charcoal-200 text-xs font-semibold transition-all cursor-pointer flex-shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>New Workflow</span>
           </button>
         )}
       </div>
+
+
+      {/* Prompt-first hero */}
+      {canEdit && (
+        <section
+          aria-labelledby="ai-hero-heading"
+          className="relative overflow-hidden p-5 sm:p-7 rounded-2xl bg-gradient-to-br from-brand-50 via-white to-teal-50 dark:from-brand-950/40 dark:via-charcoal-900 dark:to-teal-950/30 border border-brand-200 dark:border-brand-800/50 shadow-subtle"
+        >
+          <div className="max-w-3xl space-y-4">
+            <div className="space-y-1">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400">
+                <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                Describe it &bull; Review it &bull; Turn it on
+              </span>
+              <h2
+                id="ai-hero-heading"
+                className="text-xl sm:text-2xl font-extrabold text-warm-900 dark:text-charcoal-100 tracking-tight"
+              >
+                What do you want to automate?
+              </h2>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                startAIBuild(heroPrompt);
+              }}
+              className="space-y-3"
+            >
+              <label htmlFor="hero-prompt" className="sr-only">
+                What do you want to automate?
+              </label>
+              <textarea
+                id="hero-prompt"
+                ref={heroInputRef}
+                rows={3}
+                value={heroPrompt}
+                onChange={(e) => setHeroPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    startAIBuild(heroPrompt);
+                  }
+                }}
+                placeholder="e.g. When a customer emails us, draft a reply and ask me to approve it before it is sent"
+                className="w-full resize-none px-4 py-3 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-xl text-sm text-warm-900 dark:text-charcoal-100 placeholder:text-warm-500 dark:placeholder:text-charcoal-500 focus:outline-none focus:border-brand-600 dark:focus:border-brand-500 shadow-2xs"
+              />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={!heroPrompt.trim()}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white text-sm font-semibold shadow-subtle disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer btn-micro-hover"
+                >
+                  <Sparkles className="w-4 h-4" aria-hidden="true" />
+                  <span>Build with AI</span>
+                </button>
+                <p className="flex items-center gap-1.5 text-xs text-warm-600 dark:text-charcoal-400">
+                  <ShieldCheck className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" aria-hidden="true" />
+                  Nothing runs until you turn it on. Press Enter to build, Shift+Enter for a new line.
+                </p>
+              </div>
+            </form>
+
+            <div className="flex flex-wrap gap-2" aria-label="Example ideas">
+              {EXAMPLE_PROMPTS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => {
+                    setHeroPrompt(p);
+                    heroInputRef.current?.focus();
+                  }}
+                  className="text-left text-xs px-3 py-1.5 rounded-full border border-warm-300 dark:border-charcoal-700 bg-white/80 dark:bg-charcoal-900/80 text-warm-700 dark:text-charcoal-300 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400 transition cursor-pointer"
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+
+            {templates.length > 0 && (
+              <div className="pt-1 space-y-2">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-warm-600 dark:text-charcoal-400">
+                  Or start from a template
+                </h3>
+                <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1">
+                  {templates.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => startAIBuild(t.prompt)}
+                      className="min-w-[200px] max-w-[240px] text-left p-3 rounded-xl bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 hover:border-brand-500 shadow-2xs transition cursor-pointer flex-shrink-0"
+                    >
+                      <div className="text-xs font-semibold text-warm-900 dark:text-charcoal-100">{t.title}</div>
+                      <div className="text-[11px] text-warm-600 dark:text-charcoal-400 mt-0.5 line-clamp-2">
+                        {t.description}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -355,6 +522,15 @@ export const WorkflowsPage: React.FC = () => {
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <StatusBadge status={wf.status} size="sm" />
+                    {wf.status === WorkflowStatus.ACTIVE ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md bg-brand-600 text-white dark:bg-brand-500">
+                        Live
+                      </span>
+                    ) : wf.status === WorkflowStatus.DRAFT ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800/60">
+                        Not running yet
+                      </span>
+                    ) : null}
                     {wf.active_version ? (
                       <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-warm-100 dark:bg-charcoal-850 text-brand-700 dark:text-brand-400 border border-warm-200 dark:border-charcoal-750">
                         <CheckCircle2 className="w-3 h-3 text-brand-600 dark:text-brand-500" />
@@ -531,11 +707,21 @@ export const WorkflowsPage: React.FC = () => {
                       className={`p-1.5 rounded-lg border transition cursor-pointer ${
                         wf.status === WorkflowStatus.ACTIVE
                           ? 'border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
-                          : 'border-brand-300 dark:border-brand-800 text-brand-700 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/30'
+                          : wf.active_version_id
+                          ? 'border-brand-300 dark:border-brand-800 text-brand-700 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/30'
+                          : 'border-warm-300 dark:border-charcoal-700 text-warm-600 dark:text-charcoal-400 hover:bg-warm-100 dark:hover:bg-charcoal-800'
                       }`}
-                      title={wf.status === WorkflowStatus.ACTIVE ? 'Pause Workflow' : 'Activate Workflow'}
+                      title={
+                        wf.status === WorkflowStatus.ACTIVE
+                          ? 'Pause Workflow'
+                          : wf.active_version_id
+                          ? 'Activate Workflow'
+                          : 'Draft Workflow (Open visual editor to publish version 1.0)'
+                      }
                     >
-                      {wf.status === WorkflowStatus.ACTIVE ? (
+                      {actionWorkflowId === wf.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : wf.status === WorkflowStatus.ACTIVE ? (
                         <Pause className="w-3.5 h-3.5" />
                       ) : (
                         <Play className="w-3.5 h-3.5" />

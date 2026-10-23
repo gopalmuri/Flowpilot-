@@ -1,5 +1,6 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
-from app.schemas.condition import ConditionOperator, LogicalOperator, RuleGroup, ConditionClause
+from typing import Any, Dict, List, Tuple, Union
+
+from app.schemas.condition import ConditionClause, LogicalOperator, RuleGroup
 
 
 def resolve_path_entry(path: str, context: Dict[str, Any]) -> Tuple[bool, Any]:
@@ -14,7 +15,7 @@ def resolve_path_entry(path: str, context: Dict[str, Any]) -> Tuple[bool, Any]:
     segments = path.strip().split(".")
     curr: Any = context
 
-    for i, seg in enumerate(segments):
+    for seg in segments:
         if isinstance(curr, dict):
             if seg in curr:
                 curr = curr[seg]
@@ -235,7 +236,7 @@ def compare_values(actual: Any, op: str, expected: Any, found: bool = True) -> b
         try:
             if _is_numeric(actual) and _is_numeric(expected):
                 return actual > expected
-            if type(actual) == type(expected):
+            if type(actual) is type(expected):
                 return actual > expected
         except TypeError:
             return False
@@ -247,7 +248,7 @@ def compare_values(actual: Any, op: str, expected: Any, found: bool = True) -> b
         try:
             if _is_numeric(actual) and _is_numeric(expected):
                 return actual < expected
-            if type(actual) == type(expected):
+            if type(actual) is type(expected):
                 return actual < expected
         except TypeError:
             return False
@@ -259,7 +260,7 @@ def compare_values(actual: Any, op: str, expected: Any, found: bool = True) -> b
         try:
             if _is_numeric(actual) and _is_numeric(expected):
                 return actual >= expected
-            if type(actual) == type(expected):
+            if type(actual) is type(expected):
                 return actual >= expected
         except TypeError:
             return False
@@ -271,7 +272,7 @@ def compare_values(actual: Any, op: str, expected: Any, found: bool = True) -> b
         try:
             if _is_numeric(actual) and _is_numeric(expected):
                 return actual <= expected
-            if type(actual) == type(expected):
+            if type(actual) is type(expected):
                 return actual <= expected
         except TypeError:
             return False

@@ -4,7 +4,9 @@ import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
+
 import httpx
+
 from app.core.ssrf import (
     SSRFValidationError,
     create_ssrf_safe_client,
@@ -40,6 +42,7 @@ MAX_RESPONSE_BYTES = 10 * 1024  # 10 KB response size limit
 
 class SlackDeliveryError(Exception):
     """Raised when Slack notification delivery fails. Never exposes credentials."""
+
     pass
 
 
@@ -182,11 +185,7 @@ class SlackService:
         start_time = time.perf_counter()
 
         # Check for mock mode or mock URL
-        is_mock = (
-            mock_mode
-            or webhook_url.startswith("mock://")
-            or "hooks.slack.com/services/MOCK" in webhook_url
-        )
+        is_mock = mock_mode or webhook_url.startswith("mock://") or "hooks.slack.com/services/MOCK" in webhook_url
 
         mock_msg_id = f"slack_msg_{uuid.uuid4().hex[:12]}"
         now_iso = datetime.now(timezone.utc).isoformat()
@@ -232,9 +231,7 @@ class SlackService:
                         break
 
                 if response.status_code >= 400:
-                    raise SlackDeliveryError(
-                        f"Slack webhook endpoint returned HTTP {response.status_code}"
-                    )
+                    raise SlackDeliveryError(f"Slack webhook endpoint returned HTTP {response.status_code}")
 
                 elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
                 return {
@@ -246,14 +243,14 @@ class SlackService:
                     "latency_ms": elapsed_ms,
                     "mock_adapter": False,
                 }
-        except httpx.TimeoutException:
-            raise SlackDeliveryError("Slack delivery timed out after 5.0 seconds")
+        except httpx.TimeoutException as exc:
+            raise SlackDeliveryError("Slack delivery timed out after 5.0 seconds") from exc
         except SSRFValidationError:
             raise
         except Exception as e:
             if isinstance(e, SlackDeliveryError):
                 raise
-            raise SlackDeliveryError(f"Slack delivery failed: {type(e).__name__}")
+            raise SlackDeliveryError(f"Slack delivery failed: {type(e).__name__}") from e
 
     async def test_webhook(
         self,

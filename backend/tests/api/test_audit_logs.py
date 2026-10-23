@@ -1,5 +1,5 @@
-import asyncio
 import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -14,9 +14,7 @@ async def create_authenticated_user(async_client: AsyncClient, name: str):
         "full_name": f"{name.capitalize()} User",
     }
     await async_client.post("/api/v1/auth/register", json=reg_payload)
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     return email, password, headers
@@ -71,7 +69,10 @@ async def test_workflow_and_execution_lifecycle_audit_events_recorded(async_clie
     put_res = await async_client.put(
         f"/api/v1/organizations/{org_id}/workflows/{wf_id}/versions/{v1_id}",
         headers=headers,
-        json={"steps": [{"step_key": "init", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}}], "connections": []},
+        json={
+            "steps": [{"step_key": "init", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}}],
+            "connections": [],
+        },
     )
     assert put_res.status_code == 200
 
@@ -88,7 +89,7 @@ async def test_workflow_and_execution_lifecycle_audit_events_recorded(async_clie
             json={"correlation_id": "corr_audit_100", "trigger_payload": {}},
         )
     ).json()
-    run_id = run["id"]
+    _run_id = run["id"]
 
     # 4. Archive workflow -> workflow.archived
     await async_client.post(
@@ -137,7 +138,12 @@ async def test_execution_failed_and_cancelled_audit_events(async_client: AsyncCl
         json={
             "steps": [
                 {"step_key": "t", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}},
-                {"step_key": "appr", "step_type": "HUMAN_APPROVAL", "name": "Review", "config": {"approver_role": "MANAGER"}},
+                {
+                    "step_key": "appr",
+                    "step_type": "HUMAN_APPROVAL",
+                    "name": "Review",
+                    "config": {"approver_role": "MANAGER"},
+                },
             ],
             "connections": [{"source_step_key": "t", "target_step_key": "appr"}],
         },
@@ -183,7 +189,7 @@ async def test_audit_logs_query_filters_and_detail(async_client: AsyncClient):
     """Verifies filtering audit logs by action, resource_type, search, and retrieving single detail."""
     org_id, headers, _, _ = await create_org_and_owner(async_client, "audit_filter")
 
-    wf = (
+    _wf = (
         await async_client.post(
             f"/api/v1/organizations/{org_id}/workflows",
             headers=headers,

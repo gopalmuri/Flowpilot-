@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, Optional, Set
 
 SENSITIVE_KEY_PATTERNS: Set[str] = {
     "password",
@@ -128,7 +128,7 @@ def sanitize_error_message(msg: Optional[str]) -> Optional[str]:
     for pattern in ["Bearer ", "token=", "key=", "secret="]:
         if pattern.lower() in sanitized.lower():
             idx = sanitized.lower().find(pattern.lower())
-            sanitized = sanitized[:idx + len(pattern)] + "[REDACTED]"
+            sanitized = sanitized[: idx + len(pattern)] + "[REDACTED]"
 
     # Truncate overly long error messages to 2000 chars
     if len(sanitized) > 2000:

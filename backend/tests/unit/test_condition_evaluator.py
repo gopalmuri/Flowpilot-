@@ -1,16 +1,17 @@
 import ast
 from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
+
 from app.engine.condition_evaluator import (
     compare_values,
     evaluate_condition_rule,
-    evaluate_is_empty,
-    evaluate_is_not_empty,
     evaluate_contains,
     evaluate_in,
+    evaluate_is_empty,
+    evaluate_is_not_empty,
     resolve_path_entry,
-    resolve_path_value,
 )
 from app.schemas.condition import (
     ConditionClause,
@@ -289,6 +290,7 @@ from app.engine.condition_evaluator import (
     resolve_context_path,
 )
 
+
 def test_path_resolution_list_indexing_and_fallbacks():
     context = {
         "items": [{"name": "item0"}, {"name": "item1"}],
@@ -428,14 +430,16 @@ def test_rule_group_advanced_logic_branches():
     with pytest.raises(ValueError, match="must have exactly 1 child"):
         evaluate_rule_group({"logic": "NOT", "clauses": []}, context)
     with pytest.raises(ValueError, match="must have exactly 1 child"):
-        evaluate_rule_group({
-            "logic": "NOT",
-            "clauses": [
-                {"field": "user.role", "operator": "equals", "value": "admin"},
-                {"field": "user.score", "operator": "equals", "value": 95},
-            ]
-        }, context)
-
+        evaluate_rule_group(
+            {
+                "logic": "NOT",
+                "clauses": [
+                    {"field": "user.role", "operator": "equals", "value": "admin"},
+                    {"field": "user.score", "operator": "equals", "value": 95},
+                ],
+            },
+            context,
+        )
 
 
 def test_evaluate_condition_rule_legacy_and_fallback_shapes():
@@ -492,9 +496,7 @@ def test_string_relational_comparisons_and_or_subgroups():
     or_with_subgroup = {
         "logic": "OR",
         "clauses": [],
-        "groups": [
-            {"logic": "AND", "clauses": [{"field": "role", "operator": "equals", "value": "admin"}]}
-        ],
+        "groups": [{"logic": "AND", "clauses": [{"field": "role", "operator": "equals", "value": "admin"}]}],
     }
     assert evaluate_rule_group(or_with_subgroup, context) is True
 
@@ -502,9 +504,7 @@ def test_string_relational_comparisons_and_or_subgroups():
     or_failing_subgroup = {
         "logic": "OR",
         "clauses": [],
-        "groups": [
-            {"logic": "AND", "clauses": [{"field": "role", "operator": "equals", "value": "guest"}]}
-        ],
+        "groups": [{"logic": "AND", "clauses": [{"field": "role", "operator": "equals", "value": "guest"}]}],
     }
     assert evaluate_rule_group(or_failing_subgroup, context) is False
 

@@ -321,14 +321,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     const matchedApprovals = approvals.filter(
       (a) =>
         a.step_key.toLowerCase().includes(q) ||
-        a.required_role.toLowerCase().includes(q) ||
+        (a.required_role ?? '').toLowerCase().includes(q) ||
         a.id.toLowerCase().includes(q)
     );
     for (const a of matchedApprovals.slice(0, 4)) {
       items.push({
         id: `appr-${a.id}`,
         title: `Pending Approval: Step ${a.step_key}`,
-        subtitle: `Required Role: ${a.required_role} • ${new Date(a.requested_at).toLocaleTimeString()}`,
+        subtitle: `Required Role: ${a.required_role ?? 'Any'} • ${new Date(a.requested_at).toLocaleTimeString()}`,
         category: 'Approvals',
         icon: CheckSquare,
         badge: 'PENDING',

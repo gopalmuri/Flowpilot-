@@ -1,23 +1,26 @@
 import asyncio
 import concurrent.futures
+import os
+import socket
 import uuid
 from typing import Any, Dict, Optional
 
 import httpx
 from redis.exceptions import RedisError
-from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 from app.core.logging import logger
+from app.engine.recovery import recover_stalled_resumes
 from app.engine.sanitizer import sanitize_error_message, sanitize_payload
 from app.engine.workflow_engine import WorkflowEngine
 from app.models.base import utc_now
 from app.models.workflow import Workflow
 from app.models.workflow_run import WorkflowRun
 from app.schemas.execution import WorkflowRunStatus
+from app.services.outbound import delivery as outbound_delivery
 from app.services.webhook_service import get_or_create_idempotent_run
 from app.workers.celery_app import celery_app
 
@@ -51,6 +54,7 @@ def run_coroutine_sync(coro):
 # ==============================================================================
 # 1. Asynchronous Workflow DAG Execution Task
 # ==============================================================================
+
 
 async def _async_execute_workflow_run(
     organization_id: str,
@@ -151,6 +155,7 @@ def execute_workflow_run(
 # 2. Asynchronous Human Approval Resumption Task
 # ==============================================================================
 
+
 async def _async_resume_workflow_run(
     organization_id: str,
     run_id: str,
@@ -230,6 +235,7 @@ def resume_workflow_run(
 # ==============================================================================
 # 3. Asynchronous Webhook Event Intake Task
 # ==============================================================================
+
 
 async def _async_process_webhook_event(
     organization_id: str,
@@ -313,3 +319,155 @@ def process_webhook_event(
             client_idempotency_key=client_idempotency_key,
         )
     )
+
+
+# ==============================================================================
+# Recovery of decided approvals whose workflow resume was lost (worker/process died)
+# ==============================================================================
+
+
+async def _async_recover_stalled_approvals(older_than_seconds: int) -> Dict[str, Any]:
+    engine_db, session_maker = get_worker_session_maker()
+    try:
+        recovered = await recover_stalled_resumes(session_maker, older_than_seconds=older_than_seconds)
+        return {"recovered": [str(i) for i in recovered]}
+    finally:
+        await engine_db.dispose()
+
+
+@celery_app.task(name="tasks.recover_stalled_approvals")
+def recover_stalled_approvals(older_than_seconds: int = 300) -> Dict[str, Any]:
+    return run_coroutine_sync(_async_recover_stalled_approvals(older_than_seconds))
+
+
+# ==============================================================================
+# Outbound delivery (outbox relay, delivery attempts, stale-state recovery)
+# ==============================================================================
+
+
+def _worker_id() -> str:
+    return f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
+
+
+async def _async_deliver(delivery_id: str) -> str:
+    engine_db, session_maker = get_worker_session_maker()
+    try:
+        return await outbound_delivery.process_delivery(session_maker, uuid.UUID(delivery_id), _worker_id())
+    finally:
+        await engine_db.dispose()
+
+
+@celery_app.task(name="tasks.deliver_outbound")
+def deliver_outbound(delivery_id: str) -> str:
+    """One delivery attempt. Safe to run twice for the same id: only one run can claim the delivery."""
+    return run_coroutine_sync(_async_deliver(delivery_id))
+
+
+async def _async_dispatch() -> list:
+    engine_db, session_maker = get_worker_session_maker()
+    try:
+        ids = await outbound_delivery.dispatch_due(session_maker, enqueue=lambda i: deliver_outbound.delay(i))
+        return [str(i) for i in ids]
+    finally:
+        await engine_db.dispose()
+
+
+@celery_app.task(name="tasks.dispatch_outbound_deliveries")
+def dispatch_outbound_deliveries() -> list:
+    """Outbox relay: enqueue committed deliveries that are due (or whose earlier enqueue was lost)."""
+    return run_coroutine_sync(_async_dispatch())
+
+
+async def _async_recover_deliveries() -> Dict[str, Any]:
+    engine_db, session_maker = get_worker_session_maker()
+    try:
+        return await outbound_delivery.recover_stale(session_maker)
+    finally:
+        await engine_db.dispose()
+
+
+@celery_app.task(name="tasks.recover_stale_deliveries")
+def recover_stale_deliveries() -> Dict[str, Any]:
+    """Releases stale claims, marks lost sends UNKNOWN_OUTCOME and reconciles them. Never resends on a guess."""
+    return run_coroutine_sync(_async_recover_deliveries())
+
+
+# ==============================================================================
+# Gmail (mailbox sync, watch renewal) and scheduler heartbeat
+# ==============================================================================
+
+
+async def _async_sync_gmail(account_id: str) -> Dict[str, Any]:
+    from app.services.gmail.client import default_client_factory
+    from app.services.gmail.sync import sync_mailbox
+
+    engine_db, session_maker = get_worker_session_maker()
+    try:
+        outcome = await sync_mailbox(session_maker, uuid.UUID(account_id), default_client_factory, _worker_id())
+        return {
+            "status": outcome.status,
+            "ingested": outcome.ingested,
+            "duplicates": outcome.duplicates,
+            "skipped": outcome.skipped,
+            "resynced": outcome.resynced,
+            "error": outcome.error,
+            "retry_after": outcome.retry_after,
+        }
+    finally:
+        await engine_db.dispose()
+
+
+@celery_app.task(name="tasks.sync_gmail_mailbox", bind=True, max_retries=5)
+def sync_gmail_mailbox(self, account_id: str) -> Dict[str, Any]:
+    """Syncs one mailbox from its stored historyId. Safe to run any number of times for the same mailbox."""
+    result = run_coroutine_sync(_async_sync_gmail(account_id))
+    if result["status"] == "retry":
+        countdown = result.get("retry_after") or min(30 * (2**self.request.retries), 900)
+        raise self.retry(countdown=countdown)
+    return result
+
+
+async def _async_sync_due_gmail() -> list:
+    from app.services.gmail.sync import find_due_accounts
+
+    engine_db, session_maker = get_worker_session_maker()
+    try:
+        ids = await find_due_accounts(session_maker)
+        return [str(i) for i in ids]
+    finally:
+        await engine_db.dispose()
+
+
+@celery_app.task(name="tasks.sync_due_gmail_mailboxes")
+def sync_due_gmail_mailboxes() -> list:
+    """Periodic: enqueue a sync for every mailbox with a pending notification or past its poll interval."""
+    ids = run_coroutine_sync(_async_sync_due_gmail())
+    for account_id in ids:
+        sync_gmail_mailbox.delay(account_id)
+    return ids
+
+
+async def _async_renew_gmail_watches() -> Dict[str, int]:
+    from app.services.gmail.client import default_client_factory
+    from app.services.gmail.watch import renew_due_watches
+
+    engine_db, session_maker = get_worker_session_maker()
+    try:
+        return await renew_due_watches(session_maker, default_client_factory)
+    finally:
+        await engine_db.dispose()
+
+
+@celery_app.task(name="tasks.renew_gmail_watches")
+def renew_gmail_watches() -> Dict[str, int]:
+    """Periodic: re-register mailbox watches that are missing or close to expiring."""
+    return run_coroutine_sync(_async_renew_gmail_watches())
+
+
+@celery_app.task(name="tasks.scheduler_heartbeat")
+def scheduler_heartbeat() -> str:
+    """Periodic: proves the scheduler and a worker are both alive (read by the Gmail status endpoint)."""
+    from app.core.scheduler_health import record_tick
+
+    record_tick()
+    return "ok"

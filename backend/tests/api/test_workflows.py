@@ -1,5 +1,6 @@
 import asyncio
 import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -17,9 +18,7 @@ async def create_authenticated_user(async_client: AsyncClient, name: str, org_na
         reg_payload["organization_name"] = org_name
 
     await async_client.post("/api/v1/auth/register", json=reg_payload)
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     return email, headers

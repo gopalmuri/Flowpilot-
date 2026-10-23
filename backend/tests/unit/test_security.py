@@ -1,7 +1,9 @@
 import uuid
 from datetime import timedelta
+
 import pytest
 from pydantic import ValidationError
+
 from app.core.security import (
     create_access_token,
     create_refresh_token,

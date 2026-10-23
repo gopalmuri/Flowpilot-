@@ -20,6 +20,7 @@ Analytics Aggregation Verification
 
 import time
 import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -228,7 +229,7 @@ async def test_full_lead_automation_e2e_pipeline(async_client: AsyncClient):
     )
     assert audit_res.status_code == 200
     logs = audit_res.json().get("items", [])
-    actions = [l["action"] for l in logs]
+    actions = [entry["action"] for entry in logs]
     assert any("approval" in act for act in actions)
 
     # 12. Verify Analytics Overview Shows Terminal Success & Volume

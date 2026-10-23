@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { Sun, Moon, Laptop, ChevronDown, Check } from 'lucide-react';
 import { useTheme, ThemeMode } from '../../context/ThemeContext';
 
@@ -18,8 +18,8 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ compact = false, c
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
   const options: { mode: ThemeMode; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -27,6 +27,14 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ compact = false, c
     { mode: 'dark', label: 'Dark', icon: Moon },
     { mode: 'system', label: 'System', icon: Laptop },
   ];
+
+  const handleSelect = (mode: ThemeMode, e?: React.SyntheticEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    setTheme(mode);
+    setIsOpen(false);
+  };
 
   if (compact) {
     return (
@@ -72,7 +80,11 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ compact = false, c
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1.5 w-36 rounded-xl bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 shadow-elevated py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+        <div 
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-0 mt-1.5 w-36 rounded-xl bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 shadow-elevated py-1 z-50 animate-in fade-in zoom-in-95 duration-100"
+        >
           <div className="px-3 py-1 text-[10px] font-bold text-warm-500 dark:text-charcoal-400 uppercase tracking-wider border-b border-warm-200 dark:border-charcoal-800 mb-1">
             Appearance
           </div>
@@ -83,11 +95,9 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ compact = false, c
               <button
                 key={opt.mode}
                 type="button"
-                onClick={() => {
-                  setTheme(opt.mode);
-                  setIsOpen(false);
-                }}
-                className={`w-full flex items-center justify-between px-3 py-1.5 text-xs text-left transition-colors ${
+                onMouseDown={(e) => handleSelect(opt.mode, e)}
+                onClick={(e) => handleSelect(opt.mode, e)}
+                className={`w-full flex items-center justify-between px-3 py-1.5 text-xs text-left transition-colors cursor-pointer ${
                   isSelected
                     ? 'text-brand-700 dark:text-brand-400 font-semibold bg-brand-50 dark:bg-brand-900/40'
                     : 'text-warm-700 dark:text-charcoal-300 hover:bg-warm-100 dark:hover:bg-charcoal-800'

@@ -11,6 +11,7 @@ Validates:
 """
 
 import time
+
 import pytest
 from httpx import AsyncClient
 
@@ -120,8 +121,9 @@ async def test_redis_rate_limiting_enforcement(async_client: AsyncClient, monkey
 
     custom_limiter = RateLimiter(limit=3, window_seconds=10, scope="test:rate")
 
-    from fastapi import Request, Response
     from unittest.mock import Mock
+
+    from fastapi import Request, Response
 
     req = Mock(spec=Request)
     req.headers = {}
@@ -150,8 +152,9 @@ async def test_rate_limiter_fail_open_on_redis_error(monkeypatch):
     monkeypatch.setattr(settings, "RATE_LIMIT_ENABLED", True)
     limiter = RateLimiter(limit=5, window_seconds=60, scope="test:fail_open")
 
-    from fastapi import Request, Response
     from unittest.mock import Mock
+
+    from fastapi import Request, Response
 
     req = Mock(spec=Request)
     req.headers = {}

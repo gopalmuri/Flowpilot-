@@ -1,5 +1,5 @@
-import asyncio
 import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -14,9 +14,7 @@ async def create_authenticated_user(async_client: AsyncClient, name: str):
         "full_name": f"{name.capitalize()} User",
     }
     await async_client.post("/api/v1/auth/register", json=reg_payload)
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     return email, password, headers
@@ -175,7 +173,12 @@ async def test_execution_detail_includes_workflow_name_duration_and_approvals(as
         json={
             "steps": [
                 {"step_key": "start", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}},
-                {"step_key": "review", "step_type": "HUMAN_APPROVAL", "name": "Review", "config": {"approver_role": "MANAGER"}},
+                {
+                    "step_key": "review",
+                    "step_type": "HUMAN_APPROVAL",
+                    "name": "Review",
+                    "config": {"approver_role": "MANAGER"},
+                },
             ],
             "connections": [
                 {"source_step_key": "start", "target_step_key": "review"},
@@ -254,7 +257,10 @@ async def test_execution_history_deterministic_pagination(async_client: AsyncCli
     await async_client.put(
         f"/api/v1/organizations/{org_id}/workflows/{wf_id}/versions/{v1_id}",
         headers=headers,
-        json={"steps": [{"step_key": "step_trigger", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}}], "connections": []},
+        json={
+            "steps": [{"step_key": "step_trigger", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}}],
+            "connections": [],
+        },
     )
     await async_client.post(
         f"/api/v1/organizations/{org_id}/workflows/{wf_id}/versions/{v1_id}/publish",
@@ -321,7 +327,10 @@ async def test_cross_tenant_execution_isolation(async_client: AsyncClient):
     put_b = await async_client.put(
         f"/api/v1/organizations/{org_b_id}/workflows/{wf_b['id']}/versions/{v_b_id}",
         headers=headers_b,
-        json={"steps": [{"step_key": "step_trigger", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}}], "connections": []},
+        json={
+            "steps": [{"step_key": "step_trigger", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}}],
+            "connections": [],
+        },
     )
     assert put_b.status_code == 200
 
@@ -377,7 +386,10 @@ async def test_execution_payload_sanitization_and_masking(async_client: AsyncCli
     await async_client.put(
         f"/api/v1/organizations/{org_id}/workflows/{wf['id']}/versions/{v1_id}",
         headers=headers,
-        json={"steps": [{"step_key": "step_trigger", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}}], "connections": []},
+        json={
+            "steps": [{"step_key": "step_trigger", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}}],
+            "connections": [],
+        },
     )
     pub_res = await async_client.post(
         f"/api/v1/organizations/{org_id}/workflows/{wf['id']}/versions/{v1_id}/publish",

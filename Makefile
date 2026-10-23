@@ -5,10 +5,14 @@
 # .\scripts\dev.ps1 <command>
 # ==============================================================================
 
-.PHONY: help dev build up down logs test lint migrate clean ps
+.PHONY: help setup dev build up down logs test test-local lint migrate seed run-demo clean ps
 
 help:
 	@echo "FlowPilot Management Commands:"
+	@echo "  make setup       - Create backend venv and install backend + frontend dependencies"
+	@echo "  make test-local  - Run backend and frontend tests locally (no Docker)"
+	@echo "  make seed        - Create demo user + published Enterprise Lead pipeline (Docker)"
+	@echo "  make run-demo    - Send a signed lead and approve it end to end (Docker)"
 	@echo "  make up          - Start all services with docker-compose"
 	@echo "  make down        - Stop all running containers"
 	@echo "  make build       - Build docker images"
@@ -17,6 +21,21 @@ help:
 	@echo "  make lint        - Run linters (ruff, mypy, eslint)"
 	@echo "  make migrate     - Run database migrations (alembic upgrade head)"
 	@echo "  make clean       - Remove temporary artifacts and caches"
+
+setup:
+	test -f .env || cp .env.example .env
+	cd backend && python -m venv venv && ./venv/bin/pip install -r requirements-dev.txt
+	cd frontend && npm install
+
+test-local:
+	cd backend && ./venv/bin/python -m pytest tests
+	cd frontend && npm run test
+
+seed:
+	docker compose exec backend python -m scripts.seed_demo
+
+run-demo:
+	docker compose exec backend python -m scripts.run_demo
 
 up:
 	docker compose up -d

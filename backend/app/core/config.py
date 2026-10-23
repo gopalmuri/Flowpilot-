@@ -1,6 +1,6 @@
-import os
 from pathlib import Path
 from typing import List, Optional, Union
+
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
         env_file=(str(project_root_env), str(backend_root_env), ".env"),
         env_file_encoding="utf-8",
         case_sensitive=True,
-        extra="ignore"
+        extra="ignore",
     )
 
     # Core Application
@@ -57,12 +57,8 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "flowpilot"
     POSTGRES_USER: str = "flowpilot_admin"
     POSTGRES_PASSWORD: str = "flowpilot_secret_password"
-    DATABASE_URL: str = (
-        "postgresql+asyncpg://flowpilot_admin:flowpilot_secret_password@127.0.0.1:5432/flowpilot"
-    )
-    SYNC_DATABASE_URL: str = (
-        "postgresql://flowpilot_admin:flowpilot_secret_password@127.0.0.1:5432/flowpilot"
-    )
+    DATABASE_URL: str = "postgresql+asyncpg://flowpilot_admin:flowpilot_secret_password@127.0.0.1:5432/flowpilot"
+    SYNC_DATABASE_URL: str = "postgresql://flowpilot_admin:flowpilot_secret_password@127.0.0.1:5432/flowpilot"
 
     # Redis & Celery
     REDIS_HOST: str = "127.0.0.1"
@@ -82,9 +78,64 @@ class Settings(BaseSettings):
     # AI Service Configuration (Phase 9)
     AI_PROVIDER: str = "mock"
     OPENAI_API_KEY: Optional[str] = None
-    ANTHROPIC_API_KEY: Optional[str] = None
     AI_DEFAULT_MODEL: str = "gpt-4o-mini"
     AI_REQUEST_TIMEOUT_SECONDS: float = 10.0
+    # AI builder: per-organisation daily cap on assistant calls, so one tenant cannot exhaust the shared provider key.
+    AI_DAILY_REQUEST_LIMIT_PER_ORG: int = 200
+    AI_BUILDER_TIMEOUT_SECONDS: float = 45.0
+
+    # Groq — OpenAI-compatible chat-completions API with multiple keys for fallback.
+    # Keys are tried in order (1→2→3→4) on auth/rate-limit errors.
+    GROQ_API_KEY_1: Optional[str] = None
+    GROQ_API_KEY_2: Optional[str] = None
+    GROQ_API_KEY_3: Optional[str] = None
+    GROQ_API_KEY_4: Optional[str] = None
+    GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
+
+    # Grok (xAI) OpenAI-compatible chat-completions API
+    GROK_API_KEY: Optional[str] = None
+    GROK_BASE_URL: str = "https://api.x.ai/v1"
+    GROK_MODEL: Optional[str] = None
+
+
+    # Outbound delivery (Phase 4). Live provider sending is not implemented: only the mock provider exists.
+    OUTBOUND_MAX_ATTEMPTS: int = 5
+    OUTBOUND_BACKOFF_BASE_SECONDS: int = 30
+    OUTBOUND_BACKOFF_MAX_SECONDS: int = 3600
+    OUTBOUND_LEASE_SECONDS: int = 120  # a claim/attempt not finished within this is considered stale
+    OUTBOUND_ENQUEUE_VISIBILITY_SECONDS: int = 60  # an enqueued delivery not picked up within this is re-enqueued
+    OUTBOUND_PROVIDER_TIMEOUT_SECONDS: float = 30.0
+    # After an uncertain send, "provider has no record" is only trusted once this much time has passed.
+    OUTBOUND_RECONCILE_GRACE_SECONDS: int = 300
+
+    # Gmail (Phase 5). Nothing here is required to start the app or run the tests.
+    FRONTEND_URL: str = "http://localhost:5173"  # where the OAuth callback sends the browser back to
+    GOOGLE_OAUTH_CLIENT_ID: Optional[str] = None
+    GOOGLE_OAUTH_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_OAUTH_REDIRECT_URI: Optional[str] = None  # must equal the redirect URI registered in Google Cloud
+    GMAIL_OAUTH_STATE_TTL_SECONDS: int = 600
+    # Pub/Sub push (all optional: without them mailboxes are kept current by polling)
+    GMAIL_PUBSUB_TOPIC: Optional[str] = None  # projects/<project>/topics/<topic>
+    GMAIL_PUBSUB_SUBSCRIPTION: Optional[str] = None  # projects/<project>/subscriptions/<sub>; checked on each push
+    GMAIL_PUBSUB_AUDIENCE: Optional[str] = None  # audience configured on the push subscription's OIDC token
+    GMAIL_PUBSUB_SERVICE_ACCOUNT: Optional[str] = None  # the push subscription's service account email
+    GMAIL_POLL_INTERVAL_SECONDS: int = 120  # safety poll for missed notifications / no Pub/Sub
+    GMAIL_WATCH_RENEW_BEFORE_HOURS: int = 24
+    GMAIL_RESYNC_WINDOW_DAYS: int = 3  # how far back a controlled resync looks after an invalid historyId
+    GMAIL_MAX_MESSAGES_PER_SYNC: int = 200
+    GMAIL_SYNC_LEASE_SECONDS: int = 600
+    GMAIL_API_NUM_RETRIES: int = 3  # googleapiclient-level retries on 429/5xx before we classify the failure
+    GMAIL_MAX_RAW_BYTES: int = 10 * 1024 * 1024  # larger messages are ingested from the snippet only
+
+    # SMTP & Transactional Email Settings
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_TLS: bool = True
+    EMAILS_FROM_EMAIL: str = "noreply@flowpilot.internal"
+    EMAILS_FROM_NAME: str = "FlowPilot"
 
     @model_validator(mode="after")
     def assemble_urls(self) -> "Settings":
@@ -116,9 +167,13 @@ class Settings(BaseSettings):
         """
         if self.ENVIRONMENT.lower() == "production":
             if not self.SECRET_KEY or self.SECRET_KEY == DEFAULT_DEV_SECRET or len(self.SECRET_KEY) < 32:
-                raise ValueError("FATAL: Production SECRET_KEY must be a cryptographically secure string of at least 32 characters")
+                raise ValueError(
+                    "FATAL: Production SECRET_KEY must be a cryptographically secure string of at least 32 characters"
+                )
             if not self.JWT_SECRET or self.JWT_SECRET == DEFAULT_DEV_JWT_SECRET or len(self.JWT_SECRET) < 32:
-                raise ValueError("FATAL: Production JWT_SECRET must be a cryptographically secure string of at least 32 characters")
+                raise ValueError(
+                    "FATAL: Production JWT_SECRET must be a cryptographically secure string of at least 32 characters"
+                )
             if self.DEBUG:
                 raise ValueError("FATAL: DEBUG mode must be disabled (DEBUG=False) in production")
             if isinstance(self.ALLOWED_CORS_ORIGINS, list):

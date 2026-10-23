@@ -2,11 +2,12 @@ import math
 import uuid
 from datetime import datetime
 from typing import Optional, Tuple
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_org_context, require_role
+from app.api.deps import require_role
 from app.core.database import get_db
 from app.engine.sanitizer import sanitize_payload
 from app.models.audit_log import AuditLog
@@ -42,11 +43,13 @@ async def list_organization_audit_logs(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     org_context: Tuple[Organization, OrganizationMember] = Depends(
-        require_role([
-            OrganizationRole.OWNER,
-            OrganizationRole.ADMIN,
-            OrganizationRole.MANAGER,
-        ])
+        require_role(
+            [
+                OrganizationRole.OWNER,
+                OrganizationRole.ADMIN,
+                OrganizationRole.MANAGER,
+            ]
+        )
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -127,11 +130,13 @@ async def get_audit_log_detail(
     organization_id: uuid.UUID,
     audit_id: uuid.UUID,
     org_context: Tuple[Organization, OrganizationMember] = Depends(
-        require_role([
-            OrganizationRole.OWNER,
-            OrganizationRole.ADMIN,
-            OrganizationRole.MANAGER,
-        ])
+        require_role(
+            [
+                OrganizationRole.OWNER,
+                OrganizationRole.ADMIN,
+                OrganizationRole.MANAGER,
+            ]
+        )
     ),
     db: AsyncSession = Depends(get_db),
 ):

@@ -5,10 +5,11 @@ Validates 16 distinct failure, edge-case, and security boundaries.
 
 import time
 import uuid
+
 import pytest
 from httpx import AsyncClient
 
-from app.core.ssrf import validate_outbound_url, SSRFValidationError
+from app.core.ssrf import SSRFValidationError, validate_outbound_url
 from app.services.webhook_service import calculate_hmac_signature
 
 
@@ -181,7 +182,7 @@ async def test_negative_malformed_webhook_json(async_client: AsyncClient):
     secret = "secret_123"
     _, webhook_key, _ = await setup_test_workflow(async_client, org_id, headers, secret_token=secret)
 
-    malformed = b'{this is not json}'
+    malformed = b"{this is not json}"
     ts = str(int(time.time()))
     sig = calculate_hmac_signature(secret, ts, malformed)
 
@@ -213,7 +214,9 @@ async def test_negative_human_approval_rejection(async_client: AsyncClient):
     run_id = hook_resp.json()["workflow_run_id"]
 
     # Get pending approval
-    pending = (await async_client.get(f"/api/v1/organizations/{org_id}/approvals?status=PENDING", headers=headers)).json()["items"]
+    pending = (
+        await async_client.get(f"/api/v1/organizations/{org_id}/approvals?status=PENDING", headers=headers)
+    ).json()["items"]
     target_app = next(a for a in pending if str(a["workflow_run_id"]) == str(run_id))
 
     # Reject
@@ -236,12 +239,15 @@ async def test_negative_unauthorized_approval_attempt(async_client: AsyncClient)
     # Create a VIEWER member in the same org
     viewer_email = f"viewer_{uuid.uuid4().hex[:8]}@flowpilot.internal"
     pwd = "ViewerPass_123!"
-    await async_client.post("/api/v1/auth/register", json={"email": viewer_email, "password": pwd, "full_name": "Viewer User"})
+    await async_client.post(
+        "/api/v1/auth/register", json={"email": viewer_email, "password": pwd, "full_name": "Viewer User"}
+    )
     v_login = await async_client.post("/api/v1/auth/login", json={"email": viewer_email, "password": pwd})
-    viewer_user_id = v_login.json()["access_token"]
+    _viewer_user_id = v_login.json()["access_token"]
 
     # Add viewer to org
     from app.models.membership import OrganizationRole
+
     await async_client.post(
         f"/api/v1/organizations/{org_id}/members",
         headers=owner_headers,
@@ -249,7 +255,9 @@ async def test_negative_unauthorized_approval_attempt(async_client: AsyncClient)
     )
 
     # Login as viewer
-    v_active = await async_client.post("/api/v1/auth/login", json={"email": viewer_email, "password": pwd, "organization_id": org_id})
+    v_active = await async_client.post(
+        "/api/v1/auth/login", json={"email": viewer_email, "password": pwd, "organization_id": org_id}
+    )
     viewer_headers = {"Authorization": f"Bearer {v_active.json()['access_token']}"}
 
     # Trigger a run
@@ -263,7 +271,9 @@ async def test_negative_unauthorized_approval_attempt(async_client: AsyncClient)
     )
     run_id = hook_res.json()["workflow_run_id"]
 
-    pending = (await async_client.get(f"/api/v1/organizations/{org_id}/approvals?status=PENDING", headers=owner_headers)).json()["items"]
+    pending = (
+        await async_client.get(f"/api/v1/organizations/{org_id}/approvals?status=PENDING", headers=owner_headers)
+    ).json()["items"]
     target_app = next(a for a in pending if str(a["workflow_run_id"]) == str(run_id))
 
     # Viewer tries to approve
@@ -317,9 +327,13 @@ async def test_negative_draft_sla_update_on_published_version(async_client: Asyn
 async def test_negative_invalid_sla_threshold_configuration(async_client: AsyncClient):
     """Scenario 10: Setting warning_threshold >= target_seconds returns 422."""
     org_id, headers = await create_user_and_org(async_client, "neg_sla_val")
-    wf_res = await async_client.post(f"/api/v1/organizations/{org_id}/workflows", headers=headers, json={"name": "SLA Val"})
+    wf_res = await async_client.post(
+        f"/api/v1/organizations/{org_id}/workflows", headers=headers, json={"name": "SLA Val"}
+    )
     wf_id = wf_res.json()["id"]
-    v1_id = (await async_client.get(f"/api/v1/organizations/{org_id}/workflows/{wf_id}/versions", headers=headers)).json()[0]["id"]
+    v1_id = (
+        await async_client.get(f"/api/v1/organizations/{org_id}/workflows/{wf_id}/versions", headers=headers)
+    ).json()[0]["id"]
 
     # warning >= target
     resp = await async_client.put(

@@ -138,25 +138,25 @@ class AnalyticsService:
                 COUNT(*) FILTER (WHERE r.status = 'PENDING') AS pending_count,
                 COUNT(*) FILTER (WHERE r.status IN ('WAITING_APPROVAL', 'PAUSED')) AS waiting_approval_count,
                 COALESCE(AVG(
-                    CASE 
+                    CASE
                         WHEN r.completed_at IS NOT NULL AND r.started_at IS NOT NULL AND r.completed_at >= r.started_at AND r.status IN ('SUCCESS', 'COMPLETED', 'FAILED', 'CANCELLED')
                         THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at)) * 1000.0
                     END
                 ), 0.0) AS avg_duration_ms,
                 COALESCE(PERCENTILE_CONT(0.50) WITHIN GROUP (
-                    ORDER BY CASE 
+                    ORDER BY CASE
                         WHEN r.completed_at IS NOT NULL AND r.started_at IS NOT NULL AND r.completed_at >= r.started_at AND r.status IN ('SUCCESS', 'COMPLETED', 'FAILED', 'CANCELLED')
                         THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at)) * 1000.0
                     END
                 ), 0.0) AS p50_duration_ms,
                 COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (
-                    ORDER BY CASE 
+                    ORDER BY CASE
                         WHEN r.completed_at IS NOT NULL AND r.started_at IS NOT NULL AND r.completed_at >= r.started_at AND r.status IN ('SUCCESS', 'COMPLETED', 'FAILED', 'CANCELLED')
                         THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at)) * 1000.0
                     END
                 ), 0.0) AS p95_duration_ms,
                 COALESCE(PERCENTILE_CONT(0.99) WITHIN GROUP (
-                    ORDER BY CASE 
+                    ORDER BY CASE
                         WHEN r.completed_at IS NOT NULL AND r.started_at IS NOT NULL AND r.completed_at >= r.started_at AND r.status IN ('SUCCESS', 'COMPLETED', 'FAILED', 'CANCELLED')
                         THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at)) * 1000.0
                     END
@@ -169,7 +169,7 @@ class AnalyticsService:
         """)
 
         vol_res = await db.execute(vol_duration_query, params)
-        row = vol_res.fetchone()
+        row = vol_res.one()
 
         s_count = int(row.success_count or 0)
         f_count = int(row.failed_count or 0)
@@ -210,28 +210,28 @@ class AnalyticsService:
 
         # 2. Query-Derived SLA Aggregation
         sla_query = text(f"""
-            SELECT 
+            SELECT
                 COUNT(*) FILTER (WHERE sla_status = 'HEALTHY') AS healthy_count,
                 COUNT(*) FILTER (WHERE sla_status = 'WARNING') AS warning_count,
                 COUNT(*) FILTER (WHERE sla_status = 'BREACHED') AS breached_count,
                 COUNT(*) FILTER (WHERE sla_status = 'NOT_APPLICABLE') AS not_applicable_count
             FROM (
-                SELECT 
+                SELECT
                     CASE
                         WHEN (v.definition->'sla'->>'enabled')::boolean IS NOT TRUE THEN 'NOT_APPLICABLE'
                         WHEN (v.definition->'sla'->>'target_seconds') IS NULL THEN 'NOT_APPLICABLE'
                         WHEN r.status = 'CANCELLED' AND (
-                            r.completed_at IS NULL OR 
+                            r.completed_at IS NULL OR
                             EXTRACT(EPOCH FROM (r.completed_at - r.started_at)) <= (v.definition->'sla'->>'warning_threshold_seconds')::double precision
                         ) THEN 'NOT_APPLICABLE'
                         WHEN (
-                            CASE 
+                            CASE
                                 WHEN r.completed_at IS NOT NULL THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at))
                                 ELSE EXTRACT(EPOCH FROM (NOW() - r.started_at))
                             END
                         ) > (v.definition->'sla'->>'target_seconds')::double precision THEN 'BREACHED'
                         WHEN (
-                            CASE 
+                            CASE
                                 WHEN r.completed_at IS NOT NULL THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at))
                                 ELSE EXTRACT(EPOCH FROM (NOW() - r.started_at))
                             END
@@ -248,7 +248,7 @@ class AnalyticsService:
         """)
 
         sla_res = await db.execute(sla_query, params)
-        sla_row = sla_res.fetchone()
+        sla_row = sla_res.one()
 
         h_count = int(sla_row.healthy_count or 0)
         warn_count = int(sla_row.warning_count or 0)
@@ -305,7 +305,9 @@ class AnalyticsService:
         if effective_granularity not in ("hourly", "daily", "weekly"):
             effective_granularity = auto_granularity
 
-        trunc_part = "hour" if effective_granularity == "hourly" else ("day" if effective_granularity == "daily" else "week")
+        trunc_part = (
+            "hour" if effective_granularity == "hourly" else ("day" if effective_granularity == "daily" else "week")
+        )
 
         params: Dict[str, Any] = {
             "org_id": organization_id,
@@ -327,13 +329,13 @@ class AnalyticsService:
                 COUNT(*) FILTER (WHERE r.status = 'CANCELLED') AS cancelled_count,
                 COUNT(*) FILTER (WHERE r.status IN ('RUNNING', 'PENDING', 'WAITING_APPROVAL', 'PAUSED')) AS in_flight_count,
                 COALESCE(AVG(
-                    CASE 
+                    CASE
                         WHEN r.completed_at IS NOT NULL AND r.started_at IS NOT NULL AND r.completed_at >= r.started_at AND r.status IN ('SUCCESS', 'COMPLETED', 'FAILED', 'CANCELLED')
                         THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at)) * 1000.0
                     END
                 ), 0.0) AS avg_duration_ms,
                 COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (
-                    ORDER BY CASE 
+                    ORDER BY CASE
                         WHEN r.completed_at IS NOT NULL AND r.started_at IS NOT NULL AND r.completed_at >= r.started_at AND r.status IN ('SUCCESS', 'COMPLETED', 'FAILED', 'CANCELLED')
                         THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at)) * 1000.0
                     END
@@ -379,15 +381,18 @@ class AnalyticsService:
 
         # Loop until curr exceeds end_dt
         while curr < end_dt:
-            data = db_buckets.get(curr, {
-                "total_count": 0,
-                "success_count": 0,
-                "failed_count": 0,
-                "cancelled_count": 0,
-                "in_flight_count": 0,
-                "avg_duration_ms": 0.0,
-                "p95_duration_ms": 0.0,
-            })
+            data = db_buckets.get(
+                curr,
+                {
+                    "total_count": 0,
+                    "success_count": 0,
+                    "failed_count": 0,
+                    "cancelled_count": 0,
+                    "in_flight_count": 0,
+                    "avg_duration_ms": 0.0,
+                    "p95_duration_ms": 0.0,
+                },
+            )
             buckets.append(
                 TimeSeriesBucket(
                     timestamp=curr,
@@ -449,13 +454,13 @@ class AnalyticsService:
                     COUNT(r.id) FILTER (WHERE r.status = 'CANCELLED') AS cancelled_count,
                     COUNT(r.id) FILTER (WHERE r.status IN ('RUNNING', 'PENDING', 'WAITING_APPROVAL', 'PAUSED')) AS in_flight_count,
                     COALESCE(AVG(
-                        CASE 
+                        CASE
                             WHEN r.completed_at IS NOT NULL AND r.started_at IS NOT NULL AND r.completed_at >= r.started_at AND r.status IN ('SUCCESS', 'COMPLETED', 'FAILED', 'CANCELLED')
                             THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at)) * 1000.0
                         END
                     ), 0.0) AS avg_duration_ms,
                     COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (
-                        ORDER BY CASE 
+                        ORDER BY CASE
                             WHEN r.completed_at IS NOT NULL AND r.started_at IS NOT NULL AND r.completed_at >= r.started_at AND r.status IN ('SUCCESS', 'COMPLETED', 'FAILED', 'CANCELLED')
                             THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at)) * 1000.0
                         END
@@ -464,13 +469,13 @@ class AnalyticsService:
                         WHERE (v.definition->'sla'->>'enabled')::boolean IS TRUE
                           AND (v.definition->'sla'->>'target_seconds') IS NOT NULL
                           AND (
-                              CASE 
+                              CASE
                                   WHEN r.completed_at IS NOT NULL THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at))
                                   ELSE EXTRACT(EPOCH FROM (NOW() - r.started_at))
                               END
                           ) <= (v.definition->'sla'->>'target_seconds')::double precision
                           AND NOT (r.status = 'CANCELLED' AND (
-                              r.completed_at IS NULL OR 
+                              r.completed_at IS NULL OR
                               EXTRACT(EPOCH FROM (r.completed_at - r.started_at)) <= (v.definition->'sla'->>'warning_threshold_seconds')::double precision
                           ))
                     ) AS sla_compliant_count,
@@ -478,7 +483,7 @@ class AnalyticsService:
                         WHERE (v.definition->'sla'->>'enabled')::boolean IS TRUE
                           AND (v.definition->'sla'->>'target_seconds') IS NOT NULL
                           AND (
-                              CASE 
+                              CASE
                                   WHEN r.completed_at IS NOT NULL THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at))
                                   ELSE EXTRACT(EPOCH FROM (NOW() - r.started_at))
                               END
@@ -488,14 +493,14 @@ class AnalyticsService:
                         WHERE (v.definition->'sla'->>'enabled')::boolean IS TRUE
                           AND (v.definition->'sla'->>'target_seconds') IS NOT NULL
                           AND NOT (r.status = 'CANCELLED' AND (
-                              r.completed_at IS NULL OR 
+                              r.completed_at IS NULL OR
                               EXTRACT(EPOCH FROM (r.completed_at - r.started_at)) <= (v.definition->'sla'->>'warning_threshold_seconds')::double precision
                           ))
                     ) AS sla_monitored_count
                 FROM workflows w
-                LEFT JOIN workflow_runs r ON w.id = r.workflow_id 
-                    AND r.organization_id = :org_id 
-                    AND r.started_at >= :start_dt 
+                LEFT JOIN workflow_runs r ON w.id = r.workflow_id
+                    AND r.organization_id = :org_id
+                    AND r.started_at >= :start_dt
                     AND r.started_at < :end_dt
                 LEFT JOIN workflow_versions v ON r.workflow_version_id = v.id
                 WHERE w.organization_id = :org_id
@@ -505,7 +510,7 @@ class AnalyticsService:
                 SELECT id AS v_id, version_number, definition
                 FROM workflow_versions
             )
-            SELECT 
+            SELECT
                 s.*,
                 av.version_number AS active_version_number,
                 ((av.definition->'sla'->>'enabled')::boolean IS TRUE) AS has_sla
@@ -556,7 +561,7 @@ class AnalyticsService:
                 )
             )
 
-        reverse = (sort_order.lower() == "desc")
+        reverse = sort_order.lower() == "desc"
         if sort_by == "executions":
             items.sort(key=lambda x: x.total_executions, reverse=reverse)
         elif sort_by == "failure_rate":
@@ -623,7 +628,7 @@ class AnalyticsService:
             params["wf_id"] = workflow_id
 
         step_query = text(f"""
-            SELECT 
+            SELECT
                 ws.step_key,
                 ws.step_type,
                 ws.name,
@@ -711,7 +716,7 @@ class AnalyticsService:
 
         wf_sla_query = text(f"""
             WITH runs_eval AS (
-                SELECT 
+                SELECT
                     r.workflow_id,
                     r.status,
                     r.started_at,
@@ -723,17 +728,17 @@ class AnalyticsService:
                         WHEN (v.definition->'sla'->>'enabled')::boolean IS NOT TRUE THEN 'NOT_APPLICABLE'
                         WHEN (v.definition->'sla'->>'target_seconds') IS NULL THEN 'NOT_APPLICABLE'
                         WHEN r.status = 'CANCELLED' AND (
-                            r.completed_at IS NULL OR 
+                            r.completed_at IS NULL OR
                             EXTRACT(EPOCH FROM (r.completed_at - r.started_at)) <= (v.definition->'sla'->>'warning_threshold_seconds')::double precision
                         ) THEN 'NOT_APPLICABLE'
                         WHEN (
-                            CASE 
+                            CASE
                                 WHEN r.completed_at IS NOT NULL THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at))
                                 ELSE EXTRACT(EPOCH FROM (NOW() - r.started_at))
                             END
                         ) > (v.definition->'sla'->>'target_seconds')::double precision THEN 'BREACHED'
                         WHEN (
-                            CASE 
+                            CASE
                                 WHEN r.completed_at IS NOT NULL THEN EXTRACT(EPOCH FROM (r.completed_at - r.started_at))
                                 ELSE EXTRACT(EPOCH FROM (NOW() - r.started_at))
                             END
@@ -748,7 +753,7 @@ class AnalyticsService:
                   {wf_clause_r}
             ),
             active_info AS (
-                SELECT 
+                SELECT
                     w.id AS workflow_id,
                     w.name AS workflow_name,
                     v.version_number,
@@ -760,7 +765,7 @@ class AnalyticsService:
                 WHERE w.organization_id = :org_id
                   {wf_clause_w}
             )
-            SELECT 
+            SELECT
                 ai.workflow_id,
                 ai.workflow_name,
                 ai.version_number AS active_version_number,
@@ -777,7 +782,7 @@ class AnalyticsService:
                 ) AS current_active_breaches
             FROM active_info ai
             LEFT JOIN runs_eval re ON ai.workflow_id = re.workflow_id
-            GROUP BY 
+            GROUP BY
                 ai.workflow_id,
                 ai.workflow_name,
                 ai.version_number,

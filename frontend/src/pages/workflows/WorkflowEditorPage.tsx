@@ -15,6 +15,7 @@ import {
   MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { EDGE_STYLE, connectionToEdge, serializeGraph, stepToNode } from '../../utils/workflowGraphMapper';
 import {
   ArrowLeft,
   Save,
@@ -29,7 +30,8 @@ import {
   Key,
   Copy,
   Check,
-  Terminal,
+  Sparkles,
+  Lightbulb,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -42,6 +44,8 @@ import {
   WorkflowVersionUpdateRequest,
 } from '../../types/workflow';
 import { WorkflowRun } from '../../types/execution';
+import { AIWorkflowProposal } from '../../types/workflowAI';
+import { AIWorkflowAssistantDrawer } from '../../components/workflow/ai/AIWorkflowAssistantDrawer';
 import {
   getWorkflow,
   getWorkflowVersion,
@@ -57,6 +61,9 @@ import { NodeConfigPanel } from '../../components/workflow/config/NodeConfigPane
 import { ValidationBar } from '../../components/workflow/ValidationBar';
 import { Breadcrumbs } from '../../components/ui/Breadcrumbs';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { AIRunSimulatorModal } from '../../components/workflow/ai/AIRunSimulatorModal';
+import { AISuggestionsModal } from '../../components/workflow/ai/AISuggestionsModal';
+
 import {
   WorkflowNodeData,
   WorkflowEdgeData,
@@ -100,14 +107,25 @@ export const WorkflowEditorContent: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<boolean>(false);
 
+  // AI Workflow Assistant state
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState<boolean>(false);
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState<boolean>(false);
+  const [isPreviewingAI, setIsPreviewingAI] = useState<boolean>(false);
+  const [canUndoAI, setCanUndoAI] = useState<boolean>(false);
+  const [assistantInitialPrompt, setAssistantInitialPrompt] = useState<string | null>(null);
+  const undoSnapshotRef = useRef<{ nodes: Node<WorkflowNodeData>[]; edges: Edge<WorkflowEdgeData>[] } | null>(null);
+  const previewSnapshotRef = useRef<{ nodes: Node<WorkflowNodeData>[]; edges: Edge<WorkflowEdgeData>[] } | null>(null);
+
+
   // Modals
   const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState<boolean>(false);
   const [isRunModalOpen, setIsRunModalOpen] = useState<boolean>(false);
-  const [runPayload, setRunPayload] = useState<string>('{\n  "source": "control_plane_test",\n  "timestamp": "' + new Date().toISOString() + '"\n}');
+  const [runPayload] = useState<string>('{\n  "source": "control_plane_test",\n  "timestamp": "' + new Date().toISOString() + '"\n}');
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [runError, setRunError] = useState<string | null>(null);
 
   const [validationResult, setValidationResult] = useState<WorkflowValidationResult | null>(null);
+
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   const isReadOnly = useMemo(() => {
@@ -131,39 +149,8 @@ export const WorkflowEditorContent: React.FC = () => {
     const stepsList = version.steps || version.definition?.steps || [];
     const connectionsList = version.connections || version.definition?.connections || [];
 
-    const rawNodes = stepsList.map((step: any, idx: number) => ({
-      id: step.id || `node-${step.step_key}`,
-      type: 'workflowNode',
-      position: step.ui_position || step.position || { x: 250, y: 100 + idx * 140 },
-      data: {
-        step_key: step.step_key,
-        name: step.name,
-        step_type: step.step_type,
-        config: step.config || {},
-        error_policy: step.error_policy || { max_retries: 3, retry_delay_ms: 1000 },
-        timeout_seconds: step.timeout_seconds || 60,
-      },
-    }));
-
-    const rawEdges = connectionsList.map((conn: any, idx: number) => {
-      const srcId = conn.source_step_id || `node-${conn.source_step_key}`;
-      const tgtId = conn.target_step_id || `node-${conn.target_step_key}`;
-      return {
-        id: conn.id || `edge-${srcId}-${tgtId}-${idx}`,
-        source: srcId,
-        target: tgtId,
-        sourceHandle: conn.condition_branch === null ? undefined : String(conn.condition_branch),
-        label: conn.condition_label || (conn.condition_branch === null ? undefined : conn.condition_branch ? 'true' : 'false'),
-        type: 'smoothstep',
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 14,
-          height: 14,
-          color: '#69716C',
-        },
-        style: { strokeWidth: 1.5, stroke: '#69716C' },
-      };
-    });
+    const rawNodes = stepsList.map(stepToNode);
+    const rawEdges = connectionsList.map(connectionToEdge);
 
     setNodes(rawNodes);
     setEdges(rawEdges);
@@ -219,14 +206,9 @@ export const WorkflowEditorContent: React.FC = () => {
         const newEdges = addEdge(
           {
             ...params,
-            type: 'smoothstep',
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              width: 14,
-              height: 14,
-              color: '#69716C',
-            },
-            style: { strokeWidth: 1.5, stroke: '#69716C' },
+            label: params.sourceHandle || undefined,
+            data: { condition_label: params.sourceHandle ?? null },
+            ...EDGE_STYLE,
           },
           eds
         );
@@ -302,7 +284,120 @@ export const WorkflowEditorContent: React.FC = () => {
     [isReadOnly, selectedNodeId, setNodes, setEdges]
   );
 
+  const handleAIPreview = useCallback(
+    (proposal: AIWorkflowProposal) => {
+      if (!previewSnapshotRef.current) {
+        previewSnapshotRef.current = { nodes, edges };
+      }
+      const previewNodes = proposal.steps.map((s, idx) => {
+        const node = stepToNode(s, idx);
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            isPreview: true,
+          },
+        };
+      });
+      const previewEdges = proposal.connections.map((c, idx) => {
+        const edge = connectionToEdge(c, idx);
+        return {
+          ...edge,
+          animated: true,
+          style: { ...edge.style, stroke: '#0D9488', strokeDasharray: '5,5' },
+        };
+      });
+      setNodes(previewNodes);
+      setEdges(previewEdges);
+      setIsPreviewingAI(true);
+      validateCurrentGraph(previewNodes, previewEdges);
+    },
+    [nodes, edges, setNodes, setEdges, validateCurrentGraph]
+  );
+
+  const handleAIDiscardPreview = useCallback(() => {
+    if (previewSnapshotRef.current) {
+      setNodes(previewSnapshotRef.current.nodes);
+      setEdges(previewSnapshotRef.current.edges);
+      validateCurrentGraph(previewSnapshotRef.current.nodes, previewSnapshotRef.current.edges);
+      previewSnapshotRef.current = null;
+    }
+    setIsPreviewingAI(false);
+  }, [setNodes, setEdges, validateCurrentGraph]);
+
+  const handleAIApplyProposal = useCallback(
+    (proposal: AIWorkflowProposal) => {
+      // Save snapshot for Undo
+      undoSnapshotRef.current = {
+        nodes: previewSnapshotRef.current ? previewSnapshotRef.current.nodes : nodes,
+        edges: previewSnapshotRef.current ? previewSnapshotRef.current.edges : edges,
+      };
+      setCanUndoAI(true);
+      previewSnapshotRef.current = null;
+      setIsPreviewingAI(false);
+
+      const appliedNodes = proposal.steps.map(stepToNode);
+      const appliedEdges = proposal.connections.map(connectionToEdge);
+
+      setNodes(appliedNodes);
+      setEdges(appliedEdges);
+      setIsDirty(true);
+      validateCurrentGraph(appliedNodes, appliedEdges);
+      setSuccessMessage('AI workflow applied! You can save draft or continue refining.');
+      setTimeout(() => setSuccessMessage(null), 4000);
+    },
+    [nodes, edges, setNodes, setEdges, validateCurrentGraph]
+  );
+
+  const handleAIUndo = useCallback(() => {
+    if (undoSnapshotRef.current) {
+      setNodes(undoSnapshotRef.current.nodes);
+      setEdges(undoSnapshotRef.current.edges);
+      setIsDirty(true);
+      validateCurrentGraph(undoSnapshotRef.current.nodes, undoSnapshotRef.current.edges);
+      undoSnapshotRef.current = null;
+      setCanUndoAI(false);
+      setSuccessMessage('Undid last AI changes.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
+  }, [setNodes, setEdges, validateCurrentGraph]);
+
+  const handleFixWithAI = useCallback(
+    ({ errors, warnings }: { errors: string[]; warnings: string[] }) => {
+      const parts: string[] = [];
+      if (errors.length > 0) {
+        parts.push(`Errors to resolve:\n- ${errors.join('\n- ')}`);
+      }
+      if (warnings.length > 0) {
+        parts.push(`Warnings to address:\n- ${warnings.join('\n- ')}`);
+      }
+      const prompt = `Fix validation issues in this workflow DAG:\n${parts.join('\n\n')}\n\nRepair missing branches, reconnect orphan steps, and output a clean, valid DAG.`;
+      setIsAIAssistantOpen(true);
+      setAssistantInitialPrompt(prompt);
+    },
+    []
+  );
+
+  // An AI suggestion was saved as a NEW draft version: show it on the canvas (published versions are never edited).
+  const handleSuggestionDraftApplied = useCallback(
+    (version: WorkflowVersionDetail) => {
+      setActiveVersion(version);
+      populateGraph(version);
+      setSelectedNodeId(null);
+      setSuccessMessage(`Saved as draft v${version.version_number}. Review it, then publish when you are ready.`);
+      setTimeout(() => setSuccessMessage(null), 4000);
+      if (activeOrganization && workflowId) {
+        listWorkflowVersions(activeOrganization.id, workflowId)
+          .then((list) => setVersionsList(list || []))
+          .catch(() => undefined);
+      }
+      setTimeout(() => setIsSuggestionsOpen(false), 1200);
+    },
+    [populateGraph, activeOrganization, workflowId]
+  );
+
   const handleValidateAuthoritative = async () => {
+
     if (!activeOrganization || !workflowId || !activeVersion) return;
     setIsValidating(true);
     try {
@@ -320,23 +415,7 @@ export const WorkflowEditorContent: React.FC = () => {
     setIsSaving(true);
     setError(null);
     try {
-      const definition = {
-        steps: nodes.map((n) => ({
-          id: n.id,
-          step_key: n.data.step_key,
-          name: n.data.name,
-          step_type: n.data.step_type,
-          config: n.data.config,
-          error_policy: n.data.error_policy,
-          timeout_seconds: n.data.timeout_seconds,
-          position: n.position,
-        })),
-        connections: edges.map((e) => ({
-          source_step_key: e.source.replace('node-', ''),
-          target_step_key: e.target.replace('node-', ''),
-          condition_branch: e.sourceHandle === 'true' ? true : e.sourceHandle === 'false' ? false : null,
-        })),
-      };
+      const definition = serializeGraph(nodes, edges);
 
       const payload: WorkflowVersionUpdateRequest = {
         steps: definition.steps as any,
@@ -371,16 +450,18 @@ export const WorkflowEditorContent: React.FC = () => {
     }
   };
 
-  const handleTriggerRun = async () => {
+  const handleTriggerRun = async (customPayload?: Record<string, any>) => {
     if (!activeOrganization || !workflow) return;
     setIsRunning(true);
     setRunError(null);
     try {
-      let parsed = {};
-      try {
-        parsed = JSON.parse(runPayload);
-      } catch {
-        throw new Error('Invalid JSON payload');
+      let parsed = customPayload;
+      if (!parsed) {
+        try {
+          parsed = JSON.parse(runPayload);
+        } catch {
+          throw new Error('Invalid JSON payload');
+        }
       }
       const res = await triggerExecution(activeOrganization.id, workflow.id, parsed);
       setIsRunModalOpen(false);
@@ -533,6 +614,33 @@ export const WorkflowEditorContent: React.FC = () => {
               </button>
             )}
 
+            {/* AI Workflow Assistant Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsAIAssistantOpen((prev) => !prev)}
+              className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-semibold shadow-2xs transition cursor-pointer ${
+                isAIAssistantOpen
+                  ? 'bg-teal-100 dark:bg-teal-950/80 border-teal-300 dark:border-teal-700 text-teal-800 dark:text-teal-200 ring-2 ring-teal-500/20'
+                  : 'bg-teal-50/70 dark:bg-teal-950/30 hover:bg-teal-100/80 dark:hover:bg-teal-900/50 border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-300'
+              }`}
+              title="Open AI Workflow Assistant"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              <span>AI Assistant</span>
+            </button>
+
+            {/* On-demand suggestions (never runs automatically) */}
+            <button
+              type="button"
+              onClick={() => setIsSuggestionsOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800/60 bg-amber-50/70 dark:bg-amber-950/20 hover:bg-amber-100/80 dark:hover:bg-amber-900/30 text-xs font-semibold text-amber-800 dark:text-amber-300 shadow-2xs transition cursor-pointer"
+              title="See ideas to improve this workflow"
+            >
+              <Lightbulb className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span className="hidden sm:inline">Suggestions</span>
+              <span className="sr-only sm:hidden">Suggestions</span>
+            </button>
+
             <button
               type="button"
               disabled={isValidating}
@@ -540,6 +648,7 @@ export const WorkflowEditorContent: React.FC = () => {
               className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-warm-100 dark:bg-charcoal-850 hover:bg-warm-200 dark:hover:bg-charcoal-800 border border-warm-300 dark:border-charcoal-750 text-xs font-semibold text-warm-800 dark:text-charcoal-200 transition disabled:opacity-40 cursor-pointer"
               title="Validate workflow graph"
             >
+
               {isValidating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
               <span className="hidden xs:inline">Validate</span>
             </button>
@@ -579,6 +688,7 @@ export const WorkflowEditorContent: React.FC = () => {
             <ValidationBar
               validationResult={validationResult}
               isValidating={isValidating}
+              onFixWithAI={handleFixWithAI}
             />
 
             <div className="flex-1 flex relative overflow-hidden">
@@ -603,6 +713,8 @@ export const WorkflowEditorContent: React.FC = () => {
                   onNodeClick={(_, node) => setSelectedNodeId(node.id)}
                   onPaneClick={() => setSelectedNodeId(null)}
                   fitView
+                  fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
+                  colorMode={isDark ? 'dark' : 'light'}
                   attributionPosition="bottom-left"
                   defaultEdgeOptions={{
                     type: 'smoothstep',
@@ -611,9 +723,9 @@ export const WorkflowEditorContent: React.FC = () => {
                   }}
                 >
                   <Background color={dotColor} gap={16} size={1} style={{ backgroundColor: canvasBg }} />
-                  <Controls className="!bg-white dark:!bg-charcoal-900 !border !border-warm-300 dark:!border-charcoal-750 !rounded-xl !shadow-subtle [&>button]:!border-b-warm-200 dark:[&>button]:!border-b-charcoal-800" />
+                  <Controls showInteractive={false} />
                   <MiniMap
-                    nodeColor={() => (isDark ? '#222925' : '#E8E5DF')}
+                    nodeColor={() => (isDark ? '#4B5A52' : '#C9C4B8')}
                     maskColor={isDark ? 'rgba(16, 21, 19, 0.75)' : 'rgba(245, 243, 238, 0.75)'}
                     className="!bg-white dark:!bg-charcoal-900 !border !border-warm-300 dark:!border-charcoal-750 !rounded-xl !shadow-subtle !hidden sm:!block"
                   />
@@ -641,6 +753,35 @@ export const WorkflowEditorContent: React.FC = () => {
                   onDeleteNode={handleDeleteNode}
                 />
               )}
+
+              <AISuggestionsModal
+                isOpen={isSuggestionsOpen}
+                onClose={() => setIsSuggestionsOpen(false)}
+                organizationId={activeOrganization?.id || ''}
+                workflowId={workflowId || ''}
+                canEdit={activeRole !== 'VIEWER' && activeRole !== 'OPERATOR' && workflow?.status !== 'ARCHIVED'}
+                onDraftApplied={handleSuggestionDraftApplied}
+              />
+
+              <AIWorkflowAssistantDrawer
+                isOpen={isAIAssistantOpen}
+                onClose={() => setIsAIAssistantOpen(false)}
+                organizationId={activeOrganization?.id || ''}
+                workflowId={workflowId || ''}
+                workflowName={workflow?.name}
+                workflowDescription={workflow?.description || undefined}
+                currentNodes={nodes}
+                currentEdges={edges}
+                isPreviewing={isPreviewingAI}
+                onPreview={handleAIPreview}
+                onDiscardPreview={handleAIDiscardPreview}
+                onApplyProposal={handleAIApplyProposal}
+                canUndo={canUndoAI}
+                onUndo={handleAIUndo}
+                initialPrompt={assistantInitialPrompt}
+                onClearInitialPrompt={() => setAssistantInitialPrompt(null)}
+              />
+
 
               {/* Mobile Palette Bottom Sheet */}
               {isMobilePaletteOpen && (
@@ -1013,72 +1154,19 @@ export const WorkflowEditorContent: React.FC = () => {
         </div>
       )}
 
-      {/* RUN WORKFLOW MODAL */}
-      {isRunModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-lg bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 rounded-2xl p-5 shadow-modal space-y-4">
-            <div className="flex items-center justify-between border-b border-warm-200 dark:border-charcoal-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Play className="w-4 h-4 text-brand-600 dark:text-brand-400 fill-current" />
-                <h3 className="text-sm font-bold text-warm-900 dark:text-charcoal-100">
-                  Dispatch Run: {workflow?.name}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsRunModalOpen(false)}
-                className="text-warm-400 hover:text-warm-700 dark:hover:text-charcoal-200"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {runError && (
-              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 text-xs text-red-700 dark:text-red-300">
-                {runError}
-              </div>
-            )}
-
-            <div>
-              <label className="flex items-center justify-between text-xs font-semibold text-warm-800 dark:text-charcoal-200 mb-1.5">
-                <span className="flex items-center gap-1.5">
-                  <Terminal className="w-3.5 h-3.5 text-warm-500 dark:text-charcoal-400" />
-                  <span>Input Payload (JSON)</span>
-                </span>
-                <span className="text-[10px] font-mono text-warm-500 dark:text-charcoal-400">
-                  Initial step input
-                </span>
-              </label>
-              <textarea
-                rows={6}
-                value={runPayload}
-                onChange={(e) => setRunPayload(e.target.value)}
-                className="w-full p-3 bg-warm-50 dark:bg-charcoal-950 border border-warm-300 dark:border-charcoal-750 rounded-xl text-xs font-mono text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600 dark:focus:border-brand-500 transition-all resize-none"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-warm-200 dark:border-charcoal-800">
-              <button
-                type="button"
-                disabled={isRunning}
-                onClick={() => setIsRunModalOpen(false)}
-                className="px-4 py-2 rounded-lg text-xs font-medium text-warm-600 dark:text-charcoal-400 hover:text-warm-900 dark:hover:text-charcoal-100 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isRunning}
-                onClick={handleTriggerRun}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-subtle transition disabled:opacity-50"
-              >
-                {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-                <span>Execute Workflow</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* AI RUN SIMULATOR & TEST DISPATCH MODAL */}
+      <AIRunSimulatorModal
+        isOpen={isRunModalOpen}
+        onClose={() => setIsRunModalOpen(false)}
+        organizationId={activeOrganization?.id || ''}
+        workflowId={workflowId || ''}
+        workflowName={workflow?.name}
+        currentNodes={nodes}
+        currentEdges={edges}
+        onExecuteLiveRun={handleTriggerRun}
+        isRunningLive={isRunning}
+        runError={runError}
+      />
     </div>
   );
 };

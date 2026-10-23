@@ -2,21 +2,20 @@ import math
 import secrets
 import uuid
 from typing import List, Optional, Tuple
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_active_user, get_org_context, require_role
 from app.core.database import get_db
-from app.models.membership import OrganizationMember, OrganizationRole
 from app.models.audit_log import AuditLog
+from app.models.membership import OrganizationMember, OrganizationRole
 from app.models.organization import Organization
 from app.models.user import User
 from app.models.workflow import Workflow, WorkflowVersion
 from app.models.workflow_step import WorkflowConnection, WorkflowStep
 from app.schemas.workflow import (
-    StepType,
     WorkflowConnectionResponse,
     WorkflowCreateRequest,
     WorkflowListResponse,
@@ -31,6 +30,15 @@ from app.schemas.workflow import (
     WorkflowVersionSummaryResponse,
     WorkflowVersionUpdateRequest,
 )
+from app.schemas.workflow_ai import (
+    AISimulateExecutionRequest,
+    AISimulateExecutionResponse,
+    AISimulatePayloadRequest,
+    AISimulatePayloadResponse,
+    AIWorkflowAssistRequest,
+    AIWorkflowAssistResponse,
+)
+from app.services.ai.workflow_generator import AIWorkflowGeneratorService
 from app.services.workflow_validator import validate_workflow_dag
 
 router = APIRouter(
@@ -99,12 +107,9 @@ async def _get_workflow_or_404(
     workflow_id: uuid.UUID,
     for_update: bool = False,
 ) -> Workflow:
-    stmt = (
-        select(Workflow)
-        .where(
-            Workflow.id == workflow_id,
-            Workflow.organization_id == organization_id,
-        )
+    stmt = select(Workflow).where(
+        Workflow.id == workflow_id,
+        Workflow.organization_id == organization_id,
     )
     if for_update:
         stmt = stmt.with_for_update()
@@ -126,9 +131,7 @@ async def _get_version_or_404(
     version_id: uuid.UUID,
     for_update: bool = False,
 ) -> Tuple[Workflow, WorkflowVersion]:
-    workflow = await _get_workflow_or_404(
-        db, organization_id, workflow_id, for_update=for_update
-    )
+    workflow = await _get_workflow_or_404(db, organization_id, workflow_id, for_update=for_update)
 
     stmt = select(WorkflowVersion).where(
         WorkflowVersion.id == version_id,
@@ -152,17 +155,13 @@ async def _build_workflow_response(
     workflow: Workflow,
 ) -> WorkflowResponse:
     # Get version count
-    count_stmt = select(func.count(WorkflowVersion.id)).where(
-        WorkflowVersion.workflow_id == workflow.id
-    )
+    count_stmt = select(func.count(WorkflowVersion.id)).where(WorkflowVersion.workflow_id == workflow.id)
     version_count = await db.scalar(count_stmt) or 0
 
     # Get active version summary if exists
     active_summary = None
     if workflow.active_version_id:
-        v_stmt = select(WorkflowVersion).where(
-            WorkflowVersion.id == workflow.active_version_id
-        )
+        v_stmt = select(WorkflowVersion).where(WorkflowVersion.id == workflow.active_version_id)
         active_version = await db.scalar(v_stmt)
         if active_version:
             active_summary = WorkflowVersionSummaryResponse(
@@ -194,6 +193,7 @@ async def _build_workflow_response(
 # ==============================================================================
 # 1. Workflow CRUD Endpoints
 # ==============================================================================
+
 
 @router.post(
     "",
@@ -480,6 +480,7 @@ async def archive_workflow(
 # 2. Workflow Version Endpoints
 # ==============================================================================
 
+
 @router.get(
     "/{workflow_id}/versions",
     response_model=List[WorkflowVersionSummaryResponse],
@@ -521,9 +522,7 @@ async def get_workflow_version(
     """
     Retrieves full details for a workflow version, including all steps and connections.
     """
-    workflow, version = await _get_version_or_404(
-        db, organization_id, workflow_id, version_id
-    )
+    workflow, version = await _get_version_or_404(db, organization_id, workflow_id, version_id)
 
     steps_stmt = (
         select(WorkflowStep)
@@ -565,9 +564,7 @@ async def create_workflow_version(
     workflow = await _get_workflow_or_404(db, organization_id, workflow_id)
 
     # Server-side version number calculation
-    max_v_stmt = select(func.max(WorkflowVersion.version_number)).where(
-        WorkflowVersion.workflow_id == workflow_id
-    )
+    max_v_stmt = select(func.max(WorkflowVersion.version_number)).where(WorkflowVersion.workflow_id == workflow_id)
     max_version = await db.scalar(max_v_stmt) or 0
     next_version = max_version + 1
 
@@ -598,9 +595,7 @@ async def create_workflow_version(
             )
 
         # Clone steps
-        base_step_stmt = select(WorkflowStep).where(
-            WorkflowStep.workflow_version_id == base_version.id
-        )
+        base_step_stmt = select(WorkflowStep).where(WorkflowStep.workflow_version_id == base_version.id)
         base_steps = (await db.execute(base_step_stmt)).scalars().all()
 
         step_id_map = {}
@@ -619,9 +614,7 @@ async def create_workflow_version(
             new_steps.append(cloned_step)
 
         # Clone connections
-        base_conn_stmt = select(WorkflowConnection).where(
-            WorkflowConnection.workflow_version_id == base_version.id
-        )
+        base_conn_stmt = select(WorkflowConnection).where(WorkflowConnection.workflow_version_id == base_version.id)
         base_conns = (await db.execute(base_conn_stmt)).scalars().all()
 
         for bc in base_conns:
@@ -663,9 +656,7 @@ async def update_workflow_version(
     Updates the steps and connections of a draft workflow version.
     Published versions are strictly immutable and cannot be updated.
     """
-    workflow, version = await _get_version_or_404(
-        db, organization_id, workflow_id, version_id, for_update=True
-    )
+    workflow, version = await _get_version_or_404(db, organization_id, workflow_id, version_id, for_update=True)
 
     if version.status == WorkflowVersionStatus.PUBLISHED.value:
         raise HTTPException(
@@ -674,14 +665,8 @@ async def update_workflow_version(
         )
 
     # Clean existing steps and connections for this draft version
-    await db.execute(
-        delete(WorkflowConnection).where(
-            WorkflowConnection.workflow_version_id == version.id
-        )
-    )
-    await db.execute(
-        delete(WorkflowStep).where(WorkflowStep.workflow_version_id == version.id)
-    )
+    await db.execute(delete(WorkflowConnection).where(WorkflowConnection.workflow_version_id == version.id))
+    await db.execute(delete(WorkflowStep).where(WorkflowStep.workflow_version_id == version.id))
     await db.flush()
 
     # Re-insert steps
@@ -755,18 +740,12 @@ async def validate_workflow_version(
     Performs dry-run DAG validation for a workflow version.
     Returns HTTP 200 with valid, errors, and warnings.
     """
-    workflow, version = await _get_version_or_404(
-        db, organization_id, workflow_id, version_id
-    )
+    workflow, version = await _get_version_or_404(db, organization_id, workflow_id, version_id)
 
-    steps_stmt = select(WorkflowStep).where(
-        WorkflowStep.workflow_version_id == version.id
-    )
+    steps_stmt = select(WorkflowStep).where(WorkflowStep.workflow_version_id == version.id)
     steps = (await db.execute(steps_stmt)).scalars().all()
 
-    conns_stmt = select(WorkflowConnection).where(
-        WorkflowConnection.workflow_version_id == version.id
-    )
+    conns_stmt = select(WorkflowConnection).where(WorkflowConnection.workflow_version_id == version.id)
     conns = (await db.execute(conns_stmt)).scalars().all()
 
     step_id_to_key = {s.id: s.step_key for s in steps}
@@ -803,9 +782,7 @@ async def publish_workflow_version(
     If valid, sets version status to PUBLISHED, workflow status to ACTIVE, and commits.
     """
     # Use row lock to protect against concurrent publishing
-    workflow, version = await _get_version_or_404(
-        db, organization_id, workflow_id, version_id, for_update=True
-    )
+    workflow, version = await _get_version_or_404(db, organization_id, workflow_id, version_id, for_update=True)
 
     if version.status == WorkflowVersionStatus.PUBLISHED.value:
         raise HTTPException(
@@ -814,14 +791,10 @@ async def publish_workflow_version(
         )
 
     # Load steps and connections
-    steps_stmt = select(WorkflowStep).where(
-        WorkflowStep.workflow_version_id == version.id
-    )
+    steps_stmt = select(WorkflowStep).where(WorkflowStep.workflow_version_id == version.id)
     steps = (await db.execute(steps_stmt)).scalars().all()
 
-    conns_stmt = select(WorkflowConnection).where(
-        WorkflowConnection.workflow_version_id == version.id
-    )
+    conns_stmt = select(WorkflowConnection).where(WorkflowConnection.workflow_version_id == version.id)
     conns = (await db.execute(conns_stmt)).scalars().all()
 
     step_id_to_key = {s.id: s.step_key for s in steps}
@@ -838,7 +811,7 @@ async def publish_workflow_version(
     val_result = validate_workflow_dag(list(steps), conn_dicts)
     if not val_result.valid:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail={
                 "message": "Workflow version validation failed",
                 "errors": val_result.errors,
@@ -855,3 +828,83 @@ async def publish_workflow_version(
     await db.refresh(workflow)
 
     return await _build_workflow_response(db, workflow)
+
+
+@router.post(
+    "/{workflow_id}/ai-assist",
+    response_model=AIWorkflowAssistResponse,
+    summary="AI Workflow Assistant interaction",
+)
+async def assist_workflow_with_ai(
+    organization_id: uuid.UUID,
+    workflow_id: uuid.UUID,
+    req: AIWorkflowAssistRequest,
+    org_context: Tuple[Organization, OrganizationMember] = Depends(
+        require_role([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MANAGER])
+    ),
+    db: AsyncSession = Depends(get_db),
+) -> AIWorkflowAssistResponse:
+    """
+    Interacts with the AI Workflow Architect powered by Grok.
+    Generates, refines, clarifies, explains, or suggests workflow DAGs based on natural language.
+    Does NOT modify the database or overwrite the draft directly (preview-and-apply flow).
+    """
+    workflow = await _get_workflow_or_404(db, organization_id, workflow_id)
+
+    # Attach workflow name & description if not already provided in request
+    if not req.workflow_name:
+        req.workflow_name = workflow.name
+    if not req.workflow_description and workflow.description:
+        req.workflow_description = workflow.description
+
+    from app.routers.workflow_ai import assist_with_accounting
+
+    return await assist_with_accounting(db, organization_id, req, workflow_id=workflow_id)
+
+
+@router.post(
+    "/{workflow_id}/ai-simulate-payload",
+    response_model=AISimulatePayloadResponse,
+    summary="Generate realistic test payload with AI",
+)
+async def generate_workflow_simulation_payload(
+    organization_id: uuid.UUID,
+    workflow_id: uuid.UUID,
+    req: AISimulatePayloadRequest,
+    org_context: Tuple[Organization, OrganizationMember] = Depends(
+        require_role([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MANAGER, OrganizationRole.OPERATOR])
+    ),
+    db: AsyncSession = Depends(get_db),
+) -> AISimulatePayloadResponse:
+    """
+    Generates a realistic test input payload matching the workflow's trigger and condition constraints.
+    Supports happy path, edge-case, and negative/failure scenarios.
+    """
+    await _get_workflow_or_404(db, organization_id, workflow_id)
+    service = AIWorkflowGeneratorService()
+    return await service.generate_test_payload(req)
+
+
+@router.post(
+    "/{workflow_id}/ai-simulate-run",
+    response_model=AISimulateExecutionResponse,
+    summary="Simulate dry-run execution of workflow DAG",
+)
+async def simulate_workflow_run(
+    organization_id: uuid.UUID,
+    workflow_id: uuid.UUID,
+    req: AISimulateExecutionRequest,
+    org_context: Tuple[Organization, OrganizationMember] = Depends(
+        require_role([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MANAGER, OrganizationRole.OPERATOR])
+    ),
+    db: AsyncSession = Depends(get_db),
+) -> AISimulateExecutionResponse:
+    """
+    Performs a non-destructive dry-run simulation of the workflow DAG against the input payload.
+    Predicts branch decisions, skipped vs executed steps, and output state without side-effects.
+    """
+    await _get_workflow_or_404(db, organization_id, workflow_id)
+    service = AIWorkflowGeneratorService()
+    return await service.simulate_workflow_execution(req)
+
+

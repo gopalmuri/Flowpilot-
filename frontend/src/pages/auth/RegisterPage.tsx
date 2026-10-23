@@ -25,7 +25,7 @@ export const RegisterPage: React.FC = () => {
   const hasUppercase = /[A-Z]/.test(password);
   const hasLowercase = /[a-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
-  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>\-_=+;'\\[\]/`~]/.test(password);
 
   const isPasswordValid =
     hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
@@ -33,18 +33,52 @@ export const RegisterPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isPasswordValid) return;
-
     setError(null);
+
+    const cleanName = fullName.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanName || cleanName.length < 2) {
+      setError('Please enter your full name (at least 2 characters).');
+      return;
+    }
+
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setError('Please enter a valid work email address.');
+      return;
+    }
+
+    if (!hasMinLength) {
+      setError('Password is too short: must be at least 10 characters long.');
+      return;
+    }
+    if (!hasUppercase) {
+      setError('Password must include at least one uppercase letter (A-Z).');
+      return;
+    }
+    if (!hasLowercase) {
+      setError('Password must include at least one lowercase letter (a-z).');
+      return;
+    }
+    if (!hasNumber) {
+      setError('Password must include at least one numeric digit (0-9).');
+      return;
+    }
+    if (!hasSpecial) {
+      setError('Password must include at least one special character (!@#$%^&*-_=+ etc.).');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       await register({
-        full_name: fullName,
-        email,
+        full_name: cleanName,
+        email: cleanEmail,
         password,
         organization_name: orgName.trim() || undefined,
       });
-      navigate('/dashboard');
+      navigate(`/verify-email?email=${encodeURIComponent(cleanEmail)}`);
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please verify your details.');
     } finally {
@@ -137,6 +171,12 @@ export const RegisterPage: React.FC = () => {
               <span>Create Account</span>
               <ArrowRight className="w-4 h-4" />
             </PrimaryButton>
+
+            {!isPasswordValid && password.length > 0 && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium text-center mt-2 animate-in fade-in">
+                Fulfill all 5 password requirements above to activate Create Account.
+              </p>
+            )}
           </div>
         </form>
       </AuthCard>

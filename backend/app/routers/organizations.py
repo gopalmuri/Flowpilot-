@@ -1,10 +1,10 @@
 import re
 import uuid
 from typing import List, Tuple
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_active_user, get_org_context, require_role
 from app.core.database import get_db
@@ -109,9 +109,7 @@ async def list_organizations(
     orgs = []
     for org, role in rows:
         # Get member count for organization
-        cnt_stmt = select(func.count(OrganizationMember.id)).where(
-            OrganizationMember.organization_id == org.id
-        )
+        cnt_stmt = select(func.count(OrganizationMember.id)).where(OrganizationMember.organization_id == org.id)
         count = await db.scalar(cnt_stmt) or 1
 
         orgs.append(
@@ -141,9 +139,7 @@ async def get_organization(
     Enforces multi-tenant isolation: non-members receive 404 Not Found.
     """
     org, member = org_context
-    cnt_stmt = select(func.count(OrganizationMember.id)).where(
-        OrganizationMember.organization_id == org.id
-    )
+    cnt_stmt = select(func.count(OrganizationMember.id)).where(OrganizationMember.organization_id == org.id)
     count = await db.scalar(cnt_stmt) or 1
 
     return OrganizationResponse(
@@ -260,10 +256,7 @@ async def remove_organization_member(
         )
 
     # Rule: ADMIN cannot remove an OWNER
-    if (
-        caller_member.role == OrganizationRole.ADMIN.value
-        and target_member.role == OrganizationRole.OWNER.value
-    ):
+    if caller_member.role == OrganizationRole.ADMIN.value and target_member.role == OrganizationRole.OWNER.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admins cannot remove an organization owner",

@@ -1,8 +1,10 @@
 import uuid
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, BigInteger, ForeignKey, DateTime, Index, Uuid
+from typing import TYPE_CHECKING, Optional
+
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
 from app.models.base import UUIDMixin, utc_now
 
@@ -13,9 +15,7 @@ if TYPE_CHECKING:
 
 class UsageRecord(Base, UUIDMixin):
     __tablename__ = "usage_records"
-    __table_args__ = (
-        Index("idx_usage_records_org_metric", "organization_id", "metric_type", "recorded_at"),
-    )
+    __table_args__ = (Index("idx_usage_records_org_metric", "organization_id", "metric_type", "recorded_at"),)
 
     organization_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
@@ -35,7 +35,7 @@ class UsageRecord(Base, UUIDMixin):
     )
     workflow_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         Uuid,
-        ForeignKey("workflows.id"),
+        ForeignKey("workflows.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

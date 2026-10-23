@@ -2,8 +2,6 @@
 # FlowPilot - Production Docker Compose Orchestration
 # ==============================================================================
 
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -80,6 +78,35 @@ services:
     container_name: flowpilot-prod-celery
     restart: always
     command: ["celery", "-A", "app.workers.celery_app.celery_app", "worker", "--loglevel=info", "--concurrency=4"]
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "False"
+      SECRET_KEY: ${SECRET_KEY}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-flowpilot_prod}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - flowpilot-backend-network
+
+
+  # The scheduler. Run EXACTLY ONE of these: a second beat would enqueue every periodic task twice.
+  # The fixed container_name makes `docker compose up --scale celery_beat=2` fail instead of duplicating it.
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: flowpilot-prod-celery-beat
+    restart: always
+    command: ["celery", "-A", "app.workers.celery_app.celery_app", "beat", "--loglevel=info", "--schedule=/tmp/celerybeat-schedule"]
     environment:
       ENVIRONMENT: production
       DEBUG: "False"

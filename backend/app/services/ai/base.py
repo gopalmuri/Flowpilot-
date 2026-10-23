@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+
 from app.schemas.ai import AIProviderConfig, LeadClassificationInput
 
 
@@ -32,3 +33,15 @@ class BaseAIProvider(ABC):
         Must return normalized AIProviderResponse with raw string output and usage metrics.
         """
         pass
+
+    async def generate_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        config: AIProviderConfig,
+    ) -> AIProviderResponse:
+        """
+        Free-form structured generation: returns raw text that the caller must parse and validate.
+        Providers that do not support it keep this default so existing classification keeps working.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not support structured generation")

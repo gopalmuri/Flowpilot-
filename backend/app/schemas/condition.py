@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Any, List, Optional
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
@@ -33,7 +34,9 @@ class ConditionClause(BaseModel):
 
     field: str = Field(..., min_length=1, description="Context path, e.g. 'category' or 'trigger.amount'")
     operator: ConditionOperator = Field(..., description="Canonical comparison operator")
-    value: Optional[Any] = Field(None, description="Expected value for comparison (ignored for exists/is_null/is_empty)")
+    value: Optional[Any] = Field(
+        None, description="Expected value for comparison (ignored for exists/is_null/is_empty)"
+    )
 
 
 class RuleGroup(BaseModel):

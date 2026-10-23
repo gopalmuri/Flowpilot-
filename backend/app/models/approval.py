@@ -1,23 +1,23 @@
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional, TYPE_CHECKING
-from sqlalchemy import String, Text, ForeignKey, DateTime, Index, JSON, Uuid
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
-from app.models.base import UUIDMixin, TimestampMixin
+from app.models.base import TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from app.models.organization import Organization
+    from app.models.user import User
     from app.models.workflow_run import WorkflowRun
     from app.models.workflow_step import WorkflowStep
-    from app.models.user import User
 
 
 class ApprovalRequest(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "approval_requests"
-    __table_args__ = (
-        Index("idx_approval_requests_org_status", "organization_id", "status"),
-    )
+    __table_args__ = (Index("idx_approval_requests_org_status", "organization_id", "status"),)
 
     organization_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
@@ -33,7 +33,7 @@ class ApprovalRequest(Base, UUIDMixin, TimestampMixin):
     )
     step_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
-        ForeignKey("workflow_steps.id"),
+        ForeignKey("workflow_steps.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -60,6 +60,10 @@ class ApprovalRequest(Base, UUIDMixin, TimestampMixin):
         DateTime(timezone=True),
         nullable=True,
     )
+    # Resume bookkeeping: claimed when a decision wins, completed when the run has been driven on.
+    # A decided approval with no completion and a stale claim means the worker died; see recovery.
+    resume_claimed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    resume_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     organization: Mapped["Organization"] = relationship(

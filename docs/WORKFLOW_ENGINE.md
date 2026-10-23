@@ -96,7 +96,7 @@ The condition evaluation engine (`app/engine/condition_evaluator.py`) supports e
          │ Approver Clicks "REJECT" or Timeout
          ▼
    ┌───────────┐
-   │ TERMINAL  │ ──► [Run Marked FAILED / REJECTED]
+   │ TERMINAL  │ ──► [Approval REJECTED -> run follows its "rejected" branch, finishes COMPLETED; approved-path steps SKIPPED]
    └───────────┘
          │
          ▼

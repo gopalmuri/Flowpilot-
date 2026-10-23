@@ -1,25 +1,26 @@
 import json
+import uuid
+
 import pytest
+
+from app.engine.base import StepExecutionContext
 from app.engine.condition_evaluator import (
     compare_values,
     evaluate_condition_rule,
     resolve_path_value,
 )
+from app.engine.executors import MockAIClassificationExecutor
 from app.engine.sanitizer import (
     is_sensitive_key,
     mask_sensitive_data,
     sanitize_error_message,
-    sanitize_payload,
     truncate_payload,
 )
-from app.engine.executors import MockAIClassificationExecutor
-from app.engine.base import StepExecutionContext
-import uuid
-
 
 # ==============================================================================
 # 1. Condition Evaluator Unit Tests
 # ==============================================================================
+
 
 def test_resolve_path_value():
     context = {
@@ -127,6 +128,7 @@ def test_evaluate_condition_rule_multi_clause():
 # 2. Sanitizer Unit Tests
 # ==============================================================================
 
+
 def test_is_sensitive_key():
     assert is_sensitive_key("password") is True
     assert is_sensitive_key("User_Password") is True
@@ -191,6 +193,7 @@ def test_sanitize_error_message():
 # ==============================================================================
 # 3. Deterministic Mock AI Classification Unit Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_mock_ai_classifier_exact_and_keyword_matching():

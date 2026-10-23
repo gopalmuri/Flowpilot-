@@ -2,7 +2,8 @@ import math
 import secrets
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -146,6 +147,7 @@ async def _build_run_detail(db: AsyncSession, run: WorkflowRun) -> WorkflowRunDe
 # 1. Trigger / Start Workflow Execution
 # ==============================================================================
 
+
 @router.post(
     "/workflows/{workflow_id}/runs",
     response_model=WorkflowRunDetailResponse,
@@ -159,12 +161,14 @@ async def trigger_workflow_run(
     async_dispatch: bool = Query(False, description="Dispatch execution asynchronously to Celery background worker"),
     x_async_dispatch: Optional[str] = Header(None, alias="X-Async-Dispatch"),
     org_context: Tuple[Organization, OrganizationMember] = Depends(
-        require_role([
-            OrganizationRole.OWNER,
-            OrganizationRole.ADMIN,
-            OrganizationRole.MANAGER,
-            OrganizationRole.OPERATOR,
-        ])
+        require_role(
+            [
+                OrganizationRole.OWNER,
+                OrganizationRole.ADMIN,
+                OrganizationRole.MANAGER,
+                OrganizationRole.OPERATOR,
+            ]
+        )
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -248,6 +252,7 @@ async def trigger_workflow_run(
 # ==============================================================================
 # 2a. List Workflow Runs (Workflow Scoped)
 # ==============================================================================
+
 
 @router.get(
     "/workflows/{workflow_id}/runs",
@@ -350,6 +355,7 @@ async def list_workflow_runs(
 # 2b. List All Organization Runs (Global Search & Filter)
 # ==============================================================================
 
+
 @router.get(
     "/runs",
     response_model=WorkflowRunListResponse,
@@ -449,6 +455,7 @@ async def list_organization_runs(
 # 3. Get Workflow Run Detail
 # ==============================================================================
 
+
 @router.get(
     "/runs/{run_id}",
     response_model=WorkflowRunDetailResponse,
@@ -482,6 +489,7 @@ async def get_run_detail(
 # 4. Cancel Workflow Run
 # ==============================================================================
 
+
 @router.post(
     "/runs/{run_id}/cancel",
     response_model=WorkflowRunResponse,
@@ -491,12 +499,14 @@ async def cancel_run(
     organization_id: uuid.UUID,
     run_id: uuid.UUID,
     org_context: Tuple[Organization, OrganizationMember] = Depends(
-        require_role([
-            OrganizationRole.OWNER,
-            OrganizationRole.ADMIN,
-            OrganizationRole.MANAGER,
-            OrganizationRole.OPERATOR,
-        ])
+        require_role(
+            [
+                OrganizationRole.OWNER,
+                OrganizationRole.ADMIN,
+                OrganizationRole.MANAGER,
+                OrganizationRole.OPERATOR,
+            ]
+        )
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -537,6 +547,7 @@ async def cancel_run(
 # 5. Resume / Approve Workflow Run
 # ==============================================================================
 
+
 @router.post(
     "/runs/{run_id}/resume",
     response_model=WorkflowRunDetailResponse,
@@ -549,11 +560,13 @@ async def resume_run(
     async_dispatch: bool = Query(False, description="Dispatch resumption asynchronously to Celery background worker"),
     x_async_dispatch: Optional[str] = Header(None, alias="X-Async-Dispatch"),
     org_context: Tuple[Organization, OrganizationMember] = Depends(
-        require_role([
-            OrganizationRole.OWNER,
-            OrganizationRole.ADMIN,
-            OrganizationRole.MANAGER,
-        ])
+        require_role(
+            [
+                OrganizationRole.OWNER,
+                OrganizationRole.ADMIN,
+                OrganizationRole.MANAGER,
+            ]
+        )
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),

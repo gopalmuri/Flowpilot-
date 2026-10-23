@@ -1,17 +1,22 @@
+import secrets
+import time
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, Tuple
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from typing import Tuple
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.api.deps import get_current_active_user, get_db, require_role
+from app.core.database import async_session_maker
 from app.core.encryption import decrypt_credentials, encrypt_credentials
 from app.models.audit_log import AuditLog
 from app.models.integration import Integration
 from app.models.membership import OrganizationMember, OrganizationRole
 from app.models.organization import Organization
 from app.models.user import User
+from app.models.workflow import Workflow
 from app.schemas.integration import (
     IntegrationCreateRequest,
     IntegrationListResponse,
@@ -22,6 +27,10 @@ from app.schemas.integration import (
     IntegrationUpdateRequest,
 )
 from app.services.crm.mock_crm_service import MockCRMService
+from app.services.gmail import accounts as gmail_accounts
+from app.services.gmail.deps import get_client_factory
+from app.services.gmail.errors import GmailError
+from app.services.gmail.types import GmailClientFactory
 from app.services.slack.slack_service import SlackService
 
 router = APIRouter(
@@ -30,18 +39,22 @@ router = APIRouter(
 )
 
 admin_only = require_role([OrganizationRole.OWNER, OrganizationRole.ADMIN])
-manager_or_above = require_role([
-    OrganizationRole.OWNER,
-    OrganizationRole.ADMIN,
-    OrganizationRole.MANAGER,
-])
-all_members = require_role([
-    OrganizationRole.OWNER,
-    OrganizationRole.ADMIN,
-    OrganizationRole.MANAGER,
-    OrganizationRole.OPERATOR,
-    OrganizationRole.VIEWER,
-])
+manager_or_above = require_role(
+    [
+        OrganizationRole.OWNER,
+        OrganizationRole.ADMIN,
+        OrganizationRole.MANAGER,
+    ]
+)
+all_members = require_role(
+    [
+        OrganizationRole.OWNER,
+        OrganizationRole.ADMIN,
+        OrganizationRole.MANAGER,
+        OrganizationRole.OPERATOR,
+        OrganizationRole.VIEWER,
+    ]
+)
 
 
 def _to_integration_response(item: Integration) -> IntegrationResponse:
@@ -56,7 +69,44 @@ def _to_integration_response(item: Integration) -> IntegrationResponse:
         config=item.config or {},
         created_at=item.created_at,
         updated_at=item.updated_at,
+        public_key=item.public_key,
     )
+
+
+async def _validate_workflow_binding(db: AsyncSession, organization_id: uuid.UUID, config: dict) -> None:
+    """An inbound integration may only reference a workflow and a reply account owned by the same organization."""
+    raw = (config or {}).get("workflow_id")
+    if raw:
+        try:
+            wf_id = uuid.UUID(str(raw))
+        except ValueError:
+            raise HTTPException(status_code=422, detail="config.workflow_id must be a UUID") from None
+        found = (
+            await db.execute(
+                select(Workflow.id).where(Workflow.id == wf_id, Workflow.organization_id == organization_id)
+            )
+        ).scalar_one_or_none()
+        if not found:
+            raise HTTPException(
+                status_code=422, detail="config.workflow_id does not match a workflow in this organization"
+            )
+
+    reply_raw = (config or {}).get("reply_integration_id")
+    if reply_raw:
+        try:
+            reply_id = uuid.UUID(str(reply_raw))
+        except ValueError:
+            raise HTTPException(status_code=422, detail="config.reply_integration_id must be a UUID") from None
+        account = (
+            await db.execute(
+                select(Integration).where(Integration.id == reply_id, Integration.organization_id == organization_id)
+            )
+        ).scalar_one_or_none()
+        if account is None or account.type != IntegrationType.EMAIL_SENDER.value:
+            raise HTTPException(
+                status_code=422,
+                detail="config.reply_integration_id must be an EMAIL_SENDER integration in this organization",
+            )
 
 
 @router.get(
@@ -110,10 +160,26 @@ async def create_integration(
             detail=f"An integration named '{name_clean}' already exists in this organization.",
         )
 
+    if payload.type == IntegrationType.GMAIL:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Gmail mailboxes are connected through Google's OAuth flow, not created directly",
+        )
+    await _validate_workflow_binding(db, organization_id, payload.config)
+
     # Encrypt credentials if provided
+    credentials = payload.credentials
+    public_key = None
+    setup = None
+    if payload.type == IntegrationType.PORTFOLIO_FORM:
+        # Server-generated: callers never choose the key or the signing secret.
+        public_key = secrets.token_urlsafe(24)
+        signing_secret = secrets.token_urlsafe(32)
+        credentials = {"signing_secret": signing_secret}
+        setup = {"signing_secret": signing_secret, "inbound_path": f"/api/v1/inbound/portfolio/{public_key}"}
     encrypted_bytes = None
-    if payload.credentials:
-        encrypted_bytes = encrypt_credentials(payload.credentials, aad=organization_id.bytes)
+    if credentials:
+        encrypted_bytes = encrypt_credentials(credentials, aad=organization_id.bytes)
 
     new_integration = Integration(
         organization_id=organization_id,
@@ -122,6 +188,7 @@ async def create_integration(
         status=IntegrationStatus.CONNECTED.value,
         credentials_encrypted=encrypted_bytes,
         config=payload.config or {},
+        public_key=public_key,
     )
     db.add(new_integration)
     await db.flush()
@@ -143,7 +210,9 @@ async def create_integration(
     await db.commit()
     await db.refresh(new_integration)
 
-    return _to_integration_response(new_integration)
+    response = _to_integration_response(new_integration)
+    response.setup = setup
+    return response
 
 
 @router.get(
@@ -195,6 +264,19 @@ async def update_integration(
             detail="Integration not found",
         )
 
+    if integration.type == IntegrationType.GMAIL.value:
+        if payload.credentials is not None or payload.clear_credentials or payload.status is not None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Gmail credentials and status are managed by the Gmail connect/disconnect actions",
+            )
+        if payload.config is not None:
+            # Only the workflow binding is editable; the verified mailbox address and sync settings are not.
+            payload.config = {
+                **(integration.config or {}),
+                **{k: v for k, v in payload.config.items() if k == "workflow_id"},
+            }
+
     if payload.name:
         name_clean = payload.name.strip()
         if name_clean.lower() != integration.name.lower():
@@ -216,6 +298,7 @@ async def update_integration(
         integration.status = payload.status.value
 
     if payload.config is not None:
+        await _validate_workflow_binding(db, organization_id, payload.config)
         integration.config = payload.config
 
     # Credential lifecycle: replace, clear, or preserve
@@ -258,6 +341,7 @@ async def delete_integration(
     integration_id: uuid.UUID,
     org_context: Tuple[Organization, OrganizationMember] = Depends(admin_only),
     current_user: User = Depends(get_current_active_user),
+    gmail_client_factory: GmailClientFactory = Depends(get_client_factory),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Integration).where(
@@ -270,6 +354,17 @@ async def delete_integration(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Integration not found",
         )
+
+    if integration.type == IntegrationType.GMAIL.value:
+        # Revoke the grant, stop the watch and discard tokens before the row (and its history) is removed.
+        bind = getattr(db, "bind", None)
+        factory = (
+            async_sessionmaker(bind=bind, class_=AsyncSession, expire_on_commit=False, autoflush=False)
+            if bind is not None and hasattr(bind, "sync_engine")
+            else async_session_maker
+        )
+        await gmail_accounts.disconnect(factory, organization_id, integration_id, current_user.id, gmail_client_factory)
+        await db.refresh(integration)
 
     await db.delete(integration)
 
@@ -300,6 +395,7 @@ async def test_integration(
     integration_id: uuid.UUID,
     org_context: Tuple[Organization, OrganizationMember] = Depends(manager_or_above),
     current_user: User = Depends(get_current_active_user),
+    gmail_client_factory: GmailClientFactory = Depends(get_client_factory),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Integration).where(
@@ -347,6 +443,39 @@ async def test_integration(
                 channel=integration.config.get("channel"),
                 mock_mode=integration.config.get("mock_mode", False),
             )
+        elif integration.type == IntegrationType.GMAIL.value:
+            started = time.monotonic()
+            try:
+                profile = await gmail_client_factory(creds).get_profile()
+                ok, detail = True, f"Connected to {profile.email_address}"
+            except GmailError as err:
+                ok, detail = False, f"Gmail check failed: {err.code}"
+            test_res = {
+                "status": "healthy" if ok else "error",
+                "latency_ms": round((time.monotonic() - started) * 1000, 1),
+                "message": detail,
+                "tested_at": datetime.now(timezone.utc).isoformat(),
+            }
+        elif integration.type == IntegrationType.EMAIL_SENDER.value:
+            ok = bool((integration.config or {}).get("from_address"))
+            test_res = {
+                "status": "healthy" if ok else "error",
+                "latency_ms": 0.0,
+                "message": "Reply account configured. Only the mock provider is available; no live email is sent."
+                if ok
+                else "config.from_address is missing.",
+                "tested_at": datetime.now(timezone.utc).isoformat(),
+            }
+        elif integration.type == IntegrationType.PORTFOLIO_FORM.value:
+            ok = bool(creds.get("signing_secret")) and bool(integration.public_key)
+            test_res = {
+                "status": "healthy" if ok else "error",
+                "latency_ms": 0.0,
+                "message": "Inbound endpoint is configured; send a signed test submission from the portfolio backend."
+                if ok
+                else "Signing secret or public key is missing.",
+                "tested_at": datetime.now(timezone.utc).isoformat(),
+            }
         else:
             return IntegrationTestResponse(
                 status="error",
@@ -376,7 +505,9 @@ async def test_integration(
             status=test_res["status"],
             latency_ms=test_res["latency_ms"],
             message=test_res["message"],
-            tested_at=datetime.fromisoformat(test_res["tested_at"]) if isinstance(test_res.get("tested_at"), str) else datetime.now(timezone.utc),
+            tested_at=datetime.fromisoformat(test_res["tested_at"])
+            if isinstance(test_res.get("tested_at"), str)
+            else datetime.now(timezone.utc),
         )
     except Exception as e:
         return IntegrationTestResponse(
