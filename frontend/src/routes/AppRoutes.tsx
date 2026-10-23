@@ -10,6 +10,7 @@ import { VerifyEmailPage } from '../pages/auth/VerifyEmailPage';
 import { DashboardPage } from '../pages/dashboard/DashboardPage';
 import { AnalyticsPage } from '../pages/analytics/AnalyticsPage';
 import { WorkflowsPage } from '../pages/workflows/WorkflowsPage';
+import { AIBuilderPage } from '../pages/workflows/AIBuilderPage';
 import { WorkflowEditorPage } from '../pages/workflows/WorkflowEditorPage';
 import { IntegrationsPage } from '../pages/integrations/IntegrationsPage';
 import { ExecutionsPage } from '../pages/executions/ExecutionsPage';
@@ -71,6 +72,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/workflows" element={<WorkflowsPage />} />
+        <Route path="/workflows/new/ai" element={<AIBuilderPage />} />
         <Route path="/workflows/:workflowId" element={<WorkflowEditorPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
         <Route path="/executions" element={<ExecutionsPage />} />

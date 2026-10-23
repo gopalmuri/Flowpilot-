@@ -199,7 +199,7 @@ async def test_spam_drops_the_draft():
         (TimeoutError("Grok request timed out after 10s"), "timeout"),
         (ValueError("Grok API key is not configured or missing"), "missing_configuration"),
         (ValueError("Grok model is not configured (set GROK_MODEL)"), "missing_configuration"),
-        (NotImplementedError("AnthropicProvider does not support structured generation"), "provider_unsupported"),
+        (NotImplementedError("Provider does not support structured generation"), "provider_unsupported"),
         (KeyError("boom"), "provider_unavailable"),
     ],
 )

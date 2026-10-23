@@ -78,15 +78,26 @@ class Settings(BaseSettings):
     # AI Service Configuration (Phase 9)
     AI_PROVIDER: str = "mock"
     OPENAI_API_KEY: Optional[str] = None
-    ANTHROPIC_API_KEY: Optional[str] = None
     AI_DEFAULT_MODEL: str = "gpt-4o-mini"
     AI_REQUEST_TIMEOUT_SECONDS: float = 10.0
+    # AI builder: per-organisation daily cap on assistant calls, so one tenant cannot exhaust the shared provider key.
+    AI_DAILY_REQUEST_LIMIT_PER_ORG: int = 200
+    AI_BUILDER_TIMEOUT_SECONDS: float = 45.0
 
-    # Grok (xAI) uses an OpenAI-compatible chat-completions API.
-    # No default model on purpose: it must be set explicitly (GROK_MODEL).
+    # Groq — OpenAI-compatible chat-completions API with multiple keys for fallback.
+    # Keys are tried in order (1→2→3→4) on auth/rate-limit errors.
+    GROQ_API_KEY_1: Optional[str] = None
+    GROQ_API_KEY_2: Optional[str] = None
+    GROQ_API_KEY_3: Optional[str] = None
+    GROQ_API_KEY_4: Optional[str] = None
+    GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
+
+    # Grok (xAI) OpenAI-compatible chat-completions API
     GROK_API_KEY: Optional[str] = None
     GROK_BASE_URL: str = "https://api.x.ai/v1"
     GROK_MODEL: Optional[str] = None
+
 
     # Outbound delivery (Phase 4). Live provider sending is not implemented: only the mock provider exists.
     OUTBOUND_MAX_ATTEMPTS: int = 5

@@ -30,6 +30,15 @@ from app.schemas.workflow import (
     WorkflowVersionSummaryResponse,
     WorkflowVersionUpdateRequest,
 )
+from app.schemas.workflow_ai import (
+    AISimulateExecutionRequest,
+    AISimulateExecutionResponse,
+    AISimulatePayloadRequest,
+    AISimulatePayloadResponse,
+    AIWorkflowAssistRequest,
+    AIWorkflowAssistResponse,
+)
+from app.services.ai.workflow_generator import AIWorkflowGeneratorService
 from app.services.workflow_validator import validate_workflow_dag
 
 router = APIRouter(
@@ -819,3 +828,83 @@ async def publish_workflow_version(
     await db.refresh(workflow)
 
     return await _build_workflow_response(db, workflow)
+
+
+@router.post(
+    "/{workflow_id}/ai-assist",
+    response_model=AIWorkflowAssistResponse,
+    summary="AI Workflow Assistant interaction",
+)
+async def assist_workflow_with_ai(
+    organization_id: uuid.UUID,
+    workflow_id: uuid.UUID,
+    req: AIWorkflowAssistRequest,
+    org_context: Tuple[Organization, OrganizationMember] = Depends(
+        require_role([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MANAGER])
+    ),
+    db: AsyncSession = Depends(get_db),
+) -> AIWorkflowAssistResponse:
+    """
+    Interacts with the AI Workflow Architect powered by Grok.
+    Generates, refines, clarifies, explains, or suggests workflow DAGs based on natural language.
+    Does NOT modify the database or overwrite the draft directly (preview-and-apply flow).
+    """
+    workflow = await _get_workflow_or_404(db, organization_id, workflow_id)
+
+    # Attach workflow name & description if not already provided in request
+    if not req.workflow_name:
+        req.workflow_name = workflow.name
+    if not req.workflow_description and workflow.description:
+        req.workflow_description = workflow.description
+
+    from app.routers.workflow_ai import assist_with_accounting
+
+    return await assist_with_accounting(db, organization_id, req, workflow_id=workflow_id)
+
+
+@router.post(
+    "/{workflow_id}/ai-simulate-payload",
+    response_model=AISimulatePayloadResponse,
+    summary="Generate realistic test payload with AI",
+)
+async def generate_workflow_simulation_payload(
+    organization_id: uuid.UUID,
+    workflow_id: uuid.UUID,
+    req: AISimulatePayloadRequest,
+    org_context: Tuple[Organization, OrganizationMember] = Depends(
+        require_role([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MANAGER, OrganizationRole.OPERATOR])
+    ),
+    db: AsyncSession = Depends(get_db),
+) -> AISimulatePayloadResponse:
+    """
+    Generates a realistic test input payload matching the workflow's trigger and condition constraints.
+    Supports happy path, edge-case, and negative/failure scenarios.
+    """
+    await _get_workflow_or_404(db, organization_id, workflow_id)
+    service = AIWorkflowGeneratorService()
+    return await service.generate_test_payload(req)
+
+
+@router.post(
+    "/{workflow_id}/ai-simulate-run",
+    response_model=AISimulateExecutionResponse,
+    summary="Simulate dry-run execution of workflow DAG",
+)
+async def simulate_workflow_run(
+    organization_id: uuid.UUID,
+    workflow_id: uuid.UUID,
+    req: AISimulateExecutionRequest,
+    org_context: Tuple[Organization, OrganizationMember] = Depends(
+        require_role([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MANAGER, OrganizationRole.OPERATOR])
+    ),
+    db: AsyncSession = Depends(get_db),
+) -> AISimulateExecutionResponse:
+    """
+    Performs a non-destructive dry-run simulation of the workflow DAG against the input payload.
+    Predicts branch decisions, skipped vs executed steps, and output state without side-effects.
+    """
+    await _get_workflow_or_404(db, organization_id, workflow_id)
+    service = AIWorkflowGeneratorService()
+    return await service.simulate_workflow_execution(req)
+
+

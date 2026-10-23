@@ -13,7 +13,6 @@ from app.schemas.ai import (
     LeadClassificationInput,
     LeadClassificationResult,
 )
-from app.services.ai.anthropic_provider import AnthropicProvider
 from app.services.ai.base import AIProviderResponse
 from app.services.ai.mock_provider import MockAIProvider
 from app.services.ai.openai_provider import OpenAIProvider
@@ -226,7 +225,7 @@ def test_extract_json_malformed_raises():
 
 
 # ==============================================================================
-# 5. Mocked External Provider HTTP Tests (OpenAI & Anthropic)
+# 5. Mocked External Provider HTTP Tests (OpenAI)
 # ==============================================================================
 
 
@@ -296,44 +295,6 @@ async def test_openai_provider_timeout():
         with pytest.raises(TimeoutError) as exc_info:
             await provider.classify(inp, cfg)
         assert "timed out" in str(exc_info.value)
-
-
-@pytest.mark.asyncio
-async def test_anthropic_provider_success():
-    provider = AnthropicProvider(api_key="sk-ant-mock-key")
-    inp = LeadClassificationInput(text="Need technical assistance with API integration")
-    cfg = AIProviderConfig(provider="anthropic", model="claude-3-5-sonnet-20241022")
-
-    mock_resp_data = {
-        "content": [
-            {
-                "text": json.dumps(
-                    {
-                        "category": "technical",
-                        "priority": "medium",
-                        "confidence": 0.89,
-                        "reasoning": "Inquiry regarding API integration.",
-                        "suggested_action": "route_to_technical",
-                    }
-                )
-            }
-        ],
-        "usage": {"input_tokens": 55, "output_tokens": 30},
-    }
-
-    mock_http_resp = httpx.Response(
-        200, json=mock_resp_data, request=httpx.Request("POST", "https://api.anthropic.com")
-    )
-
-    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        mock_post.return_value = mock_http_resp
-        resp = await provider.classify(inp, cfg)
-
-        assert resp.provider == "anthropic"
-        assert resp.prompt_tokens == 55
-        assert resp.completion_tokens == 30
-        assert resp.total_tokens == 85
-        assert "technical" in resp.raw_output
 
 
 # ==============================================================================

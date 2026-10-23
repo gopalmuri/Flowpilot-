@@ -24,6 +24,7 @@ def validate_step_config(step_key: str, step_type: str, config: Dict[str, Any]) 
     - MOCK_CRM_CREATE: OR semantics (requires 'entity_type' or 'mapping')
     - VALIDATE_DATA: OR semantics (requires 'schema', 'rules', or 'required_fields')
     - HUMAN_APPROVAL: OR semantics (requires 'approver_role', 'title', or 'timeout_hours')
+    - AI_EXTRACT_DATA: requires a non-empty 'fields' list
     - WEBHOOK_TRIGGER / MANUAL_TRIGGER: optional configuration (empty dict allowed)
     """
     errors: List[str] = []
@@ -54,6 +55,11 @@ def validate_step_config(step_key: str, step_type: str, config: Dict[str, Any]) 
             errors.append(
                 f"Step '{step_key}' ({step_type}) requires 'approver_role', 'title', or 'timeout_hours' in configuration"
             )
+
+    elif step_type == StepType.AI_EXTRACT_DATA.value:
+        fields = config.get("fields")
+        if not isinstance(fields, list) or not [f for f in fields if isinstance(f, str) and f.strip()]:
+            errors.append(f"Step '{step_key}' ({step_type}) requires a non-empty 'fields' list in configuration")
 
     return errors
 

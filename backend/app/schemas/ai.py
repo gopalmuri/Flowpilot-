@@ -94,7 +94,7 @@ class LeadClassificationResult(BaseModel):
     tokens_used: int = Field(default=0, ge=0, description="Total tokens consumed")
     prompt_tokens: int = Field(default=0, ge=0, description="Prompt tokens consumed")
     completion_tokens: int = Field(default=0, ge=0, description="Completion tokens consumed")
-    provider: str = Field(..., min_length=1, description="Provider used (e.g. mock, openai, anthropic, fallback)")
+    provider: str = Field(..., min_length=1, description="Provider used (e.g. mock, openai, grok, fallback)")
     model: str = Field(..., min_length=1, description="Model identifier")
     latency_ms: int = Field(default=0, ge=0, description="Call latency in milliseconds")
     is_fallback: bool = Field(default=False, description="True if produced by deterministic fallback classifier")

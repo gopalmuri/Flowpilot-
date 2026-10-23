@@ -23,6 +23,9 @@ export const APPROVED_STEP_TYPES: Set<string> = new Set([
   StepType.MOCK_CRM_CREATE,
   StepType.SLACK_NOTIFICATION,
   StepType.HUMAN_APPROVAL,
+  StepType.AI_ANALYZE_MESSAGE,
+  StepType.SEND_REPLY,
+  StepType.AI_EXTRACT_DATA,
 ]);
 
 export const TRIGGER_STEP_TYPES: Set<string> = new Set([
@@ -57,6 +60,13 @@ export function validateStepConfig(
   } else if (stepType === StepType.VALIDATE_DATA) {
     if (!cfg.schema && !cfg.rules && (!cfg.required_fields || cfg.required_fields.length === 0)) {
       errors.push(`Step '${stepKey}' (${stepType}) requires 'schema', 'rules', or 'required_fields' in configuration`);
+    }
+  } else if (stepType === StepType.AI_EXTRACT_DATA) {
+    const fields = Array.isArray(cfg.fields)
+      ? cfg.fields.filter((f: unknown) => typeof f === 'string' && f.trim())
+      : [];
+    if (fields.length === 0) {
+      errors.push(`Step '${stepKey}' (${stepType}) requires a non-empty 'fields' list in configuration`);
     }
   } else if (stepType === StepType.HUMAN_APPROVAL) {
     if (!cfg.approver_role && !cfg.title && !cfg.timeout_hours) {

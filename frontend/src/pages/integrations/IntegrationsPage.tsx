@@ -13,6 +13,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import {
   Integration,
   IntegrationCreatePayload,
@@ -34,6 +35,7 @@ import {
 
 export const IntegrationsPage: React.FC = () => {
   const { activeOrganization, activeRole } = useAuth();
+  const { confirm, showSuccess, showError } = useToast();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedType, setSelectedType] = useState<IntegrationType>('SLACK');
@@ -129,25 +131,25 @@ export const IntegrationsPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (integration: Integration) => {
+  const handleDelete = (integration: Integration) => {
     if (!orgId) return;
-    if (!window.confirm(`Are you sure you want to disconnect integration "${integration.name}"?`)) {
-      return;
-    }
 
-    try {
-      await deleteIntegration(orgId, integration.id);
-      setFeedback({
-        type: 'success',
-        message: `Integration "${integration.name}" disconnected.`,
-      });
-      await loadData();
-    } catch (err: any) {
-      setFeedback({
-        type: 'error',
-        message: err.message || 'Failed to delete integration.',
-      });
-    }
+    confirm({
+      title: 'Disconnect Integration',
+      message: `Are you sure you want to disconnect integration "${integration.name}"? Active workflows relying on this connection will be affected.`,
+      confirmLabel: 'Disconnect Integration',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteIntegration(orgId, integration.id);
+          showSuccess(`Integration "${integration.name}" disconnected.`, 'Disconnected');
+          await loadData();
+        } catch (err: any) {
+          showError(err.message || 'Failed to delete integration.', 'Error');
+        }
+      },
+    });
   };
 
   const handleTestConnection = async (integration: Integration) => {

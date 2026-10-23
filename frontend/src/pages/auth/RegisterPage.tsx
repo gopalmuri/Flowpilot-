@@ -72,15 +72,13 @@ export const RegisterPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const resp = await register({
+      await register({
         full_name: cleanName,
         email: cleanEmail,
         password,
         organization_name: orgName.trim() || undefined,
       });
-      const devOtp = resp && (resp as any).dev_otp;
-      const devOtpParam = devOtp ? `&dev_otp=${encodeURIComponent(devOtp)}` : '';
-      navigate(`/verify-email?email=${encodeURIComponent(cleanEmail)}${devOtpParam}`);
+      navigate(`/verify-email?email=${encodeURIComponent(cleanEmail)}`);
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please verify your details.');
     } finally {

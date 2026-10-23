@@ -131,11 +131,185 @@ class MockAIProvider(BaseAIProvider):
         facts: the draft only acknowledges the message and asks clarifying questions.
         """
         start_time = time.monotonic()
+
+        # Handle Workflow Assistant requests in tests and offline mock mode
+        if "Workflow Architect" in system_prompt or "AI Test Engineer" in system_prompt:
+            prompt_lower = user_prompt.lower()
+            if "clarify" in prompt_lower or "missing" in prompt_lower:
+                payload = {
+                    "mode": "clarification",
+                    "message": "Which Slack channel should notifications be sent to?",
+                    "clarification_questions": [
+                        {
+                            "id": "channel_select",
+                            "question": "Which channel should receive alerts?",
+                            "options": ["#sales-alerts", "#executive-escalations", "#general"],
+                        }
+                    ],
+                }
+            elif "fix validation" in prompt_lower or "repair" in prompt_lower:
+                payload = {
+                    "mode": "proposal",
+                    "message": "I have analyzed the validation issues and repaired the DAG by adding missing condition branches and reconnecting orphan nodes.",
+                    "proposal": {
+                        "steps": [
+                            {
+                                "step_key": "webhook_1",
+                                "step_type": "WEBHOOK_TRIGGER",
+                                "name": "Incoming Lead Webhook",
+                                "config": {"allowed_methods": ["POST"]},
+                            },
+                            {
+                                "step_key": "condition_1",
+                                "step_type": "CONDITION",
+                                "name": "Check Priority",
+                                "config": {"field": "priority", "operator": "equals", "value": "high"},
+                            },
+                            {
+                                "step_key": "approval_1",
+                                "step_type": "HUMAN_APPROVAL",
+                                "name": "Manager Review Gate",
+                                "config": {"approver_role": "MANAGER", "timeout_hours": 24},
+                            },
+                            {
+                                "step_key": "slack_alert_1",
+                                "step_type": "SLACK_NOTIFICATION",
+                                "name": "Alert High Priority",
+                                "config": {"channel": "#alerts"},
+                            },
+                            {
+                                "step_key": "slack_alert_default",
+                                "step_type": "SLACK_NOTIFICATION",
+                                "name": "Standard Notification",
+                                "config": {"channel": "#general"},
+                            },
+                        ],
+                        "connections": [
+                            {"source_step_key": "webhook_1", "target_step_key": "condition_1"},
+                            {"source_step_key": "condition_1", "target_step_key": "approval_1", "condition_label": "true"},
+                            {"source_step_key": "condition_1", "target_step_key": "slack_alert_default", "condition_label": "false"},
+                            {"source_step_key": "approval_1", "target_step_key": "slack_alert_1", "condition_label": "approved"},
+                        ],
+                        "warnings": [],
+                    },
+                }
+            elif "explain" in prompt_lower or "audit" in prompt_lower:
+                payload = {
+                    "mode": "explanation",
+                    "message": "This workflow ingests inbound leads via webhook, classifies lead intent using AI, and routes high-value enterprise leads to a human review gate before syncing to CRM.",
+                }
+
+            elif "generate a realistic json input payload" in prompt_lower or "simulate payload" in prompt_lower:
+                if "edge_case" in prompt_lower:
+                    payload = {
+                        "scenario": "edge_case",
+                        "summary": "Boundary value payload testing exact score threshold and null optional attributes.",
+                        "payload": {
+                            "lead_score": 75,
+                            "email": "boundary.user@domain.co",
+                            "company": "Boundary Corp",
+                            "notes": None,
+                            "tier": "standard",
+                        },
+                        "target_trigger": "webhook_1",
+                    }
+                elif "failure" in prompt_lower or "rejection" in prompt_lower:
+                    payload = {
+                        "scenario": "failure",
+                        "summary": "Negative branch payload designed to test rejection and routing to fallback notification.",
+                        "payload": {
+                            "lead_score": 25,
+                            "email": "spam.account@tempmail.com",
+                            "company": "Unknown",
+                            "tier": "low",
+                        },
+                        "target_trigger": "webhook_1",
+                    }
+                else:
+                    payload = {
+                        "scenario": "happy_path",
+                        "summary": "Enterprise qualifying lead payload satisfying all required conditions and human gate thresholds.",
+                        "payload": {
+                            "lead_score": 92,
+                            "email": "alex.morgan@enterprise-scale.com",
+                            "company": "Enterprise Scale Inc",
+                            "arr_estimate": 120000,
+                            "tier": "enterprise",
+                        },
+                        "target_trigger": "webhook_1",
+                    }
+            else:
+                # Propose a standard, valid workflow DAG
+                payload = {
+                    "mode": "proposal",
+                    "message": "I've drafted a fault-tolerant workflow based on your requirements. Review the proposed steps and connections on your canvas:",
+                    "proposal": {
+                        "steps": [
+                            {
+                                "step_key": "webhook_1",
+                                "step_type": "WEBHOOK_TRIGGER",
+                                "name": "Incoming Lead Webhook",
+                                "config": {"allowed_methods": ["POST"]},
+                            },
+                            {
+                                "step_key": "ai_classify_1",
+                                "step_type": "AI_CLASSIFICATION",
+                                "name": "AI Intent Triage",
+                                "config": {"prompt": "Classify lead tier", "categories": ["enterprise", "mid_market", "smb"]},
+                            },
+                            {
+                                "step_key": "condition_1",
+                                "step_type": "CONDITION",
+                                "name": "Check Enterprise Tier",
+                                "config": {"field": "category", "operator": "equals", "value": "enterprise"},
+                            },
+                            {
+                                "step_key": "approval_1",
+                                "step_type": "HUMAN_APPROVAL",
+                                "name": "Manager Sign-off Gate",
+                                "config": {"approver_role": "MANAGER", "timeout_hours": 24},
+                            },
+                            {
+                                "step_key": "crm_lead_1",
+                                "step_type": "MOCK_CRM_CREATE",
+                                "name": "Sync to Mock CRM",
+                                "config": {"entity_type": "lead"},
+                            },
+                            {
+                                "step_key": "slack_alert_1",
+                                "step_type": "SLACK_NOTIFICATION",
+                                "name": "Alert Sales Team",
+                                "config": {"channel": "#sales-alerts"},
+                            },
+                        ],
+                        "connections": [
+                            {"source_step_key": "webhook_1", "target_step_key": "ai_classify_1"},
+                            {"source_step_key": "ai_classify_1", "target_step_key": "condition_1"},
+                            {"source_step_key": "condition_1", "target_step_key": "approval_1", "condition_label": "true"},
+                            {"source_step_key": "condition_1", "target_step_key": "crm_lead_1", "condition_label": "false"},
+                            {"source_step_key": "approval_1", "target_step_key": "crm_lead_1", "condition_label": "approved"},
+                            {"source_step_key": "crm_lead_1", "target_step_key": "slack_alert_1"},
+                        ],
+                        "warnings": [],
+                    },
+                }
+
+            return AIProviderResponse(
+                raw_output=json.dumps(payload),
+                prompt_tokens=len(user_prompt) // 4,
+                completion_tokens=150,
+                total_tokens=len(user_prompt) // 4 + 150,
+                provider="mock",
+                model="mock-model",
+                latency_ms=max(1, int((time.monotonic() - start_time) * 1000)),
+            )
+
         match = re.search(r"<untrusted_message>\n(.*?)\n</untrusted_message>", user_prompt, re.DOTALL)
         body = (match.group(1) if match else user_prompt).lower()
         name_match = re.search(r"<sender>(.*?)</sender>", user_prompt)
         name = (name_match.group(1) if name_match else "").strip()
         greeting = f"Hello {name}," if name and name != "(unknown)" else "Hello,"
+
 
         if any(k in body for k in MOCK_KEYWORDS["spam"]):
             category, action, draft = "spam", "ignore", None

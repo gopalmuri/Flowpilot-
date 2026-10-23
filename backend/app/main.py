@@ -22,6 +22,7 @@ from app.routers import (
     integrations,
     organizations,
     webhooks,
+    workflow_ai,
     workflows,
 )
 
@@ -65,6 +66,7 @@ app.include_router(health.router, prefix=settings.API_V1_STR)
 app.include_router(health.router)  # /health alias
 app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(organizations.router, prefix=settings.API_V1_STR)
+app.include_router(workflow_ai.router, prefix=settings.API_V1_STR)  # before workflows: static paths like /catalog
 app.include_router(workflows.router, prefix=settings.API_V1_STR)
 app.include_router(executions.router, prefix=settings.API_V1_STR)
 app.include_router(webhooks.router, prefix=settings.API_V1_STR)

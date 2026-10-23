@@ -616,6 +616,94 @@ class SendReplyExecutor(BaseStepExecutor):
         return StepExecutionResult(status="COMPLETED", output_data=output)
 
 
+class AIExtractDataExecutor(BaseStepExecutor):
+    """
+    Handles AI_EXTRACT_DATA: pulls named fields out of free text into structured output.
+
+    Fields already present as keys in the trigger payload are copied as-is (no model call, no guessing). Only the
+    remaining fields are requested from the model. If the model is unavailable the step still completes, with null
+    for anything it could not find, so a provider outage never invents values or blocks the run.
+    """
+
+    _SOURCE_KEYS = ["message", "text", "body", "email_body", "description", "content", "subject"]
+
+    async def execute(self, ctx: StepExecutionContext) -> StepExecutionResult:
+        config = ctx.config or {}
+        fields = [f.strip() for f in (config.get("fields") or []) if isinstance(f, str) and f.strip()]
+        if not fields:
+            return StepExecutionResult(status="FAILED", error_message="AI extract data requires a 'fields' list")
+
+        payload = ctx.trigger_payload or {}
+        nested = payload.get("payload") if isinstance(payload.get("payload"), dict) else {}
+        extracted: Dict[str, Any] = {}
+        for name in fields:
+            for source in (payload, nested):
+                if source.get(name) not in (None, ""):
+                    extracted[name] = source[name]
+                    break
+
+        remaining = [f for f in fields if f not in extracted]
+        method = "payload"
+        if remaining:
+            text = self._find_text(ctx, config.get("source_field"))
+            if not text:
+                return StepExecutionResult(
+                    status="FAILED",
+                    error_message="AI extract data found no text to read in the trigger payload or upstream steps",
+                )
+            found, method = await self._extract_with_ai(text, remaining, config)
+            for name in remaining:
+                extracted[name] = found.get(name)
+
+        output = {"extracted": extracted, "method": method, **extracted}
+        return StepExecutionResult(status="COMPLETED", output_data=output)
+
+    def _find_text(self, ctx: StepExecutionContext, source_field: Optional[str]) -> str:
+        sources: List[Dict[str, Any]] = [ctx.trigger_payload or {}]
+        sources.extend(o for o in (ctx.workflow_data or {}).values() if isinstance(o, dict))
+        for src in sources:
+            candidates = ([source_field] if source_field else []) + self._SOURCE_KEYS
+            for key in candidates:
+                val = src.get(key)
+                if isinstance(val, str) and val.strip():
+                    return val.strip()[:6000]
+                nested = src.get("payload")
+                if isinstance(nested, dict) and isinstance(nested.get(key), str) and nested[key].strip():
+                    return nested[key].strip()[:6000]
+        return ""
+
+    async def _extract_with_ai(self, text: str, fields: List[str], config: Dict[str, Any]):
+        from app.services.ai.factory import AIProviderFactory
+        from app.services.ai.service import extract_json_payload
+
+        provider_name = config.get("provider") or settings.AI_PROVIDER or "mock"
+        if provider_name == "mock":
+            return {}, "unavailable"
+        try:
+            provider = AIProviderFactory.get_provider(provider_name=provider_name)
+            response = await provider.generate_json(
+                system_prompt=(
+                    "You extract structured details from text. Return a JSON object whose keys are exactly the "
+                    "requested field names. Use null for any field the text does not state. Never guess or invent."
+                ),
+                user_prompt=(
+                    f"Fields: {fields}\n"
+                    f"Extra instructions: {config.get('instructions') or 'none'}\n"
+                    f"Text:\n{text}"
+                ),
+                config=AIProviderConfig(
+                    provider=provider_name,
+                    temperature=0.0,
+                    max_tokens=600,
+                    timeout_seconds=float(config.get("timeout_seconds", settings.AI_REQUEST_TIMEOUT_SECONDS)),
+                ),
+            )
+            data = extract_json_payload(response.raw_output)
+            return {f: data.get(f) for f in fields}, "ai"
+        except Exception:  # noqa: BLE001 - never block a run or leak provider detail; nulls are explicit
+            return {}, "unavailable"
+
+
 def _kick_dispatcher() -> None:
     """Best-effort nudge so the outbox relay runs now instead of at its next tick. Failure is harmless."""
     try:

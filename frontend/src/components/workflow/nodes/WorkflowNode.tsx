@@ -13,6 +13,9 @@ import {
   Play,
   CheckCircle2,
   Sparkles,
+  ScanSearch,
+  Mail,
+  Send,
   GitFork,
   Database,
   MessageSquare,
@@ -68,6 +71,38 @@ export const WorkflowNode: React.FC<NodeProps<any>> = memo(({ data, selected }) 
           badgeClass: 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/60',
           iconClass: 'text-teal-600 dark:text-teal-400',
           summary: config.model ? `Model: ${config.model}` : 'LLM categorization',
+          isTrigger: false,
+        };
+      case StepType.AI_EXTRACT_DATA:
+        return {
+          label: 'AI pulls out key details',
+          category: 'Intelligence',
+          icon: ScanSearch,
+          badgeClass: 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/60',
+          iconClass: 'text-teal-600 dark:text-teal-400',
+          summary: Array.isArray(config.fields) && config.fields.length
+            ? `Pulls out: ${config.fields.join(', ')}`
+            : 'Extract details from text',
+          isTrigger: false,
+        };
+      case StepType.AI_ANALYZE_MESSAGE:
+        return {
+          label: 'AI reads a message',
+          category: 'Intelligence',
+          icon: Mail,
+          badgeClass: 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/60',
+          iconClass: 'text-teal-600 dark:text-teal-400',
+          summary: 'Reads the message and drafts a reply',
+          isTrigger: false,
+        };
+      case StepType.SEND_REPLY:
+        return {
+          label: 'Send the approved reply',
+          category: 'Integration',
+          icon: Send,
+          badgeClass: 'bg-brand-50 dark:bg-brand-900/30 text-brand-800 dark:text-brand-400 border-brand-200 dark:border-brand-800/50',
+          iconClass: 'text-brand-600 dark:text-brand-400',
+          summary: 'Sends the reply once approved',
           isTrigger: false,
         };
       case StepType.CONDITION:
@@ -127,14 +162,19 @@ export const WorkflowNode: React.FC<NodeProps<any>> = memo(({ data, selected }) 
   const branchHandles = branchHandlesFor(String(nodeData.step_type));
   const Icon = meta.icon;
 
+  const isPreview = Boolean(nodeData.isPreview);
+
   return (
     <div
       className={`min-w-[220px] max-w-[280px] rounded-xl bg-white dark:bg-charcoal-900 border transition-all duration-150 shadow-subtle ${
-        selected
+        isPreview
+          ? 'border-dashed border-teal-500 dark:border-teal-400 ring-2 ring-teal-500/30'
+          : selected
           ? 'border-brand-600 dark:border-brand-500 ring-2 ring-brand-500/20'
           : 'border-warm-300 dark:border-charcoal-750 hover:border-warm-400 dark:hover:border-charcoal-700'
       }`}
     >
+
       {!meta.isTrigger && (
         <Handle
           type="target"
@@ -158,9 +198,11 @@ export const WorkflowNode: React.FC<NodeProps<any>> = memo(({ data, selected }) 
       </div>
 
       <div className="p-3 text-[11px] text-warm-600 dark:text-charcoal-400 space-y-1">
-        <div className="font-mono text-[10px] text-warm-500 dark:text-charcoal-500 truncate">
-          key: {nodeData.step_key}
-        </div>
+        {!nodeData.hideKey && (
+          <div className="font-mono text-[10px] text-warm-500 dark:text-charcoal-500 truncate">
+            key: {nodeData.step_key}
+          </div>
+        )}
         <div className="text-warm-700 dark:text-charcoal-300 truncate">
           {meta.summary}
         </div>

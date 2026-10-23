@@ -89,10 +89,29 @@ async def test_full_email_verification_flow(async_client: AsyncClient):
         )
         assert v_res.scalar_one_or_none() is None
 
-    # 7. Attempt login AFTER verification -> should succeed with 200 and return tokens
-    login_success = await async_client.post(
+    # 7. Attempt login AFTER verification -> should require 2FA OTP
+    login_init = await async_client.post(
         "/api/v1/auth/login",
         json={"email": email, "password": password},
+    )
+    assert login_init.status_code == 200
+    assert login_init.json()["requires_otp"] is True
+
+    # 8. Set known OTP for login verification and verify
+    async with session_factory() as session:
+        u_res = await session.execute(select(User).where(User.email == email))
+        user = u_res.scalar_one()
+        v_res = await session.execute(
+            select(EmailVerification).where(EmailVerification.user_id == user.id)
+        )
+        login_v = v_res.scalar_one()
+        known_login_otp = "987654"
+        login_v.otp_hash = hash_otp(known_login_otp, salt=str(user.id))
+        await session.commit()
+
+    login_success = await async_client.post(
+        "/api/v1/auth/verify-login-otp",
+        json={"email": email, "code": known_login_otp},
     )
     assert login_success.status_code == 200
     assert "access_token" in login_success.json()

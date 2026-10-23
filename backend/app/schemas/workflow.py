@@ -29,6 +29,7 @@ class StepType(str, Enum):
     HUMAN_APPROVAL = "HUMAN_APPROVAL"
     AI_ANALYZE_MESSAGE = "AI_ANALYZE_MESSAGE"
     SEND_REPLY = "SEND_REPLY"
+    AI_EXTRACT_DATA = "AI_EXTRACT_DATA"
 
 
 # ---------------------------------------------------------

@@ -66,7 +66,6 @@ class UserRegisterResponse(BaseModel):
     email: str
     requires_verification: bool = True
     user_id: uuid.UUID
-    dev_otp: Optional[str] = None
 
 
 class VerifyEmailRequest(BaseModel):
@@ -80,7 +79,23 @@ class ResendOtpRequest(BaseModel):
 
 class ResendOtpResponse(BaseModel):
     message: str
-    dev_otp: Optional[str] = None
+
+
+class LoginInitiateResponse(BaseModel):
+    message: str = "A 6-digit verification code has been sent to your email."
+    email: str
+    requires_otp: bool = True
+
+
+class VerifyLoginOtpRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+    organization_id: Optional[uuid.UUID] = None
+
+
+class ResendLoginOtpRequest(BaseModel):
+    email: EmailStr
+
 
 
 

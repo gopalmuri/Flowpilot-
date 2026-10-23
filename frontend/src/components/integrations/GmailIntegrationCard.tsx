@@ -9,6 +9,7 @@ import {
 } from '../../services/gmailService';
 import { updateIntegration } from '../../services/integrationService';
 import { listWorkflows } from '../../services/workflowService';
+import { useToast } from '../../context/ToastContext';
 
 interface GmailIntegrationCardProps {
   organizationId: string;
@@ -76,6 +77,7 @@ export const GmailIntegrationCard: React.FC<GmailIntegrationCardProps> = ({
   canSync,
   onFeedback,
 }) => {
+  const { confirm } = useToast();
   const [data, setData] = useState<GmailAccountsResponse | null>(null);
   const [workflows, setWorkflows] = useState<{ id: string; name: string }[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -276,11 +278,18 @@ export const GmailIntegrationCard: React.FC<GmailIntegrationCardProps> = ({
                   type="button"
                   disabled={busy !== null}
                   onClick={() => {
-                    if (window.confirm(`Disconnect ${a.mailbox}? FlowPilot will stop reading it and revoke its access.`)) {
-                      void run('disconnect', () => disconnectGmail(organizationId, a.integration_id), `${a.mailbox} disconnected.`);
-                    }
+                    confirm({
+                      title: 'Disconnect Mailbox',
+                      message: `Are you sure you want to disconnect ${a.mailbox}? FlowPilot will stop monitoring incoming messages and revoke its credentials.`,
+                      confirmLabel: 'Disconnect Mailbox',
+                      cancelLabel: 'Cancel',
+                      variant: 'danger',
+                      onConfirm: () => {
+                        void run('disconnect', () => disconnectGmail(organizationId, a.integration_id), `${a.mailbox} disconnected.`);
+                      },
+                    });
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 dark:bg-red-950/40 dark:hover:bg-red-900/50 dark:text-red-300 dark:border-red-800/60 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 dark:bg-red-950/40 dark:hover:bg-red-900/50 dark:text-red-300 dark:border-red-800/60 disabled:opacity-50 cursor-pointer"
                 >
                   <Unplug className="w-3.5 h-3.5" />
                   Disconnect

@@ -1,19 +1,23 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   AuthContextType,
+  LoginInitiateResponse,
   LoginPayload,
   OrganizationRole,
   OrganizationSummary,
   RegisterPayload,
   User,
+  VerifyLoginOtpPayload,
 } from '../types/auth';
 import {
   fetchCurrentUser,
   loginUser,
   logoutUser,
   registerUser,
+  resendLoginOtpService,
   resendVerificationOtp,
   verifyEmailUser,
+  verifyLoginOtpUser,
 } from '../services/authService';
 import {
   clearAuthStorage,
@@ -128,18 +132,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [organizations]
   );
 
-  // Login handler
+  // Login credentials handler - triggers 2FA OTP
   const login = useCallback(
-    async (payload: LoginPayload) => {
+    async (payload: LoginPayload): Promise<LoginInitiateResponse> => {
       setIsLoading(true);
       try {
-        await loginUser(payload);
+        return await loginUser(payload);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  // Verify Login 2FA OTP handler
+  const verifyLoginOtp = useCallback(
+    async (payload: VerifyLoginOtpPayload) => {
+      setIsLoading(true);
+      try {
+        await verifyLoginOtpUser(payload);
         await refreshProfile();
       } finally {
         setIsLoading(false);
       }
     },
     [refreshProfile]
+  );
+
+  // Resend Login OTP handler
+  const resendLoginOtp = useCallback(
+    async (email: string) => {
+      await resendLoginOtpService(email);
+    },
+    []
   );
 
   // Register handler - sends verification OTP
@@ -203,6 +228,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated: !!user,
     isLoading,
     login,
+    verifyLoginOtp,
+    resendLoginOtp,
     register,
     verifyEmail,
     resendVerificationCode,

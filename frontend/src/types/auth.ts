@@ -49,7 +49,18 @@ export interface UserRegisterResponse {
   email: string;
   requires_verification: boolean;
   user_id: string;
-  dev_otp?: string | null;
+}
+
+export interface LoginInitiateResponse {
+  message: string;
+  email: string;
+  requires_otp: boolean;
+}
+
+export interface VerifyLoginOtpPayload {
+  email: string;
+  code: string;
+  organization_id?: string;
 }
 
 export interface VerifyEmailPayload {
@@ -64,7 +75,9 @@ export interface AuthContextType {
   activeRole: OrganizationRole | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (payload: LoginPayload) => Promise<void>;
+  login: (payload: LoginPayload) => Promise<LoginInitiateResponse | void>;
+  verifyLoginOtp?: (payload: VerifyLoginOtpPayload) => Promise<void>;
+  resendLoginOtp?: (email: string) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<UserRegisterResponse | void>;
   verifyEmail?: (email: string, code: string) => Promise<void>;
   resendVerificationCode?: (email: string) => Promise<void>;
@@ -72,3 +85,4 @@ export interface AuthContextType {
   switchOrganization: (organizationId: string) => void;
   refreshProfile: () => Promise<void>;
 }
+
