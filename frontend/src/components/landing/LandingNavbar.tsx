@@ -1,210 +1,133 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, ArrowRight } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ThemeSwitcher } from '../ui/ThemeSwitcher';
+import { LandingLogo } from './LandingLogo';
+import { NAV_LINKS } from './landingContent';
 
 export const LandingNavbar: React.FC = () => {
   const { isAuthenticated } = useAuth();
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const [open, setOpen] = useState(false);
+  const menuId = useId();
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      // Background & blur threshold
-      setIsScrolled(window.scrollY > 20);
-
-      // Scroll progress percentage
-      const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
-      if (totalScroll > 0) {
-        const progress = (window.scrollY / totalScroll) * 100;
-        setScrollProgress(Math.min(100, Math.max(0, progress)));
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
+  const close = useCallback((returnFocus = false) => {
+    setOpen(false);
+    if (returnFocus) toggleRef.current?.focus();
   }, []);
 
-  const navLinks = [
-    { label: 'Product', href: '#hero-workflow' },
-    { label: 'How It Works', href: '#how-it-works' },
-    { label: 'Architecture', href: '#architecture' },
-    { label: 'Observability', href: '#security' }
-  ];
+  // Esc closes the menu and returns focus to the toggle; an outside click closes it too.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close(true);
+    };
+    const onPointer = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!menuRef.current?.contains(t) && !toggleRef.current?.contains(t)) close();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onPointer);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onPointer);
+    };
+  }, [open, close]);
 
-  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    if (href.startsWith('#')) {
-      e.preventDefault();
-      setIsMobileMenuOpen(false);
-      const element = document.querySelector(href);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
-  };
+  // Move focus into the menu when it opens.
+  useEffect(() => {
+    if (open) menuRef.current?.querySelector<HTMLElement>('a')?.focus();
+  }, [open]);
 
   return (
-    <>
-      {/* 2px Emerald Scroll Progress Indicator at Very Top */}
-      <div
-        className="fixed top-0 left-0 right-0 h-[2px] bg-brand-500 z-50 transition-all duration-75 pointer-events-none"
-        style={{ width: `${scrollProgress}%` }}
-        role="progressbar"
-        aria-valuenow={Math.round(scrollProgress)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      />
+    <header className="lp-nav">
+      <nav aria-label="Primary" className="lp-container">
+        <div className="flex items-center justify-between gap-4 h-16">
+          <LandingLogo descriptor onClick={() => close()} />
 
-      <nav
-        className={`sticky top-0 z-40 transition-all duration-200 border-b ${
-          isScrolled
-            ? 'bg-[var(--bg-app)]/90 backdrop-blur-md border-[var(--border-subtle)] py-2.5 shadow-xs'
-            : 'bg-[var(--bg-app)]/60 backdrop-blur-xs border-transparent py-4'
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
-            {/* Brand Logo */}
-            <Link
-              to="/"
-              className="flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-lg p-1"
-            >
-              <div className="w-8 h-8 rounded-xl bg-brand-600 dark:bg-brand-500 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform duration-150">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-4 h-4 text-white"
-                >
-                  <polygon points="12 2 19 8 12 14 5 8 12 2" />
-                  <polyline points="5 15 12 21 19 15" />
-                </svg>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-base tracking-tight text-[var(--text-primary)]">
-                  FlowPilot
-                </span>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-brand-700 dark:text-brand-300 bg-[var(--brand-soft)] px-1.5 py-0.5 rounded border border-brand-200 dark:border-brand-700/60 font-semibold">
-                  Control Plane
-                </span>
-              </div>
-            </Link>
-
-            {/* Desktop Navigation Links with subtle animated underline (width 0 -> 100%, opacity 0 -> 1 in 180ms) */}
-            <div className="hidden md:flex items-center gap-1 lg:gap-2">
-              {navLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={(e) => handleLinkClick(e, link.href)}
-                  className="relative px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors duration-150 group"
-                >
-                  <span>{link.label}</span>
-                  <span className="absolute bottom-0.5 left-3 right-3 h-[1.5px] bg-brand-500 rounded-full scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-100 transition-all duration-[180ms] origin-left" />
+          <ul className="hidden lg:flex items-center gap-1 list-none m-0 p-0">
+            {NAV_LINKS.map((l) => (
+              <li key={l.href}>
+                <a href={l.href} className="lp-navlink">
+                  {l.label}
                 </a>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden lg:flex items-center gap-2">
+            <ThemeSwitcher compact />
+            {isAuthenticated ? (
+              <Link to="/dashboard" className="lp-btn lp-btn--primary lp-btn--sm">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" className="lp-btn lp-btn--ghost lp-btn--sm">
+                  Sign In
+                </Link>
+                <Link to="/register" className="lp-btn lp-btn--primary lp-btn--sm">
+                  Get Started
+                </Link>
+              </>
+            )}
+          </div>
+
+          <button
+            ref={toggleRef}
+            type="button"
+            className="lg:hidden inline-flex items-center justify-center w-11 h-11 rounded-lg"
+            style={{ color: 'var(--lp-text)' }}
+            aria-expanded={open}
+            aria-controls={menuId}
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
+          </button>
+        </div>
+
+        <div id={menuId} ref={menuRef} className="lp-mobile-menu lg:hidden" data-open={open}>
+          <div>
+            <ul className="list-none m-0 p-0 pb-2 flex flex-col">
+              {NAV_LINKS.map((l) => (
+                <li key={l.href}>
+                  <a
+                    href={l.href}
+                    onClick={() => close()}
+                    className="flex items-center min-h-[44px] px-3 rounded-lg text-[15px] font-medium"
+                    style={{ color: 'var(--lp-text)' }}
+                  >
+                    {l.label}
+                  </a>
+                </li>
               ))}
-            </div>
-
-            {/* Right Action Controls */}
-            <div className="hidden sm:flex items-center gap-2.5 sm:gap-3">
-              <ThemeSwitcher compact={true} />
-
+            </ul>
+            <div className="flex flex-col gap-2 pt-3 pb-4 border-t" style={{ borderColor: 'var(--lp-border)' }}>
               {isAuthenticated ? (
-                <Link
-                  to="/dashboard"
-                  className="btn-micro-hover inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-brand-600 dark:bg-brand-500 shadow-xs"
-                >
-                  <span>Dashboard</span>
-                  <ArrowRight className="w-3.5 h-3.5 btn-arrow" />
+                <Link to="/dashboard" onClick={() => close()} className="lp-btn lp-btn--primary">
+                  Dashboard
                 </Link>
               ) : (
                 <>
-                  <Link
-                    to="/login"
-                    className="px-3 py-1.5 rounded-xl text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors duration-150"
-                  >
+                  <Link to="/login" onClick={() => close()} className="lp-btn lp-btn--secondary">
                     Sign In
                   </Link>
-                  <Link
-                    to="/register"
-                    className="btn-micro-hover inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-brand-600 dark:bg-brand-500 shadow-xs"
-                  >
-                    <span>Get Started</span>
-                    <ArrowRight className="w-3.5 h-3.5 btn-arrow" />
+                  <Link to="/register" onClick={() => close()} className="lp-btn lp-btn--primary">
+                    Get Started
                   </Link>
                 </>
               )}
-            </div>
-
-            {/* Mobile Hamburger Menu Toggle */}
-            <div className="flex sm:hidden items-center gap-2">
-              <ThemeSwitcher compact={true} />
-              <button
-                type="button"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="p-2 rounded-xl text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500"
-                aria-label="Toggle navigation menu"
-                aria-expanded={isMobileMenuOpen}
-              >
-                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
+              <div className="flex items-center justify-between pt-1">
+                <span className="lp-label">Theme</span>
+                <ThemeSwitcher compact />
+              </div>
             </div>
           </div>
-
-          {/* Mobile Navigation Drawer */}
-          {isMobileMenuOpen && (
-            <div className="md:hidden mt-3 pt-3 pb-4 border-t border-[var(--border-subtle)] space-y-2 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="space-y-1">
-                {navLinks.map((link) => (
-                  <a
-                    key={link.label}
-                    href={link.href}
-                    onClick={(e) => handleLinkClick(e, link.href)}
-                    className="block px-3 py-2 rounded-lg text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                ))}
-              </div>
-
-              <div className="pt-3 border-t border-[var(--border-subtle)] flex flex-col gap-2">
-                {isAuthenticated ? (
-                  <Link
-                    to="/dashboard"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full text-center py-2.5 rounded-xl text-xs font-semibold text-white bg-brand-600 dark:bg-brand-500 transition-colors"
-                  >
-                    Go to Dashboard
-                  </Link>
-                ) : (
-                  <>
-                    <Link
-                      to="/login"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="w-full text-center py-2 rounded-xl text-xs font-medium text-[var(--text-primary)] bg-[var(--bg-surface-secondary)] hover:bg-[var(--bg-surface-hover)] transition-colors"
-                    >
-                      Sign In
-                    </Link>
-                    <Link
-                      to="/register"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="w-full text-center py-2 rounded-xl text-xs font-semibold text-white bg-brand-600 dark:bg-brand-500 transition-colors"
-                    >
-                      Get Started Free
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </nav>
-    </>
+    </header>
   );
 };

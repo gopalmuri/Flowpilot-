@@ -86,6 +86,8 @@ export interface Workflow {
   updated_at: string;
   version_count?: number;
   active_version?: WorkflowVersionSummary | null;
+  last_run_status?: string | null;
+  last_run_at?: string | null;
 }
 
 export interface WorkflowListResponse {

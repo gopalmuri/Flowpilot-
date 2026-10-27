@@ -71,10 +71,10 @@ export const SLAMonitoringPanel: React.FC<SLAMonitoringPanelProps> = ({
         <div className="p-4 rounded-xl bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750/80">
           <div className="flex items-center justify-between text-xs text-warm-500 dark:text-charcoal-400">
             <span>Overall SLA Compliance</span>
-            <CheckCircle2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
           </div>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-brand-600 dark:text-brand-400">
+            <span className="text-2xl font-bold font-mono text-emerald-700 dark:text-emerald-400">
               {summary.monitored_count > 0 ? `${summary.sla_compliance_rate.toFixed(1)}%` : 'N/A'}
             </span>
             <span className="text-[10px] text-warm-400 dark:text-charcoal-500">within target</span>
@@ -91,7 +91,7 @@ export const SLAMonitoringPanel: React.FC<SLAMonitoringPanelProps> = ({
             <Clock className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
           </div>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-brand-600 dark:text-brand-400">
+            <span className="text-2xl font-bold font-mono text-emerald-700 dark:text-emerald-400">
               {summary.monitored_count > 0 ? `${summary.sla_healthy_rate.toFixed(1)}%` : 'N/A'}
             </span>
             <span className="text-[10px] text-warm-400 dark:text-charcoal-500">below warning</span>
@@ -140,7 +140,7 @@ export const SLAMonitoringPanel: React.FC<SLAMonitoringPanelProps> = ({
               </tr>
             ) : (
               workflows.map((wf) => (
-                <tr key={wf.workflow_id} className="hover:bg-warm-100 dark:bg-charcoal-800 transition-colors">
+                <tr key={wf.workflow_id} className="hover:bg-warm-100 dark:hover:bg-charcoal-800 transition-colors">
                   <td className="py-3 px-4">
                     <span className="font-medium text-warm-800 dark:text-charcoal-200 block">{wf.workflow_name}</span>
                     {wf.active_version_number ? (
@@ -170,7 +170,7 @@ export const SLAMonitoringPanel: React.FC<SLAMonitoringPanelProps> = ({
                       <div className="space-y-0.5">
                         <span className="text-warm-800 dark:text-charcoal-200">{wf.total_evaluated} evaluated</span>
                         <div className="flex gap-2 text-[10px]">
-                          <span className="text-brand-600 dark:text-brand-400">{wf.healthy_count} healthy</span>
+                          <span className="text-emerald-700 dark:text-emerald-400">{wf.healthy_count} healthy</span>
                           <span className="text-amber-600 dark:text-amber-400">{wf.warning_count} warn</span>
                           <span className="text-red-600 dark:text-red-400">{wf.breached_count} breach</span>
                         </div>
@@ -186,7 +186,7 @@ export const SLAMonitoringPanel: React.FC<SLAMonitoringPanelProps> = ({
                         <span
                           className={`px-2 py-0.5 rounded-full text-[11px] font-semibold font-mono ${
                             wf.compliance_rate >= 95
-                              ? 'bg-emerald-500/15 text-brand-600 dark:text-brand-400 border border-emerald-500/30'
+                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
                               : wf.compliance_rate >= 80
                               ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
                               : 'bg-rose-500/15 text-red-600 dark:text-red-400 border border-rose-500/30'

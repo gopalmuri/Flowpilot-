@@ -294,3 +294,45 @@ async def test_existing_editor_assist_is_metered_too(async_client: AsyncClient, 
     wf = (await async_client.post(base, headers=h, json={"name": "Editor"})).json()["id"]
     assert (await async_client.post(f"{base}/{wf}/ai-assist", headers=h, json={"prompt": "lead flow"})).status_code == 200
     assert (await async_client.post(f"{base}/{wf}/ai-assist", headers=h, json={"prompt": "lead flow"})).status_code == 429
+
+
+# ---------------------------------------------------------------------------- stateless simulation + last-run info
+@pytest.mark.asyncio
+async def test_simulate_a_proposal_before_it_is_saved(async_client: AsyncClient):
+    org, h = await _org_and_token()
+    base = f"/api/v1/organizations/{org}/workflows/ai-builder"
+    body = {"steps": PROPOSAL["steps"], "connections": PROPOSAL["connections"]}
+
+    sample = await async_client.post(f"{base}/simulate-payload", headers=h, json={**body, "scenario": "happy_path"})
+    assert sample.status_code == 200, sample.text
+    assert isinstance(sample.json()["payload"], dict) and sample.json()["payload"]
+
+    run = await async_client.post(f"{base}/simulate-run", headers=h, json={**body, "payload": sample.json()["payload"]})
+    assert run.status_code == 200, run.text
+    data = run.json()
+    assert data["overall_outcome"] == "PENDING_APPROVAL"  # approval gate is on the path
+    assert [s["step_id"] for s in data["steps"]][:2] == ["t", "a"]
+
+    # purely a dry run: nothing was saved
+    async with _session_factory()() as s:
+        assert (await s.scalars(select(Workflow).where(Workflow.organization_id == uuid.UUID(org)))).first() is None
+
+
+@pytest.mark.asyncio
+async def test_simulation_endpoints_are_role_and_auth_protected(async_client: AsyncClient):
+    org, h = await _org_and_token(role=OrganizationRole.OPERATOR.value)
+    url = f"/api/v1/organizations/{org}/workflows/ai-builder/simulate-run"
+    assert (await async_client.post(url, headers=h, json={"steps": [], "connections": [], "payload": {}})).status_code == 403
+    assert (await async_client.post(url, json={"steps": []})).status_code in (401, 403)
+
+
+@pytest.mark.asyncio
+async def test_workflow_list_reports_last_run_status(async_client: AsyncClient):
+    org, h = await _org_and_token()
+    base = f"/api/v1/organizations/{org}/workflows"
+    never = (await async_client.post(f"{base}/ai-builder/create", headers=h, json=PROPOSAL)).json()["workflow_id"]
+    wf_id, _ = await _workflow_with_failed_run(async_client, org, h, runs=2)
+
+    items = {i["id"]: i for i in (await async_client.get(base, headers=h)).json()["items"]}
+    assert items[never]["last_run_status"] is None and items[never]["last_run_at"] is None
+    assert items[wf_id]["last_run_status"] == "FAILED" and items[wf_id]["last_run_at"]

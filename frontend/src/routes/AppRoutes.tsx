@@ -21,9 +21,16 @@ import { StatusPage } from '../pages/StatusPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
 // Public guard that redirects authenticated users away from /login and /register to /dashboard
-const PublicAuthRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+export const PublicAuthRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
-  if (isLoading) {
+  // Only hold the page back while the session is first being restored. login(), verifyLoginOtp(), register() and
+  // friends also flip isLoading for the whole app; hiding the form for those would unmount the page mid-request
+  // and throw away its local state, so the "enter your code" step was never shown and every retry emailed a new code.
+  const sessionChecked = React.useRef(false);
+  if (!isLoading) {
+    sessionChecked.current = true;
+  }
+  if (isLoading && !sessionChecked.current) {
     return null;
   }
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;

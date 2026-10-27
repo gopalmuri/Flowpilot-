@@ -203,7 +203,7 @@ export const ApprovalActionModal: React.FC<ApprovalActionModalProps> = ({
           <button
             onClick={onClose}
             disabled={isSubmitting}
-            className="p-1.5 rounded-lg text-warm-400 hover:text-warm-700 dark:text-charcoal-400 dark:hover:text-charcoal-200 hover:bg-warm-200 dark:hover:bg-charcoal-750 transition-colors"
+            className="p-1.5 rounded-lg text-warm-400 hover:text-warm-700 dark:hover:text-charcoal-400 dark:hover:text-charcoal-200 hover:bg-warm-200 dark:hover:bg-charcoal-750 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -363,7 +363,7 @@ export const ApprovalActionModal: React.FC<ApprovalActionModalProps> = ({
               </label>
               <span className="text-[11px] text-warm-400 dark:text-charcoal-500 font-mono">Immutable State</span>
             </div>
-            <pre className="p-3.5 bg-warm-50 dark:bg-charcoal-950 border border-warm-200 dark:border-charcoal-750 rounded-xl text-xs font-mono text-emerald-600 dark:text-emerald-400 overflow-x-auto max-h-48 whitespace-pre-wrap select-all">
+            <pre className="p-3.5 bg-warm-50 dark:bg-charcoal-950 border border-warm-200 dark:border-charcoal-750 rounded-xl text-xs font-mono text-emerald-700 dark:text-emerald-400 overflow-x-auto max-h-48 whitespace-pre-wrap select-all">
               {JSON.stringify(approval.context_snapshot || {}, null, 2)}
             </pre>
           </div>
@@ -431,7 +431,7 @@ export const ApprovalActionModal: React.FC<ApprovalActionModalProps> = ({
                 onClick={() => handleAction('APPROVE')}
                 disabled={isSubmitting || draftBusy || draftBlocksApproval}
                 title={draftBlocksApproval ? 'The draft must be awaiting approval (not under revision) to approve it' : undefined}
-                className="w-full sm:w-auto flex items-center justify-center space-x-1.5 px-4 py-2.5 text-xs font-semibold bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white rounded-xl shadow-subtle transition-colors disabled:opacity-50"
+                className="w-full sm:w-auto flex items-center justify-center space-x-1.5 px-4 py-2.5 text-xs font-semibold bg-brand-600 hover:bg-brand-700 dark:hover:bg-brand-500 dark:hover:bg-brand-600 text-white rounded-xl shadow-subtle transition-colors disabled:opacity-50"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>

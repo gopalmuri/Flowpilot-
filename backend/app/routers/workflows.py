@@ -14,6 +14,7 @@ from app.models.membership import OrganizationMember, OrganizationRole
 from app.models.organization import Organization
 from app.models.user import User
 from app.models.workflow import Workflow, WorkflowVersion
+from app.models.workflow_run import WorkflowRun
 from app.models.workflow_step import WorkflowConnection, WorkflowStep
 from app.schemas.workflow import (
     WorkflowConnectionResponse,
@@ -174,6 +175,15 @@ async def _build_workflow_response(
                 updated_at=active_version.updated_at,
             )
 
+    last_run = (
+        await db.execute(
+            select(WorkflowRun.status, WorkflowRun.started_at)
+            .where(WorkflowRun.workflow_id == workflow.id, WorkflowRun.organization_id == workflow.organization_id)
+            .order_by(WorkflowRun.started_at.desc())
+            .limit(1)
+        )
+    ).first()
+
     return WorkflowResponse(
         id=workflow.id,
         organization_id=workflow.organization_id,
@@ -187,6 +197,8 @@ async def _build_workflow_response(
         updated_at=workflow.updated_at,
         version_count=version_count,
         active_version=active_summary,
+        last_run_status=last_run[0] if last_run else None,
+        last_run_at=last_run[1] if last_run else None,
     )
 
 

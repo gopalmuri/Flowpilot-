@@ -227,7 +227,7 @@ export const ExecutionsPage: React.FC = () => {
     switch (status) {
       case 'COMPLETED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 border-brand-200 dark:bg-brand-950/40 dark:text-brand-300 dark:border-brand-800/60">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60">
             <CheckCircle2 className="w-3.5 h-3.5" />
             Completed
           </span>
@@ -357,7 +357,7 @@ export const ExecutionsPage: React.FC = () => {
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
                   isActive
                     ? 'bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800/60'
-                    : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200 hover:bg-warm-100 dark:bg-charcoal-800 border border-transparent'
+                    : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:hover:text-charcoal-200 hover:bg-warm-100 dark:hover:bg-charcoal-800 border border-transparent'
                 }`}
               >
                 {f.label}
@@ -381,7 +381,7 @@ export const ExecutionsPage: React.FC = () => {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-warm-500 dark:text-charcoal-500 hover:text-warm-700 dark:text-charcoal-300"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-warm-500 dark:text-charcoal-500 hover:text-warm-700 dark:hover:text-charcoal-300"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -498,11 +498,11 @@ export const ExecutionsPage: React.FC = () => {
                           {r.correlation_id && (
                             <button
                               onClick={(e) => copyToClipboard(r.correlation_id, r.id, e)}
-                              className="text-warm-500 dark:text-charcoal-500 hover:text-warm-700 dark:text-charcoal-300 transition"
+                              className="text-warm-500 dark:text-charcoal-500 hover:text-warm-700 dark:hover:text-charcoal-300 transition"
                               title="Copy Correlation ID"
                             >
                               {copiedId === r.id ? (
-                                <Check className="w-3 h-3 text-emerald-400" />
+                                <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                               ) : (
                                 <Copy className="w-3 h-3" />
                               )}
@@ -528,7 +528,7 @@ export const ExecutionsPage: React.FC = () => {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleOpenDetail(r.id)}
-                            className="p-1.5 rounded-lg text-warm-500 dark:text-charcoal-400 hover:text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:bg-brand-950/40 transition"
+                            className="p-1.5 rounded-lg text-warm-500 dark:text-charcoal-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition"
                             title="View Timeline"
                           >
                             <Eye className="w-4 h-4" />

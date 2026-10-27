@@ -1,82 +1,36 @@
 import React from 'react';
-import { Shuffle, Clock, EyeOff, AlertTriangle } from 'lucide-react';
-import { useInView } from '../../hooks/useMotion';
+import { Route, GitBranch, Eye } from 'lucide-react';
+import { PROBLEMS } from './landingContent';
+import { Reveal } from './motion';
 
-export const ProblemSection: React.FC = () => {
-  const [sectionRef, isInView] = useInView({ threshold: 0.15 });
+const ICONS = { handoffs: Route, bottlenecks: GitBranch, visibility: Eye } as const;
 
-  const problems = [
-    {
-      icon: Shuffle,
-      title: 'Manual Handoffs',
-      subtitle: 'Fragmented Coordination',
-      description: 'Teams copy-paste requests between shared inboxes, spreadsheets, and chat channels. Context and critical metadata get lost with every forward.'
-    },
-    {
-      icon: Clock,
-      title: 'Decision Bottlenecks',
-      subtitle: 'Unmonitored Approvals',
-      description: 'High-value requests stall in buried DMs and email threads. Managers lack context, and SLA countdowns breach without anyone noticing.'
-    },
-    {
-      icon: EyeOff,
-      title: 'No Execution Visibility',
-      subtitle: 'Zero Auditability',
-      description: 'When an integration fails or an order breaks, operators cannot easily see what happened, why the branch was taken, or which user authorized it.'
-    }
-  ];
-
-  return (
-    <section ref={sectionRef} className="py-20 px-4 sm:px-6 lg:px-8 border-b border-[var(--border-subtle)] bg-[var(--bg-app)]">
-      <div className="max-w-6xl mx-auto">
-        {/* Header with entrance animation */}
-        <div className={`text-center max-w-2xl mx-auto mb-12 transition-all duration-400 transform ${
-          isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-        }`}>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-semibold uppercase tracking-wider bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 mb-4">
-            <AlertTriangle className="w-3.5 h-3.5" />
-            The Operational Bottleneck
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight">
-            Business requests rarely stop at one system.
-          </h2>
-          <p className="mt-3 text-base text-[var(--text-secondary)]">
-            When teams glue business processes together with email and manual follow-ups, speed drops and risk multiplies.
-          </p>
-        </div>
-
-        {/* 3 Staggered Entrance Cards with Micro-Interactions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {problems.map((p, idx) => {
-            const Icon = p.icon;
-            const delays = ['delay-[100ms]', 'delay-[180ms]', 'delay-[260ms]'];
-
-            return (
-              <div
-                key={idx}
-                className={`card-hover-micro p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-xs hover:border-rose-500/40 transform ${
-                  delays[idx]
-                } ${isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
-              >
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
-                    <Icon className="w-5 h-5 micro-icon" />
-                  </div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">
-                    {p.title}
-                  </h3>
-                  <span className="text-[11px] font-mono text-rose-600 dark:text-rose-400 block font-semibold mt-0.5 mb-2">
-                    {p.subtitle}
-                  </span>
-                  <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
-                    {p.description}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
-};
+export const ProblemSection: React.FC = () => (
+  <section className="lp-section pt-0 lg:pt-8" aria-labelledby="lp-problem-title">
+    <div className="lp-container">
+      <Reveal className="max-w-2xl">
+        <h2 id="lp-problem-title" className="lp-h2">
+          Business requests rarely stop at one system.
+        </h2>
+        <p className="lp-lead mt-4">
+          Requests cross applications, business rules, teams, and approvals. Without a unified control layer,
+          execution becomes difficult to track and govern.
+        </p>
+      </Reveal>
+      <ul className="list-none m-0 mt-10 p-0 grid gap-4 md:grid-cols-3">
+        {PROBLEMS.map((p, i) => {
+          const Icon = ICONS[p.key];
+          return (
+            <Reveal as="li" key={p.key} delay={i * 80} className="lp-card lp-card--hover p-6">
+              <span className="lp-icon">
+                <Icon className="w-5 h-5" aria-hidden="true" />
+              </span>
+              <h3 className="mt-4 text-[18px] font-semibold">{p.title}</h3>
+              <p className="lp-body mt-2">{p.body}</p>
+            </Reveal>
+          );
+        })}
+      </ul>
+    </div>
+  </section>
+);

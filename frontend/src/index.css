@@ -4,47 +4,47 @@
 
 @layer base {
   :root {
-    --bg-app: #F5F3EE;
+    --bg-app: #F8FAFC;
     --bg-surface: #FFFFFF;
-    --bg-surface-secondary: #FAF9F6;
-    --bg-surface-hover: #EAE7DF;
-    --border-subtle: #D9DDD8;
-    --border-strong: #B5BCB6;
-    --text-primary: #18201C;
-    --text-secondary: #59645E;
-    --text-muted: #7B847E;
-    --brand-primary: #176B4D;
-    --brand-hover: #12553D;
-    --brand-soft: #E0F0E8;
-    --brand-text: #0E4733;
-    --status-success: #16845A;
-    --status-success-soft: #E0F0E8;
-    --status-warning: #B7791F;
-    --status-warning-soft: #FEF3C7;
-    --status-danger: #C24141;
-    --status-danger-soft: #FEE2E2;
+    --bg-surface-secondary: #F8FAFC;
+    --bg-surface-hover: #F1F5F9;
+    --border-subtle: #E2E8F0;
+    --border-strong: #CBD5E1;
+    --text-primary: #0F172A;
+    --text-secondary: #64748B;
+    --text-muted: #64748B;
+    --brand-primary: #4F46E5;
+    --brand-hover: #4338CA;
+    --brand-soft: #EEF2FF;
+    --brand-text: #3730A3;
+    --status-success: #059669;
+    --status-success-soft: #ECFDF5;
+    --status-warning: #D97706;
+    --status-warning-soft: #FFFBEB;
+    --status-danger: #DC2626;
+    --status-danger-soft: #FEF2F2;
   }
 
   .dark {
-    --bg-app: #101513;
-    --bg-surface: #171D1A;
-    --bg-surface-secondary: #1D2521;
-    --bg-surface-hover: #242E29;
-    --border-subtle: #2A332E;
-    --border-strong: #3B4740;
-    --text-primary: #F1F4EF;
-    --text-secondary: #A5AEA8;
-    --text-muted: #7E8982;
-    --brand-primary: #35B982;
-    --brand-hover: #49CC96;
-    --brand-soft: #16372B;
-    --brand-text: #A7F3D0;
-    --status-success: #35B982;
-    --status-success-soft: rgba(53, 185, 130, 0.15);
+    --bg-app: #0B1120;
+    --bg-surface: #0F172A;
+    --bg-surface-secondary: #151E32;
+    --bg-surface-hover: #1E293B;
+    --border-subtle: #273449;
+    --border-strong: #334155;
+    --text-primary: #F1F5F9;
+    --text-secondary: #94A3B8;
+    --text-muted: #8190A5;
+    --brand-primary: #818CF8;
+    --brand-hover: #A5B4FC;
+    --brand-soft: #1E1B4B;
+    --brand-text: #C7D2FE;
+    --status-success: #34D399;
+    --status-success-soft: rgba(52, 211, 153, 0.15);
     --status-warning: #F59E0B;
     --status-warning-soft: rgba(245, 158, 11, 0.15);
-    --status-danger: #EF4444;
-    --status-danger-soft: rgba(239, 68, 68, 0.15);
+    --status-danger: #F87171;
+    --status-danger-soft: rgba(248, 113, 113, 0.15);
   }
 
   html {
@@ -101,20 +101,20 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D9DDD8;
+  background: #E2E8F0;
   border-radius: 9999px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #2A332E;
+  background: #273449;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #7B847E;
+  background: #64748B;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #3B4740;
+  background: #334155;
 }
 
 /* ============================================================
@@ -137,13 +137,13 @@
 .text-emerald-continuous {
   background-image: linear-gradient(
     90deg,
-    #176B4D 0%,
-    #23865D 20%,
-    #35B982 45%,
-    #5eead4 50%,
-    #35B982 55%,
-    #23865D 80%,
-    #176B4D 100%
+    #4F46E5 0%,
+    #4338CA 20%,
+    #6366F1 45%,
+    #A5B4FC 50%,
+    #6366F1 55%,
+    #4338CA 80%,
+    #4F46E5 100%
   );
   background-size: 250% 100%;
   -webkit-background-clip: text;
@@ -157,13 +157,13 @@
 .dark .text-emerald-continuous {
   background-image: linear-gradient(
     90deg,
-    #35B982 0%,
-    #5eead4 25%,
-    #A7F3D0 48%,
+    #6366F1 0%,
+    #A5B4FC 25%,
+    #C7D2FE 48%,
     #ffffff 52%,
-    #A7F3D0 56%,
-    #5eead4 75%,
-    #35B982 100%
+    #C7D2FE 56%,
+    #A5B4FC 75%,
+    #6366F1 100%
   );
   background-size: 250% 100%;
   -webkit-background-clip: text;
@@ -232,7 +232,7 @@
 /* 5. Packet Pulse & Scanline Glow */
 @keyframes packet-pulse {
   0% { transform: scale(0.92); opacity: 0.8; }
-  50% { transform: scale(1.18); opacity: 1; filter: drop-shadow(0 0 7px rgba(53, 185, 130, 0.7)); }
+  50% { transform: scale(1.18); opacity: 1; filter: drop-shadow(0 0 7px rgba(99, 102, 241, 0.7)); }
   100% { transform: scale(0.92); opacity: 0.8; }
 }
 
@@ -283,7 +283,7 @@
 
 .card-hover-micro:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px -2px rgba(24, 32, 28, 0.05);
+  box-shadow: 0 6px 16px -2px rgba(15, 23, 42, 0.06);
 }
 
 .dark .card-hover-micro:hover {
@@ -307,11 +307,11 @@
 
 .btn-micro-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px -1px rgba(23, 107, 77, 0.25);
+  box-shadow: 0 4px 12px -1px rgba(79, 70, 229, 0.25);
 }
 
 .dark .btn-micro-hover:hover {
-  box-shadow: 0 4px 14px -1px rgba(53, 185, 130, 0.3);
+  box-shadow: 0 4px 14px -1px rgba(99, 102, 241, 0.3);
 }
 
 .btn-micro-hover:hover .btn-arrow {

@@ -119,7 +119,7 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
                   y1={y}
                   x2={totalWidth - paddingRight}
                   y2={y}
-                  stroke="#DDD9D0"
+                  stroke="#E2E8F0"
                   strokeWidth="1"
                   strokeDasharray={val === 0 ? undefined : '3 3'}
                   opacity={val === 0 ? 0.8 : 0.4}
@@ -152,7 +152,7 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
           {/* Avg Line */}
           <polyline
             fill="none"
-            stroke="#176B4D"
+            stroke="#4F46E5"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -192,7 +192,7 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
                   cy={getY(b.p95_duration_ms)}
                   r={isHovered ? 5 : 3}
                   fill="#d97706"
-                  stroke="#101513"
+                  stroke="#FFFFFF"
                   strokeWidth="2"
                 />
 
@@ -201,8 +201,8 @@ export const DurationTrendChart: React.FC<DurationTrendChartProps> = ({
                   cx={x}
                   cy={getY(b.avg_duration_ms)}
                   r={isHovered ? 4.5 : 2.5}
-                  fill="#176B4D"
-                  stroke="#101513"
+                  fill="#4F46E5"
+                  stroke="#FFFFFF"
                   strokeWidth="2"
                 />
 

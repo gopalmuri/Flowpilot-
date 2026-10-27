@@ -46,8 +46,8 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
             onClick={() => onSortChange('avg_latency')}
             className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
               sortBy === 'avg_latency'
-                ? 'bg-brand-600 dark:bg-brand-500 text-warm-900 dark:text-charcoal-100 shadow-sm'
-                : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
+                ? 'bg-brand-600 dark:bg-brand-500 text-white shadow-sm'
+                : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:hover:text-charcoal-200'
             }`}
           >
             Avg Latency
@@ -56,8 +56,8 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
             onClick={() => onSortChange('p95_latency')}
             className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
               sortBy === 'p95_latency'
-                ? 'bg-brand-600 dark:bg-brand-500 text-warm-900 dark:text-charcoal-100 shadow-sm'
-                : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
+                ? 'bg-brand-600 dark:bg-brand-500 text-white shadow-sm'
+                : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:hover:text-charcoal-200'
             }`}
           >
             P95 Latency
@@ -66,8 +66,8 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
             onClick={() => onSortChange('failure_rate')}
             className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
               sortBy === 'failure_rate'
-                ? 'bg-brand-600 dark:bg-brand-500 text-warm-900 dark:text-charcoal-100 shadow-sm'
-                : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
+                ? 'bg-brand-600 dark:bg-brand-500 text-white shadow-sm'
+                : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:hover:text-charcoal-200'
             }`}
           >
             Failure Rate
@@ -76,8 +76,8 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
             onClick={() => onSortChange('execution_count')}
             className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
               sortBy === 'execution_count'
-                ? 'bg-brand-600 dark:bg-brand-500 text-warm-900 dark:text-charcoal-100 shadow-sm'
-                : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
+                ? 'bg-brand-600 dark:bg-brand-500 text-white shadow-sm'
+                : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:hover:text-charcoal-200'
             }`}
           >
             Volume
@@ -99,11 +99,11 @@ export const StepLatencyBreakdown: React.FC<StepLatencyBreakdownProps> = ({
             return (
               <div
                 key={`${step.step_key}-${idx}`}
-                className="p-3.5 rounded-xl bg-warm-50 dark:bg-charcoal-850/60 border border-warm-200 dark:border-charcoal-750/80 hover:border-warm-300 dark:border-charcoal-700/80 transition-all space-y-2 group"
+                className="p-3.5 rounded-xl bg-warm-50 dark:bg-charcoal-850/60 border border-warm-200 dark:border-charcoal-750/80 hover:border-warm-300 dark:hover:border-charcoal-700/80 transition-all space-y-2 group"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-semibold text-warm-800 dark:text-charcoal-200 group-hover:text-brand-700 dark:text-brand-300 transition-colors">
+                    <span className="text-xs font-mono font-semibold text-warm-800 dark:text-charcoal-200 group-hover:text-brand-700 dark:group-hover:text-brand-300 transition-colors">
                       {step.step_key}
                     </span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-warm-100 dark:bg-charcoal-800 text-warm-500 dark:text-charcoal-400 border border-warm-300 dark:border-charcoal-700 font-mono">

@@ -18,8 +18,8 @@ export function branchHandlesFor(stepType: string): string[] {
 
 export const EDGE_STYLE = {
   type: 'smoothstep',
-  markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: '#69716C' },
-  style: { strokeWidth: 1.5, stroke: '#69716C' },
+  markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#94A3B8' },
+  style: { strokeWidth: 1.75, stroke: '#94A3B8' },
 } as const;
 
 export function stepToNode(step: any, idx: number): Node<WorkflowNodeData> {

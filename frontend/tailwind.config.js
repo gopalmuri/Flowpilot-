@@ -8,59 +8,60 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Operational Brand Palette (Forest green in light mode, emerald in dark mode)
+        // Brand: indigo. Primary actions, active navigation, focus rings, AI accents.
+        // (Green is reserved for success / healthy / enabled states: see `status` below.)
         brand: {
-          50: '#F0F9F5',
-          100: '#E0F0E8', // Soft Brand in Light Mode
-          200: '#C2E2D3',
-          300: '#8ECBB1',
-          400: '#49CC96', // Brand Hover in Dark Mode
-          500: '#35B982', // Brand in Dark Mode
-          600: '#176B4D', // Brand in Light Mode
-          700: '#12553D', // Brand Hover in Light Mode
-          800: '#0D3F2D',
-          900: '#16372B', // Soft Brand in Dark Mode
-          950: '#091A13',
+          50: '#EEF2FF', // Subtle brand background
+          100: '#E0E7FF',
+          200: '#C7D2FE',
+          300: '#A5B4FC',
+          400: '#818CF8', // Brand on dark surfaces
+          500: '#6366F1',
+          600: '#4F46E5', // Primary
+          700: '#4338CA', // Primary hover
+          800: '#3730A3',
+          900: '#312E81',
+          950: '#1E1B4B',
         },
-        // Warm Neutral Palette (Light mode foundation - high contrast)
+        // Neutral (light mode): slate. 50 = app background, 300 = border, 500/600 = secondary text, 900 = primary text.
         warm: {
-          50: '#FAF9F6',  // Elevated Surface in Light Mode
-          100: '#F5F3EE', // Light Mode Page Background
-          200: '#EAE7DF', // Light Mode Secondary Surface / Hover
-          300: '#D9DDD8', // Light Mode Border
-          400: '#B5BCB6', // Borders Strong
-          500: '#7B847E', // Light Mode Muted Text
-          600: '#59645E', // Light Mode Secondary Text
-          700: '#35403A', // Light Mode High-Contrast Subheaders
-          800: '#222B26', // Near-Black
-          900: '#18201C', // Light Mode Primary Text (High Contrast)
-          950: '#0E1411',
+          50: '#F8FAFC',  // App background
+          100: '#F1F5F9', // Subtle fills / hover
+          200: '#E9EEF4', // Dividers
+          300: '#E2E8F0', // Borders
+          400: '#CBD5E1', // Strong borders
+          500: '#64748B', // Secondary / muted text (4.8:1 on white)
+          600: '#475569',
+          700: '#334155',
+          800: '#1E293B',
+          900: '#0F172A', // Primary text
+          950: '#020617',
         },
-        // Deep Charcoal Palette (Dark mode foundation - NO NAVY / NO BLUE)
+        // Neutral (dark mode): slate, no green cast.
         charcoal: {
-          950: '#101513', // Dark Mode Background
-          900: '#171D1A', // Dark Mode Surface
-          850: '#1D2521', // Dark Mode Elevated Surface
-          800: '#242E29', // Dark Mode Hover Surface
-          750: '#2A332E', // Dark Mode Border
-          700: '#3B4740', // Dark Mode Strong Border
-          600: '#55635B',
-          500: '#7E8982', // Dark Mode Muted Text
-          400: '#A5AEA8', // Dark Mode Secondary Text
-          300: '#C8D0CB',
-          200: '#E1E6E3',
-          100: '#F1F4EF', // Dark Mode Primary Text (High Contrast)
+          950: '#0B1120', // Background
+          900: '#0F172A', // Surface
+          850: '#151E32', // Elevated surface
+          800: '#1E293B', // Hover surface
+          750: '#273449', // Border
+          700: '#334155', // Strong border
+          600: '#475569',
+          500: '#8190A5', // Muted text
+          400: '#94A3B8', // Secondary text
+          300: '#CBD5E1',
+          200: '#E2E8F0',
+          100: '#F1F5F9', // Primary text
         },
-        // Semantic Operations Colors
+        // Semantic status colours (the only place green appears)
         status: {
-          success: '#16845A',
-          'success-dark': '#35B982',
-          warning: '#B7791F',
+          success: '#059669',
+          'success-dark': '#34D399',
+          warning: '#D97706',
           'warning-dark': '#F59E0B',
-          danger: '#C24141',
-          'danger-dark': '#EF4444',
-          ai: '#0D9488',
-          'ai-dark': '#2DD4BF',
+          danger: '#DC2626',
+          'danger-dark': '#F87171',
+          ai: '#4F46E5',
+          'ai-dark': '#818CF8',
         }
       },
       fontFamily: {

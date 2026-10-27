@@ -1,24 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import {
-  Sparkles,
-  Send,
-  Loader2,
-  AlertTriangle,
-  CheckCircle2,
-  ShieldCheck,
-  Wand2,
-  ListChecks,
-  Clock,
-  ArrowLeft,
-} from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { AlertTriangle, CheckCircle2, ChevronUp } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import {
   buildWorkflowWithAI,
   createDraftFromAIProposal,
+  enableWorkflow,
   getAICatalog,
   getAITemplates,
+  publishWorkflowVersion,
+  updateWorkflow,
+  updateWorkflowVersion,
 } from '../../services/workflowService';
 import {
   AIChatMessage,
@@ -30,29 +23,21 @@ import {
   AIWorkflowProposal,
   AIWorkflowTemplate,
 } from '../../types/workflowAI';
-import { ProposalPreview } from '../../components/workflow/ai/ProposalPreview';
-import { SetupChecklist } from '../../components/workflow/ai/SetupChecklist';
+import { WorkflowConnectionSchema, WorkflowStepSchema } from '../../types/workflow';
 import { EXAMPLE_PROMPTS } from '../../components/workflow/ai/examplePrompts';
-
-interface BuilderMessage {
-  id: number;
-  role: 'user' | 'assistant';
-  content: string;
-  tone?: 'normal' | 'error' | 'limit';
-}
-
-const THINKING_MESSAGES = [
-  'Understanding what you need…',
-  'Choosing steps…',
-  'Connecting them together…',
-  'Checking the flow…',
-  'Nearly there…',
-];
+import { humanizeKey } from '../../components/workflow/ai/ProposalDiffSummary';
+import { BuilderMessage, MessageChanges } from '../../components/workflow/builder/AssistantMessage';
+import { WorkflowAssistantPanel } from '../../components/workflow/builder/WorkflowAssistantPanel';
+import { WorkflowBuilderHeader } from '../../components/workflow/builder/WorkflowBuilderHeader';
+import { WorkflowCanvas } from '../../components/workflow/builder/WorkflowCanvas';
+import { WorkflowDetails } from '../../components/workflow/builder/WorkflowDetails';
+import { WorkflowInspector } from '../../components/workflow/builder/WorkflowInspector';
+import { WorkflowTestPanel } from '../../components/workflow/builder/WorkflowTestPanel';
+import { WorkflowLifecycle } from '../../components/workflow/builder/WorkflowStatusIndicator';
+import { validateWorking, withLayout } from '../../components/workflow/builder/graph';
+import { panel } from '../../components/workflow/builder/styles';
 
 const MAX_QUESTIONS = 3;
-const MAX_OPTIONS = 5;
-const OTHER_PLACEHOLDER = 'Something else…';
-
 const LIMIT_PATTERN = /limit|too many|quota|for today|tomorrow|429/i;
 
 function friendlyError(err: unknown): { text: string; tone: 'error' | 'limit' } {
@@ -67,63 +52,119 @@ function friendlyError(err: unknown): { text: string; tone: 'error' | 'limit' } 
   };
 }
 
-const AssistantAvatar: React.FC = () => (
-  <div className="w-7 h-7 rounded-lg bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/60 flex items-center justify-center flex-shrink-0">
-    <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
-  </div>
-);
+const errMessage = (err: unknown, fallback: string) => (err instanceof Error && err.message ? err.message : fallback);
+
+/** Signature of the workflow content; positions are optional so a drag is not counted as a "content edit". */
+function contentSig(steps: WorkflowStepSchema[], connections: WorkflowConnectionSchema[], withPositions: boolean): string {
+  return JSON.stringify({
+    s: steps.map((s) => [s.step_key, s.step_type, s.name, s.config, withPositions ? s.ui_position : null]),
+    c: connections.map((c) => [c.source_step_key, c.target_step_key, c.condition_label ?? null]),
+  });
+}
+
+const unique = (list: string[]) => Array.from(new Set(list));
+
+function buildChanges(
+  proposal: AIWorkflowProposal,
+  previous: WorkflowStepSchema[]
+): MessageChanges | undefined {
+  const names: Record<string, string> = {};
+  previous.forEach((s) => (names[s.step_key] = s.name));
+  proposal.steps.forEach((s) => (names[s.step_key] = s.name));
+  const label = (k: string) => names[k] || humanizeKey(k);
+  const d = proposal.diff_summary;
+  if (!d) return undefined;
+  const changes: MessageChanges = {
+    added: d.added_steps.map(label),
+    removed: d.removed_steps.map(label),
+    modified: d.modified_steps.map(label),
+    reconnected: d.reconnected_edges.length,
+  };
+  return changes.added.length || changes.removed.length || changes.modified.length || changes.reconnected
+    ? changes
+    : undefined;
+}
+
+type MobileTab = 'assistant' | 'workflow';
+interface DraftRef {
+  workflowId: string;
+  versionId: string;
+}
 
 export const AIBuilderPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { activeOrganization, activeRole } = useAuth();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, confirm } = useToast();
 
+  // Conversation
   const [messages, setMessages] = useState<BuilderMessage[]>([]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
-  const [thinkingIdx, setThinkingIdx] = useState(0);
+  const [questions, setQuestions] = useState<AIClarificationQuestion[]>([]);
+  const [templatePicks, setTemplatePicks] = useState<AITemplateSuggestion[]>([]);
+  const [starterTemplates, setStarterTemplates] = useState<AIWorkflowTemplate[]>([]);
+  const [catalog, setCatalog] = useState<AICatalogStep[]>([]);
 
+  // Working copy of the workflow. Inspector edits change this; it is what is saved and sent to the AI next turn.
+  const [steps, setSteps] = useState<WorkflowStepSchema[]>([]);
+  const [connections, setConnections] = useState<WorkflowConnectionSchema[]>([]);
   const [proposal, setProposal] = useState<AIWorkflowProposal | null>(null);
+  const [baselineSig, setBaselineSig] = useState('');
   const [summary, setSummary] = useState<string | null>(null);
   const [setupItems, setSetupItems] = useState<AISetupItem[]>([]);
   const [unsupported, setUnsupported] = useState<string[]>([]);
   const [workflowName, setWorkflowName] = useState('');
   const [nameTouched, setNameTouched] = useState(false);
 
-  const [questions, setQuestions] = useState<AIClarificationQuestion[]>([]);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [otherText, setOtherText] = useState<Record<string, string>>({});
-  const [templatePicks, setTemplatePicks] = useState<AITemplateSuggestion[]>([]);
-  const [starterTemplates, setStarterTemplates] = useState<AIWorkflowTemplate[]>([]);
-  const [catalog, setCatalog] = useState<AICatalogStep[]>([]);
+  // UI
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<MobileTab>('assistant');
+  const [workflowUpdated, setWorkflowUpdated] = useState(false);
+  const [testOpen, setTestOpen] = useState(false);
+  const [fitSignal, setFitSignal] = useState(0);
 
+  // Lifecycle: nothing saved -> draft saved -> (published) -> active
+  const [draft, setDraft] = useState<DraftRef | null>(null);
+  const [savedSig, setSavedSig] = useState('');
+  const [savedName, setSavedName] = useState('');
+  const [isActive, setIsActive] = useState(false);
+  const [isPublished, setIsPublished] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const nameTouchedRef = useRef(false);
   nameTouchedRef.current = nameTouched;
   const idRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const initialSentRef = useRef(false);
-  const endRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // Selecting a step opens the sheet so its settings are one click away.
+  useEffect(() => {
+    if (selectedKey) setSheetOpen(true);
+  }, [selectedKey]);
+  const lastRequestRef = useRef<string | null>(null);
+  const busyRef = useRef({ create: false, save: false, activate: false });
   // Latest values for the async send handler, which must not close over stale state.
-  const stateRef = useRef({ messages, proposal, workflowName });
-  stateRef.current = { messages, proposal, workflowName };
+  const stateRef = useRef({ messages, steps, connections, workflowName, draft });
+  stateRef.current = { messages, steps, connections, workflowName, draft };
 
   const canEdit = activeRole === 'OWNER' || activeRole === 'ADMIN' || activeRole === 'MANAGER';
   const orgId = activeOrganization?.id;
+  const hasWorkflow = steps.length > 0;
 
-  const labelByType = useMemo(() => {
-    const m: Record<string, string> = {};
+  const catalogByType = useMemo(() => {
+    const m: Record<string, AICatalogStep> = {};
     catalog.forEach((c) => {
-      m[c.step_type] = c.label;
+      m[c.step_type] = c;
     });
     return m;
   }, [catalog]);
 
-  // Catalog (for plain-language labels) and templates (starter ideas): both are optional extras.
+  // Catalog (plain-language names) and templates (starter ideas): both are optional extras.
   useEffect(() => {
     if (!orgId) return;
     let cancelled = false;
@@ -138,24 +179,100 @@ export const AIBuilderPage: React.FC = () => {
     };
   }, [orgId]);
 
-  useEffect(() => () => abortRef.current?.abort(), []);
+  // Deliberately NOT aborting the in-flight request on unmount: React StrictMode (dev) mounts, unmounts and
+  // remounts every page, which would cancel the first prompt while the "send once" guard stops it being resent,
+  // leaving the user staring at their own message. A newer send() still cancels an older one (see send()).
 
-  // Rotate plain-language progress messages while the assistant works.
+  // ---- Derived workflow state -------------------------------------------------------------------------
+  const validation = useMemo(
+    () => (steps.length > 0 ? validateWorking(steps, connections) : { valid: false, errors: [], warnings: [], errorsByKey: {} as Record<string, string[]> }),
+    [steps, connections]
+  );
+  const edited = proposal !== null && contentSig(steps, connections, false) !== baselineSig;
+  const errors = useMemo(
+    () => unique([...(!edited && proposal && !proposal.valid ? proposal.errors : []), ...validation.errors]),
+    [edited, proposal, validation.errors]
+  );
+  const warnings = useMemo(
+    () => unique([...(!edited && proposal ? proposal.warnings : []), ...validation.warnings]),
+    [edited, proposal, validation.warnings]
+  );
+  const isValid = hasWorkflow && errors.length === 0;
+  const errorKeys = useMemo(() => new Set(Object.keys(validation.errorsByKey)), [validation.errorsByKey]);
+  const blockingSetup = setupItems.filter((s) => s.blocking);
+
+  const contentChanged = draft !== null && contentSig(steps, connections, true) !== savedSig;
+  const nameChanged = draft !== null && workflowName.trim() !== savedName;
+  const dirty = contentChanged || nameChanged;
+  const locked = isActive;
+  const hasUnsaved = !locked && (draft ? dirty : hasWorkflow);
+
+  const lifecycle: WorkflowLifecycle = isActive
+    ? 'active'
+    : isPublished
+    ? 'published'
+    : draft
+    ? dirty
+      ? 'dirty'
+      : 'saved'
+    : 'unsaved';
+
+  const nameOk = workflowName.trim().length > 0;
+  const busy = isCreating || isSaving || isActivating;
+  const canCreate = !draft && hasWorkflow && isValid && nameOk && canEdit && !busy;
+  const canSave = draft !== null && !locked && !isPublished && dirty && nameOk && canEdit && !busy;
+  const canActivate = draft !== null && !locked && !dirty && isValid && canEdit && !busy;
+
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  let hint: string | null = null;
+  if (actionError) hint = actionError;
+  else if (!canEdit && hasWorkflow) hint = 'Your role can view workflows but not create them. Ask a manager or admin.';
+  else if (!draft) {
+    if (!hasWorkflow) hint = 'Describe your workflow to the assistant to get started.';
+    else if (!isValid) hint = `Fix ${plural(errors.length, 'problem', 'problems')} before creating the draft.`;
+    else if (!nameOk) hint = 'Name your workflow to create the draft.';
+    else if (blockingSetup.length > 0)
+      hint = `You can create the draft now. ${plural(blockingSetup.length, 'required setup item', 'required setup items')} to finish before activating.`;
+  } else if (!locked) {
+    if (dirty) hint = 'You have unsaved changes. Save them before activating.';
+    else if (!isValid) hint = `Fix ${plural(errors.length, 'problem', 'problems')} before activating.`;
+    else if (isPublished) hint = 'Published, but not yet active. Activate to turn it on.';
+  }
+
+  // ---- Leaving the page --------------------------------------------------------------------------------
   useEffect(() => {
-    if (!isThinking) return;
-    setThinkingIdx(0);
-    const t = window.setInterval(() => setThinkingIdx((i) => (i + 1) % THINKING_MESSAGES.length), 1800);
-    return () => window.clearInterval(t);
-  }, [isThinking]);
+    if (!hasUnsaved) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsaved]);
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
-  }, [messages, isThinking, questions]);
+  const guardedNavigate = useCallback(
+    (to: string) => {
+      if (!hasUnsaved) {
+        navigate(to);
+        return;
+      }
+      confirm({
+        title: 'Leave without saving?',
+        message: draft
+          ? 'You have changes that are not saved to your draft. If you leave now they will be lost.'
+          : 'This workflow has not been saved as a draft yet. If you leave now it will be lost.',
+        confirmLabel: 'Leave anyway',
+        cancelLabel: 'Stay here',
+        variant: 'warning',
+        onConfirm: () => navigate(to),
+      });
+    },
+    [hasUnsaved, draft, confirm, navigate]
+  );
 
+  // ---- Assistant ---------------------------------------------------------------------------------------
   const applyResponse = useCallback((res: AIWorkflowAssistResponse) => {
     setQuestions([]);
-    setAnswers({});
-    setOtherText({});
     setTemplatePicks([]);
 
     const next: BuilderMessage = {
@@ -164,14 +281,21 @@ export const AIBuilderPage: React.FC = () => {
       content: res.message,
       tone: res.mode === 'error' ? 'error' : 'normal',
     };
-    setMessages((prev) => [...prev, next]);
 
     if (res.mode === 'proposal' && res.proposal) {
-      setProposal(res.proposal);
+      const p = res.proposal;
+      next.changes = buildChanges(p, stateRef.current.steps);
+      const laidOut = withLayout(p.steps, p.connections);
+      setSteps(laidOut);
+      setConnections(p.connections);
+      setProposal(p);
+      setBaselineSig(contentSig(laidOut, p.connections, false));
       setSummary(res.summary ?? null);
       setSetupItems(res.setup_needed ?? []);
       setUnsupported(res.unsupported ?? []);
-      if (res.suggested_name && (!nameTouchedRef.current || !stateRef.current.workflowName.trim())) {
+      setSelectedKey((cur) => (cur && p.steps.some((s) => s.step_key === cur) ? cur : null));
+      setWorkflowUpdated(true);
+      if (res.suggested_name && !stateRef.current.draft && (!nameTouchedRef.current || !stateRef.current.workflowName.trim())) {
         setWorkflowName(res.suggested_name);
       }
     } else if (res.mode === 'clarification') {
@@ -179,23 +303,35 @@ export const AIBuilderPage: React.FC = () => {
     } else if (res.mode === 'suggestion') {
       setTemplatePicks(res.template_suggestions ?? []);
     }
-    if (res.mode !== 'proposal') {
-      // Keep any earlier proposal on screen, but surface fresh heads-ups from this turn.
-      if (res.unsupported?.length) setUnsupported(res.unsupported);
+    setMessages((prev) => [...prev, next]);
+    if (res.mode !== 'proposal' && res.unsupported?.length) {
+      // Keep any earlier workflow on screen, but surface fresh heads-ups from this turn.
+      setUnsupported(res.unsupported);
     }
   }, []);
 
   const send = useCallback(
-    async (rawText: string) => {
+    async (rawText: string, opts?: { retry?: boolean }) => {
       const text = rawText.trim();
-      if (!text || !orgId || isThinking) return;
+      if (!text || !orgId || isThinking || isActive) return;
 
-      const { messages: prior, proposal: current, workflowName: name } = stateRef.current;
+      let prior = stateRef.current.messages;
+      if (opts?.retry) {
+        // Take back the failed attempt (its error and its question) so the retry is a clean resend.
+        const copy = [...prior];
+        while (copy.length && copy[copy.length - 1].role === 'assistant' && copy[copy.length - 1].tone && copy[copy.length - 1].tone !== 'normal') {
+          copy.pop();
+        }
+        if (copy.length && copy[copy.length - 1].role === 'user') copy.pop();
+        prior = copy;
+      }
       const history: AIChatMessage[] = prior
         .filter((m) => m.tone !== 'error' && m.tone !== 'limit')
         .map((m) => ({ role: m.role, content: m.content }));
+      const { steps: curSteps, connections: curConnections, workflowName: name } = stateRef.current;
 
-      setMessages((prev) => [...prev, { id: ++idRef.current, role: 'user', content: text }]);
+      lastRequestRef.current = text;
+      setMessages([...prior, { id: ++idRef.current, role: 'user', content: text }]);
       setInput('');
       setQuestions([]);
       setTemplatePicks([]);
@@ -211,8 +347,9 @@ export const AIBuilderPage: React.FC = () => {
           {
             prompt: text,
             conversation_history: history,
-            current_steps: current?.steps ?? [],
-            current_connections: current?.connections ?? [],
+            // The working copy, including any edits made in the inspector.
+            current_steps: curSteps,
+            current_connections: curConnections,
             workflow_name: name.trim() || undefined,
           },
           controller.signal
@@ -230,8 +367,12 @@ export const AIBuilderPage: React.FC = () => {
         }
       }
     },
-    [orgId, isThinking, applyResponse]
+    [orgId, isThinking, isActive, applyResponse]
   );
+
+  const retry = useCallback(() => {
+    if (lastRequestRef.current) void send(lastRequestRef.current, { retry: true });
+  }, [send]);
 
   // Send the prompt that came from the home-page box exactly once.
   useEffect(() => {
@@ -245,466 +386,409 @@ export const AIBuilderPage: React.FC = () => {
     }
   }, [orgId]);
 
-  const answerQuestion = (q: AIClarificationQuestion, value: string) => {
-    const v = value.trim();
-    if (!v) return;
-    const nextAnswers = { ...answers, [q.id]: v };
-    if (questions.every((x) => nextAnswers[x.id])) {
-      const combined =
-        questions.length === 1
-          ? v
-          : questions.map((x) => `${x.question} ${nextAnswers[x.id]}`).join('\n');
-      void send(combined);
-    } else {
-      setAnswers(nextAnswers);
-    }
-  };
+  // ---- Editing the working copy -----------------------------------------------------------------------
+  const updateStep = useCallback(
+    (key: string, patch: { name?: string; config?: Record<string, any> }) => {
+      if (isActive) return;
+      setSteps((prev) =>
+        prev.map((s) => (s.step_key === key ? { ...s, name: patch.name ?? s.name, config: patch.config ?? s.config } : s))
+      );
+    },
+    [isActive]
+  );
 
-  const unanswered = questions.filter((q) => !answers[q.id]);
+  const moveStep = useCallback(
+    (key: string, position: { x: number; y: number }) => {
+      if (isActive) return;
+      setSteps((prev) => prev.map((s) => (s.step_key === key ? { ...s, ui_position: position } : s)));
+    },
+    [isActive]
+  );
 
+  const addConnection = useCallback(
+    (c: WorkflowConnectionSchema) => {
+      if (isActive || c.source_step_key === c.target_step_key) return;
+      setConnections((prev) =>
+        prev.some(
+          (x) =>
+            x.source_step_key === c.source_step_key &&
+            x.target_step_key === c.target_step_key &&
+            (x.condition_label ?? null) === (c.condition_label ?? null)
+        )
+          ? prev
+          : [...prev, c]
+      );
+    },
+    [isActive]
+  );
+
+  const removeConnections = useCallback(
+    (list: WorkflowConnectionSchema[]) => {
+      if (isActive || list.length === 0) return;
+      setConnections((prev) =>
+        prev.filter(
+          (x) =>
+            !list.some(
+              (d) =>
+                d.source_step_key === x.source_step_key &&
+                d.target_step_key === x.target_step_key &&
+                (d.condition_label ?? null) === (x.condition_label ?? null)
+            )
+        )
+      );
+    },
+    [isActive]
+  );
+
+  const removeSteps = useCallback(
+    (keys: string[]) => {
+      if (isActive || keys.length === 0) return;
+      setSteps((prev) => prev.filter((s) => !keys.includes(s.step_key)));
+      setConnections((prev) => prev.filter((c) => !keys.includes(c.source_step_key) && !keys.includes(c.target_step_key)));
+      setSelectedKey((cur) => (cur && keys.includes(cur) ? null : cur));
+    },
+    [isActive]
+  );
+
+  // ---- Lifecycle actions ------------------------------------------------------------------------------
   const handleCreate = async () => {
-    if (!orgId || !proposal || !proposal.valid || isCreating) return;
-    const name = workflowName.trim();
-    if (!name) return;
+    if (busyRef.current.create || !canCreate || !orgId) return;
+    busyRef.current.create = true;
     setIsCreating(true);
-    setCreateError(null);
+    setActionError(null);
+    const name = workflowName.trim();
+    const snapshotSteps = steps;
+    const snapshotConnections = connections;
     try {
       const created = await createDraftFromAIProposal(orgId, {
         name,
         description: summary ?? undefined,
-        steps: proposal.steps,
-        connections: proposal.connections,
+        steps: snapshotSteps,
+        connections: snapshotConnections,
       });
-      showSuccess(`"${created.name}" is saved as a draft. Nothing runs until you turn it on.`, 'Draft created');
-      navigate(`/workflows/${created.workflow_id}`);
+      setDraft({ workflowId: created.workflow_id, versionId: created.version_id });
+      setSavedName(name);
+      setSavedSig(contentSig(snapshotSteps, snapshotConnections, true));
+      showSuccess(`"${created.name}" is saved as a draft. Nothing runs until you activate it.`, 'Draft created');
     } catch (err) {
-      const msg = err instanceof Error && err.message ? err.message : 'Something went wrong saving your draft.';
-      setCreateError(msg);
+      const msg = errMessage(err, 'Something went wrong saving your draft.');
+      setActionError(msg);
       showError(msg, 'Could not create draft');
+    } finally {
+      busyRef.current.create = false;
       setIsCreating(false);
     }
   };
 
-  const canCreate = Boolean(proposal?.valid) && workflowName.trim().length > 0 && !isCreating && canEdit;
-  const blockingSetup = setupItems.filter((s) => s.blocking).length;
+  const handleSave = async () => {
+    if (busyRef.current.save || !canSave || !orgId || !draft) return;
+    busyRef.current.save = true;
+    setIsSaving(true);
+    setActionError(null);
+    const name = workflowName.trim();
+    const snapshotSteps = steps;
+    const snapshotConnections = connections;
+    try {
+      if (name !== savedName) {
+        await updateWorkflow(orgId, draft.workflowId, { name });
+        setSavedName(name);
+      }
+      await updateWorkflowVersion(orgId, draft.workflowId, draft.versionId, {
+        steps: snapshotSteps,
+        connections: snapshotConnections,
+      });
+      setSavedSig(contentSig(snapshotSteps, snapshotConnections, true));
+      showSuccess('Your changes are saved to the draft.', 'Draft saved');
+    } catch (err) {
+      const msg = errMessage(err, 'Something went wrong saving your changes.');
+      setActionError(msg);
+      showError(msg, 'Could not save changes');
+    } finally {
+      busyRef.current.save = false;
+      setIsSaving(false);
+    }
+  };
+
+  const doActivate = async () => {
+    if (busyRef.current.activate || !orgId || !draft) return;
+    busyRef.current.activate = true;
+    setIsActivating(true);
+    setActionError(null);
+    try {
+      if (!isPublished) {
+        await publishWorkflowVersion(orgId, draft.workflowId, draft.versionId);
+        setIsPublished(true);
+      }
+      await enableWorkflow(orgId, draft.workflowId);
+      setIsActive(true);
+      setSelectedKey(null);
+      setTestOpen(false);
+      showSuccess(`"${workflowName.trim()}" is now active.`, 'Workflow activated');
+    } catch (err) {
+      const msg = errMessage(err, 'Something went wrong activating the workflow.');
+      setActionError(msg);
+      showError(msg, 'Could not activate');
+    } finally {
+      busyRef.current.activate = false;
+      setIsActivating(false);
+    }
+  };
+
+  const handleActivate = () => {
+    if (!canActivate) return;
+    const pending = blockingSetup.length
+      ? ` ${plural(blockingSetup.length, 'required setup item is', 'required setup items are')} not finished (${blockingSetup
+          .map((s) => s.title)
+          .join(', ')}), so parts of it may not work yet.`
+      : '';
+    confirm({
+      title: 'Activate this workflow?',
+      message: `"${workflowName.trim()}" will be published and turned on. It will start running when its trigger fires.${pending}`,
+      confirmLabel: 'Activate workflow',
+      cancelLabel: 'Not yet',
+      variant: 'brand',
+      onConfirm: doActivate,
+    });
+  };
+
+  const openEditor = () => {
+    if (draft) guardedNavigate(`/workflows/${draft.workflowId}`);
+  };
+
+  const tabListRef = useRef<HTMLDivElement | null>(null);
+  const switchTab = (tab: MobileTab) => {
+    setMobileTab(tab);
+    // On small screens the page header sits above the panels: bring the tab bar to the top so the chosen panel
+    // (and the chat input at its bottom) fills the screen.
+    window.requestAnimationFrame(() => tabListRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }));
+    if (tab === 'workflow') {
+      setWorkflowUpdated(false);
+      setFitSignal((n) => n + 1);
+    }
+  };
+
+  const selectedStep = selectedKey ? steps.find((s) => s.step_key === selectedKey) ?? null : null;
+  const testDisabledReason = !isValid
+    ? errors.length > 0
+      ? `Fix the ${plural(errors.length, 'problem', 'problems')} listed under the workflow before testing.`
+      : 'Add steps to the workflow before testing.'
+    : undefined;
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
-          <Link
-            to="/workflows"
-            className="inline-flex items-center gap-1 text-xs font-medium text-warm-600 dark:text-charcoal-400 hover:text-brand-700 dark:hover:text-brand-400 transition"
+    <div className="mx-auto w-full max-w-[1680px] space-y-5">
+      <WorkflowBuilderHeader
+        name={workflowName}
+        onNameChange={(v) => {
+          setWorkflowName(v);
+          setNameTouched(true);
+        }}
+        lifecycle={lifecycle}
+        hasDraft={draft !== null}
+        isCreating={isCreating}
+        isSaving={isSaving}
+        isActivating={isActivating}
+        canCreate={canCreate}
+        canSave={canSave}
+        canActivate={canActivate}
+        canTest={hasWorkflow}
+        testOpen={testOpen}
+        hint={hint}
+        onBack={() => guardedNavigate('/workflows')}
+        onTest={() => setTestOpen((o) => !o)}
+        onCreate={handleCreate}
+        onSave={handleSave}
+        onOpenEditor={openEditor}
+        onActivate={handleActivate}
+      />
+
+      <div
+        ref={tabListRef}
+        role="tablist"
+        aria-label="Builder panels"
+        className="grid grid-cols-2 gap-1 rounded-lg bg-warm-100 p-1 dark:bg-charcoal-850 lg:hidden"
+      >
+        {(['assistant', 'workflow'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            id={`builder-tab-${tab}`}
+            aria-selected={mobileTab === tab}
+            aria-controls={`builder-panel-${tab}`}
+            onClick={() => switchTab(tab)}
+            className={`relative h-9 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 cursor-pointer ${
+              mobileTab === tab
+                ? 'bg-white text-warm-900 shadow-subtle dark:bg-charcoal-900 dark:text-charcoal-100'
+                : 'text-warm-600 hover:text-warm-900 dark:text-charcoal-400 dark:hover:text-charcoal-100'
+            }`}
           >
-            <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
-            All workflows
-          </Link>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-warm-900 dark:text-charcoal-100 tracking-tight mt-1">
-            Build a workflow with AI
-          </h1>
-          <p className="text-xs sm:text-sm text-warm-600 dark:text-charcoal-400 mt-0.5">
-            Describe it, review it, then turn it on when you are ready.
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-800 dark:text-brand-300 bg-brand-50 dark:bg-brand-900/30 border border-brand-200 dark:border-brand-800/60 rounded-lg px-2.5 py-1.5">
-          <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-          Nothing runs until you turn it on.
-        </div>
+            {tab === 'assistant' ? 'Assistant' : 'Workflow'}
+            {tab === 'workflow' && workflowUpdated && mobileTab !== 'workflow' && (
+              <>
+                <span className="absolute right-3 top-2 h-2 w-2 rounded-full bg-brand-500" aria-hidden="true" />
+                <span className="sr-only"> (updated)</span>
+              </>
+            )}
+          </button>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        {/* LEFT: conversation */}
-        <section
-          aria-label="Conversation with the assistant"
-          className="rounded-2xl bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 shadow-subtle flex flex-col lg:h-[calc(100vh-13rem)] lg:min-h-[480px] min-h-[420px] max-h-[75vh] lg:max-h-none"
+      <div className="grid gap-5 lg:h-[calc(100dvh-24rem)] xl:h-[calc(100dvh-18.5rem)] lg:min-h-[460px] lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        {/* LEFT: assistant (about 40%) */}
+        <div
+          id="builder-panel-assistant"
+          data-testid="assistant-pane"
+          aria-labelledby="builder-tab-assistant"
+          className={`${mobileTab === 'assistant' ? 'flex' : 'hidden'} h-[calc(100dvh-9rem)] min-h-[440px] flex-col scroll-mt-16 lg:flex lg:h-auto lg:min-h-0`}
         >
-          <div
-            className="flex-1 overflow-y-auto p-4 space-y-4"
-            role="log"
-            aria-live="polite"
-            aria-relevant="additions text"
-            aria-label="Chat messages"
-          >
-            {messages.length === 0 && !isThinking && (
-              <div className="space-y-4 animate-in fade-in duration-300">
-                <div className="flex items-start gap-2.5">
-                  <AssistantAvatar />
-                  <div className="rounded-2xl rounded-tl-sm bg-warm-100 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 px-3.5 py-2.5 text-sm text-warm-800 dark:text-charcoal-200 leading-relaxed">
-                    Hi! Tell me what you would like to automate, in your own words. I will sketch it out and you can
-                    adjust it just by asking.
-                  </div>
-                </div>
-                <div className="pl-9 flex flex-wrap gap-2">
-                  {EXAMPLE_PROMPTS.slice(0, 4).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => void send(p)}
-                      className="text-left text-xs px-3 py-1.5 rounded-full border border-warm-300 dark:border-charcoal-700 bg-white dark:bg-charcoal-900 text-warm-700 dark:text-charcoal-300 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400 transition cursor-pointer"
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-                {starterTemplates.length > 0 && (
-                  <div className="pl-9 space-y-1.5">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 dark:text-charcoal-400">
-                      Or start from a template
-                    </div>
-                    <div className="grid gap-2">
-                      {starterTemplates.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => void send(t.prompt)}
-                          className="text-left p-2.5 rounded-xl border border-warm-200 dark:border-charcoal-750 bg-warm-50 dark:bg-charcoal-850 hover:border-brand-500 transition cursor-pointer"
-                        >
-                          <div className="text-xs font-semibold text-warm-900 dark:text-charcoal-100">{t.title}</div>
-                          <div className="text-[11px] text-warm-600 dark:text-charcoal-400 mt-0.5">{t.description}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+          <WorkflowAssistantPanel
+            className="flex-1"
+            messages={messages}
+            isThinking={isThinking}
+            questions={questions}
+            templatePicks={templatePicks}
+            starterTemplates={starterTemplates}
+            examplePrompts={EXAMPLE_PROMPTS.slice(0, 4)}
+            hasWorkflow={hasWorkflow}
+            lockedReason={locked ? 'This workflow is active. Open it in the editor to make changes.' : null}
+            input={input}
+            onInputChange={setInput}
+            onSend={(t) => void send(t)}
+            onRetry={retry}
+            inputRef={inputRef}
+          />
+        </div>
+
+        {/* RIGHT: canvas and details (about 60%) */}
+        <div
+          id="builder-panel-workflow"
+          data-testid="workflow-pane"
+          aria-labelledby="builder-tab-workflow"
+          className={`${mobileTab === 'workflow' ? 'flex' : 'hidden'} min-h-[680px] min-w-0 flex-col lg:flex lg:min-h-0`}
+        >
+          <section aria-label="Workflow" className={`${panel} relative flex min-h-0 flex-1 flex-col overflow-hidden`}>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-warm-200 px-5 py-3 dark:border-charcoal-800">
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-base font-semibold text-warm-900 dark:text-charcoal-100">Workflow</h2>
+                {hasWorkflow && (
+                  <span className="text-sm text-warm-500 dark:text-charcoal-400">{plural(steps.length, 'step', 'steps')}</span>
                 )}
               </div>
-            )}
+              {hasWorkflow && (
+                <p
+                  className={`inline-flex items-center gap-1.5 text-sm font-medium ${
+                    isValid ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'
+                  }`}
+                >
+                  {isValid ? (
+                    <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4" aria-hidden="true" />
+                  )}
+                  {isValid ? 'No problems found' : plural(errors.length, 'problem to fix', 'problems to fix')}
+                </p>
+              )}
+            </div>
 
-            {messages.map((m) =>
-              m.role === 'user' ? (
-                <div key={m.id} className="flex justify-end animate-in fade-in slide-in-from-bottom-1 duration-200">
-                  <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-brand-600 dark:bg-brand-500 text-white px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
-                    {m.content}
-                  </div>
-                </div>
-              ) : (
-                <div key={m.id} className="flex items-start gap-2.5 animate-in fade-in slide-in-from-bottom-1 duration-200">
-                  <AssistantAvatar />
-                  <div
-                    className={`max-w-[85%] rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap border ${
-                      m.tone === 'error'
-                        ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/60 text-red-800 dark:text-red-300'
-                        : m.tone === 'limit'
-                        ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/60 text-amber-900 dark:text-amber-200'
-                        : 'bg-warm-100 dark:bg-charcoal-850 border-warm-200 dark:border-charcoal-750 text-warm-800 dark:text-charcoal-200'
+            {/* Canvas gets the full height; summary / inspector live in a bottom sheet that overlays it. */}
+            <div className="relative min-h-[420px] flex-1 lg:min-h-0">
+              <div className="absolute inset-x-0 top-0 bottom-[52px]">
+                <WorkflowCanvas
+                  steps={steps}
+                  connections={connections}
+                  selectedKey={selectedKey}
+                  onSelect={setSelectedKey}
+                  onMoveNode={moveStep}
+                  onConnect={addConnection}
+                  onDeleteSteps={removeSteps}
+                  onDeleteConnections={removeConnections}
+                  catalog={catalogByType}
+                  errorKeys={errorKeys}
+                  readOnly={locked}
+                  isLoading={isThinking}
+                  fitSignal={fitSignal}
+                />
+              </div>
+
+              <div
+                data-testid="details-sheet"
+                className={`absolute inset-x-0 bottom-0 z-10 flex flex-col border-t border-warm-200 bg-white shadow-[0_-10px_24px_-14px_rgba(15,23,42,0.25)] transition-[max-height] duration-200 ease-out dark:border-charcoal-800 dark:bg-charcoal-900 ${
+                  sheetOpen ? 'max-h-[64%]' : 'max-h-[52px]'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setSheetOpen((v) => !v)}
+                  aria-expanded={sheetOpen}
+                  aria-controls="builder-details-body"
+                  className="flex h-[52px] w-full flex-shrink-0 items-center gap-3 px-5 text-left transition-colors hover:bg-warm-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 dark:hover:bg-charcoal-850"
+                >
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-warm-900 dark:text-charcoal-100">
+                    {selectedStep
+                      ? selectedStep.name
+                      : hasWorkflow
+                      ? summary || 'Workflow summary and setup'
+                      : 'Summary and setup appear here'}
+                  </span>
+                  {hasWorkflow && setupItems.length > 0 && (
+                    <span className="flex-shrink-0 text-xs text-warm-600 dark:text-charcoal-400">
+                      {plural(setupItems.length, 'setup note', 'setup notes')}
+                    </span>
+                  )}
+                  <ChevronUp
+                    className={`h-4 w-4 flex-shrink-0 text-warm-500 transition-transform duration-200 dark:text-charcoal-400 ${
+                      sheetOpen ? 'rotate-180' : ''
                     }`}
-                  >
-                    {m.tone === 'limit' && (
-                      <div className="flex items-center gap-1.5 font-semibold mb-1">
-                        <Clock className="w-3.5 h-3.5" aria-hidden="true" />
-                        Daily AI limit reached
-                      </div>
-                    )}
-                    {m.tone === 'error' && (
-                      <div className="flex items-center gap-1.5 font-semibold mb-1">
-                        <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
-                        That did not work
-                      </div>
-                    )}
-                    {m.content}
-                  </div>
-                </div>
-              )
-            )}
-
-            {/* Clarifying questions */}
-            {questions.length > 0 && !isThinking && (
-              <div className="pl-9 space-y-3 animate-in fade-in duration-200" aria-label="A few quick questions">
-                {questions.map((q) => (
-                  <fieldset key={q.id} className="space-y-2">
-                    <legend className="text-xs font-semibold text-warm-900 dark:text-charcoal-100">{q.question}</legend>
-                    {answers[q.id] ? (
-                      <div className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-brand-50 dark:bg-brand-900/30 border border-brand-300 dark:border-brand-700 text-brand-800 dark:text-brand-300">
-                        <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
-                        {answers[q.id]}
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex flex-wrap gap-2">
-                          {q.options.slice(0, MAX_OPTIONS).map((opt) => (
-                            <button
-                              key={opt}
-                              type="button"
-                              onClick={() => answerQuestion(q, opt)}
-                              className="text-xs px-3 py-1.5 rounded-full border border-warm-300 dark:border-charcoal-700 bg-white dark:bg-charcoal-900 text-warm-800 dark:text-charcoal-200 hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/30 transition cursor-pointer"
-                            >
-                              {opt}
-                            </button>
-                          ))}
-                        </div>
-                        <form
-                          className="flex items-center gap-2"
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            answerQuestion(q, otherText[q.id] || '');
-                          }}
-                        >
-                          <label className="sr-only" htmlFor={`other-${q.id}`}>
-                            Other answer for: {q.question}
-                          </label>
-                          <input
-                            id={`other-${q.id}`}
-                            type="text"
-                            value={otherText[q.id] || ''}
-                            onChange={(e) => setOtherText((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                            placeholder={OTHER_PLACEHOLDER}
-                            className="flex-1 min-w-0 px-3 py-1.5 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-xs text-warm-900 dark:text-charcoal-100 placeholder:text-warm-500 dark:placeholder:text-charcoal-500 focus:outline-none focus:border-brand-600"
-                          />
-                          <button
-                            type="submit"
-                            disabled={!(otherText[q.id] || '').trim()}
-                            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-warm-200 dark:bg-charcoal-800 text-warm-800 dark:text-charcoal-200 hover:bg-warm-300 dark:hover:bg-charcoal-750 disabled:opacity-40 transition cursor-pointer"
-                          >
-                            Use this
-                          </button>
-                        </form>
-                      </>
-                    )}
-                  </fieldset>
-                ))}
-                {unanswered.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => void send('Please choose sensible defaults for anything I did not answer.')}
-                    className="text-[11px] font-medium text-warm-600 dark:text-charcoal-400 hover:text-brand-700 dark:hover:text-brand-400 underline underline-offset-2 cursor-pointer"
-                  >
-                    Skip, just choose for me
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Template picker */}
-            {templatePicks.length > 0 && !isThinking && (
-              <div className="pl-9 space-y-2 animate-in fade-in duration-200">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-warm-500 dark:text-charcoal-400">
-                  Pick a starting point
-                </div>
-                {templatePicks.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => void send(t.prompt)}
-                    className="w-full text-left p-3 rounded-xl border border-warm-200 dark:border-charcoal-750 bg-warm-50 dark:bg-charcoal-850 hover:border-brand-500 transition cursor-pointer"
-                  >
-                    <div className="text-xs font-semibold text-warm-900 dark:text-charcoal-100">{t.title}</div>
-                    <div className="text-[11px] text-warm-600 dark:text-charcoal-400 mt-0.5">{t.description}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {isThinking && (
-              <div className="flex items-start gap-2.5" role="status">
-                <AssistantAvatar />
-                <div className="rounded-2xl rounded-tl-sm bg-warm-100 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 px-3.5 py-2.5 text-sm text-warm-700 dark:text-charcoal-300 flex items-center gap-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-600 dark:text-teal-400" aria-hidden="true" />
-                  <span>{THINKING_MESSAGES[thinkingIdx]}</span>
-                </div>
-              </div>
-            )}
-            <div ref={endRef} />
-          </div>
-
-          {/* Composer */}
-          <form
-            className="border-t border-warm-200 dark:border-charcoal-800 p-3 flex items-end gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void send(input);
-            }}
-          >
-            <label htmlFor="builder-input" className="sr-only">
-              {proposal ? 'Ask for a change' : 'Describe what you want to automate'}
-            </label>
-            <textarea
-              id="builder-input"
-              ref={inputRef}
-              rows={2}
-              value={input}
-              disabled={isThinking}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  void send(input);
-                }
-              }}
-              placeholder={
-                proposal
-                  ? 'Ask for a change, e.g. "also ask a manager to approve it"'
-                  : 'Describe what you want to automate…'
-              }
-              className="flex-1 resize-none px-3 py-2 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-xl text-sm text-warm-900 dark:text-charcoal-100 placeholder:text-warm-500 dark:placeholder:text-charcoal-500 focus:outline-none focus:border-brand-600 disabled:opacity-60"
-            />
-            <button
-              type="submit"
-              disabled={isThinking || !input.trim()}
-              aria-label="Send"
-              className="h-10 w-10 flex items-center justify-center rounded-xl bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white disabled:opacity-40 transition cursor-pointer flex-shrink-0"
-            >
-              {isThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </button>
-          </form>
-        </section>
-
-        {/* RIGHT: live preview */}
-        <section
-          aria-label="Workflow preview"
-          className="rounded-2xl bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 shadow-subtle overflow-hidden"
-        >
-          {!proposal ? (
-            <div className="p-8 sm:p-12 text-center space-y-3 min-h-[320px] flex flex-col items-center justify-center">
-              <div className="w-12 h-12 rounded-2xl bg-warm-100 dark:bg-charcoal-800 border border-warm-200 dark:border-charcoal-700 flex items-center justify-center">
-                <Wand2 className="w-6 h-6 text-warm-500 dark:text-charcoal-400" aria-hidden="true" />
-              </div>
-              <h2 className="text-sm font-bold text-warm-900 dark:text-charcoal-100">Your workflow will appear here</h2>
-              <p className="text-xs text-warm-600 dark:text-charcoal-400 max-w-xs">
-                As soon as I understand what you need, you will see each step laid out so you can review it before
-                anything is saved.
-              </p>
-            </div>
-          ) : (
-            <div className="animate-in fade-in duration-300">
-              <ProposalPreview steps={proposal.steps} connections={proposal.connections} />
-
-              <div className="p-4 sm:p-5 space-y-5 border-t border-warm-200 dark:border-charcoal-800">
-                {summary && (
-                  <div className="space-y-1">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-warm-800 dark:text-charcoal-200">
-                      What this does
-                    </h2>
-                    <p className="text-sm text-warm-700 dark:text-charcoal-300 leading-relaxed">{summary}</p>
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-warm-800 dark:text-charcoal-200">
-                    <ListChecks className="w-3.5 h-3.5" aria-hidden="true" />
-                    Steps
-                  </h3>
-                  <ol className="space-y-1">
-                    {proposal.steps.map((s, i) => (
-                      <li key={s.step_key} className="text-xs text-warm-700 dark:text-charcoal-300 flex gap-2">
-                        <span className="w-4 text-right text-warm-500 dark:text-charcoal-500">{i + 1}.</span>
-                        <span>
-                          <span className="font-semibold text-warm-900 dark:text-charcoal-100">{s.name}</span>
-                          {labelByType[s.step_type] && labelByType[s.step_type] !== s.name && (
-                            <span className="text-warm-500 dark:text-charcoal-400"> · {labelByType[s.step_type]}</span>
-                          )}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-
-                {!proposal.valid && (
-                  <div
-                    role="alert"
-                    className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/60 text-xs space-y-1.5"
-                  >
-                    <div className="flex items-center gap-1.5 font-semibold text-red-800 dark:text-red-300">
-                      <AlertTriangle className="w-4 h-4" aria-hidden="true" />
-                      This version has a problem, so it cannot be saved yet
-                    </div>
-                    <ul className="list-disc pl-5 text-red-700 dark:text-red-300 space-y-0.5">
-                      {proposal.errors.map((e) => (
-                        <li key={e}>{e}</li>
-                      ))}
-                    </ul>
-                    <p className="text-red-700 dark:text-red-300">Ask me to fix it in the chat on the left.</p>
-                  </div>
-                )}
-
-                {proposal.valid && proposal.warnings.length > 0 && (
-                  <ul className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 text-xs text-amber-900 dark:text-amber-200 space-y-0.5 list-disc pl-7">
-                    {proposal.warnings.map((w) => (
-                      <li key={w}>{w}</li>
-                    ))}
-                  </ul>
-                )}
-
-                <SetupChecklist items={setupItems} />
-
-                {unsupported.length > 0 && (
-                  <div className="p-3 rounded-xl bg-warm-100 dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 text-xs space-y-1">
-                    <div className="font-semibold text-warm-900 dark:text-charcoal-100">Not available yet</div>
-                    <p className="text-warm-700 dark:text-charcoal-300">
-                      Some of what you asked for is not supported today, so it is left out of this version:
-                    </p>
-                    <ul className="list-disc pl-5 text-warm-700 dark:text-charcoal-300">
-                      {unsupported.map((u) => (
-                        <li key={u}>{u}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Create */}
-                <div className="pt-4 border-t border-warm-200 dark:border-charcoal-800 space-y-3">
-                  <div>
-                    <label
-                      htmlFor="workflow-name"
-                      className="block text-[11px] font-medium text-warm-700 dark:text-charcoal-300 mb-1"
-                    >
-                      Workflow name
-                    </label>
-                    <input
-                      id="workflow-name"
-                      type="text"
-                      value={workflowName}
-                      maxLength={255}
-                      onChange={(e) => {
-                        setWorkflowName(e.target.value);
-                        setNameTouched(true);
-                      }}
-                      placeholder="Give your workflow a name"
-                      className="w-full px-3 py-2 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-lg text-sm text-warm-900 dark:text-charcoal-100 focus:outline-none focus:border-brand-600"
+                    aria-hidden="true"
+                  />
+                </button>
+                <div id="builder-details-body" className="min-h-0 flex-1 overflow-y-auto border-t border-warm-200 dark:border-charcoal-800">
+                  {selectedStep ? (
+                    <WorkflowInspector
+                      key={selectedStep.step_key}
+                      step={selectedStep}
+                      catalogEntry={catalogByType[selectedStep.step_type]}
+                      errors={validation.errorsByKey[selectedStep.step_key] ?? []}
+                      setupItems={setupItems.filter((s) => s.step_key === selectedStep.step_key)}
+                      readOnly={locked}
+                      onChange={updateStep}
+                      onDelete={(k) => removeSteps([k])}
+                      onClose={() => setSelectedKey(null)}
                     />
-                  </div>
-
-                  {createError && (
-                    <p role="alert" className="text-xs text-red-700 dark:text-red-400">
-                      {createError}
-                    </p>
-                  )}
-
-                  {!canEdit && (
-                    <p className="text-xs text-amber-800 dark:text-amber-300">
-                      Your role can view workflows but not create them. Ask a manager or admin to save this one.
-                    </p>
-                  )}
-
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
-                    <button
-                      type="button"
-                      onClick={handleCreate}
-                      disabled={!canCreate}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white text-sm font-semibold shadow-subtle disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer btn-micro-hover"
-                    >
-                      {isCreating ? (
-                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                      ) : (
-                        <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-                      )}
-                      <span>{isCreating ? 'Creating…' : 'Create draft'}</span>
-                    </button>
-                    <p className="text-xs text-warm-600 dark:text-charcoal-400">
-                      Saved as a draft. Nothing runs until you turn it on. You can test it with sample data in the
-                      editor right after.
-                    </p>
-                  </div>
-                  {blockingSetup > 0 && proposal.valid && (
-                    <p className="text-[11px] text-amber-800 dark:text-amber-300">
-                      You can still save the draft now and finish the {blockingSetup} required setup{' '}
-                      {blockingSetup === 1 ? 'item' : 'items'} before turning it on.
+                  ) : hasWorkflow ? (
+                    <WorkflowDetails
+                      summary={summary}
+                      steps={steps}
+                      catalog={catalogByType}
+                      selectedKey={selectedKey}
+                      onSelectStep={setSelectedKey}
+                      errors={errors}
+                      warnings={warnings}
+                      setupItems={setupItems}
+                      unsupported={unsupported}
+                    />
+                  ) : (
+                    <p className="p-5 text-sm text-warm-600 dark:text-charcoal-400">
+                      The summary, ordered steps and setup requirements show up here once the assistant proposes a workflow.
                     </p>
                   )}
                 </div>
               </div>
             </div>
-          )}
-        </section>
+
+            {testOpen && orgId && hasWorkflow && (
+              <WorkflowTestPanel
+                className="absolute inset-x-0 bottom-0 top-[22%] z-20"
+                organizationId={orgId}
+                steps={steps}
+                connections={connections}
+                disabled={!isValid}
+                disabledReason={testDisabledReason}
+                onClose={() => setTestOpen(false)}
+              />
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );

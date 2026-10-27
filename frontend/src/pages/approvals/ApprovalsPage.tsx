@@ -116,7 +116,7 @@ export const ApprovalsPage: React.FC = () => {
         );
       case 'APPROVED':
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-brand-600 dark:text-brand-400 border border-brand-600 dark:border-brand-500/20">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
             Approved
           </span>
         );
@@ -156,7 +156,7 @@ export const ApprovalsPage: React.FC = () => {
         <button
           onClick={loadData}
           disabled={isLoading}
-          className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-medium text-warm-700 dark:text-charcoal-300 bg-white dark:bg-charcoal-900 border border-warm-200 dark:border-charcoal-750 hover:bg-warm-100 dark:bg-charcoal-800 transition-colors self-start sm:self-auto"
+          className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-medium text-warm-700 dark:text-charcoal-300 bg-white dark:bg-charcoal-900 border border-warm-200 dark:border-charcoal-750 hover:bg-warm-100 dark:hover:bg-charcoal-800 transition-colors self-start sm:self-auto"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-brand-600 dark:text-brand-400' : ''}`} />
           <span>Refresh</span>
@@ -168,7 +168,7 @@ export const ApprovalsPage: React.FC = () => {
         <div
           className={`flex items-start justify-between p-4 rounded-xl border text-xs ${
             feedback.type === 'success'
-              ? 'bg-emerald-500/10 border-brand-600 dark:border-brand-500/20 text-emerald-300'
+              ? 'bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300'
               : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
           }`}
         >
@@ -182,7 +182,7 @@ export const ApprovalsPage: React.FC = () => {
           </div>
           <button
             onClick={() => setFeedback(null)}
-            className="text-warm-500 dark:text-charcoal-400 hover:text-warm-900 dark:text-charcoal-100 transition-colors ml-4 text-xs"
+            className="text-warm-500 dark:text-charcoal-400 hover:text-warm-900 dark:hover:text-charcoal-100 transition-colors ml-4 text-xs"
           >
             Dismiss
           </button>
@@ -196,7 +196,7 @@ export const ApprovalsPage: React.FC = () => {
           className={`pb-3 px-1 text-xs font-medium flex items-center space-x-2 border-b-2 transition-colors ${
             activeTab === 'PENDING'
               ? 'border-brand-600 dark:border-brand-500 text-brand-600 dark:text-brand-400 font-semibold'
-              : 'border-transparent text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
+              : 'border-transparent text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:hover:text-charcoal-200'
           }`}
         >
           <CheckSquare className="w-4 h-4" />
@@ -213,7 +213,7 @@ export const ApprovalsPage: React.FC = () => {
           className={`pb-3 px-1 text-xs font-medium flex items-center space-x-2 border-b-2 transition-colors ${
             activeTab === 'HISTORY'
               ? 'border-brand-600 dark:border-brand-500 text-brand-600 dark:text-brand-400 font-semibold'
-              : 'border-transparent text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
+              : 'border-transparent text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:hover:text-charcoal-200'
           }`}
         >
           <History className="w-4 h-4" />
@@ -234,7 +234,7 @@ export const ApprovalsPage: React.FC = () => {
         </div>
       ) : currentList.length === 0 ? (
         <div className="flex flex-col items-center justify-center min-h-[360px] p-8 rounded-2xl bg-white dark:bg-charcoal-900 shadow-subtle border border-warm-200 dark:border-charcoal-750 text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-brand-600 dark:border-brand-500/20 flex items-center justify-center text-brand-600 dark:text-brand-400">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-emerald-700 dark:text-emerald-400">
             <CheckSquare className="w-6 h-6" />
           </div>
           <h2 className="text-base font-semibold text-warm-900 dark:text-charcoal-100">
@@ -253,7 +253,7 @@ export const ApprovalsPage: React.FC = () => {
             return (
               <div
                 key={item.id}
-                className="p-5 rounded-2xl bg-white dark:bg-charcoal-900 shadow-subtle border border-warm-200 dark:border-charcoal-750 hover:border-warm-300 dark:border-charcoal-700 transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                className="p-5 rounded-2xl bg-white dark:bg-charcoal-900 shadow-subtle border border-warm-200 dark:border-charcoal-750 hover:border-warm-300 dark:hover:border-charcoal-700 transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
               >
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2.5">
@@ -305,7 +305,7 @@ export const ApprovalsPage: React.FC = () => {
                     onClick={() => handleOpenReview(item)}
                     className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors ${
                       item.status === 'PENDING'
-                        ? 'bg-emerald-600 hover:bg-emerald-500 text-warm-900 dark:text-charcoal-100 shadow-lg shadow-emerald-600/10'
+                        ? 'bg-brand-600 hover:bg-brand-700 dark:hover:bg-brand-500 dark:hover:bg-brand-600 text-white shadow-subtle'
                         : 'bg-warm-100 dark:bg-charcoal-800 hover:bg-warm-200 dark:hover:bg-charcoal-700 text-warm-700 dark:text-charcoal-300'
                     }`}
                   >

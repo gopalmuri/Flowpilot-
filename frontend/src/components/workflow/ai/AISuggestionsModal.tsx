@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Lightbulb, X, Loader2, AlertTriangle, Info, OctagonAlert, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Lightbulb, X, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { AISuggestionSeverity, AISuggestionsResponse, AIWorkflowStats } from '../../../types/workflowAI';
 import { WorkflowVersionDetail } from '../../../types/workflow';
 import { applyProposalAsNewDraft, getAISuggestions } from '../../../services/workflowService';
@@ -15,25 +15,10 @@ interface AISuggestionsModalProps {
   onDraftApplied: (version: WorkflowVersionDetail) => void;
 }
 
-const SEVERITY_STYLE: Record<AISuggestionSeverity, { label: string; box: string; icon: React.ElementType; iconClass: string }> = {
-  critical: {
-    label: 'Needs attention',
-    box: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/60',
-    icon: OctagonAlert,
-    iconClass: 'text-red-600 dark:text-red-400',
-  },
-  warning: {
-    label: 'Worth a look',
-    box: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60',
-    icon: AlertTriangle,
-    iconClass: 'text-amber-600 dark:text-amber-400',
-  },
-  info: {
-    label: 'Good to know',
-    box: 'bg-warm-50 dark:bg-charcoal-850 border-warm-200 dark:border-charcoal-750',
-    icon: Info,
-    iconClass: 'text-teal-600 dark:text-teal-400',
-  },
+const SEVERITY_STYLE: Record<AISuggestionSeverity, { label: string; dot: string }> = {
+  critical: { label: 'Needs attention', dot: 'bg-red-500' },
+  warning: { label: 'Worth a look', dot: 'bg-amber-500' },
+  info: { label: 'Good to know', dot: 'bg-teal-500' },
 };
 
 /** Turns raw numbers into sentences a non-technical person can read at a glance. */
@@ -141,13 +126,13 @@ export const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
         aria-labelledby="ai-suggestions-title"
         className="w-full max-w-lg bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 rounded-2xl shadow-modal max-h-[90vh] flex flex-col"
       >
-        <div className="flex items-start justify-between gap-3 p-4 sm:p-5 border-b border-warm-200 dark:border-charcoal-800">
+        <div className="flex items-start justify-between gap-3 p-5 pb-3">
           <div>
-            <h2 id="ai-suggestions-title" className="flex items-center gap-2 text-base font-bold text-warm-900 dark:text-charcoal-100">
+            <h2 id="ai-suggestions-title" className="flex items-center gap-2 text-base font-semibold text-warm-900 dark:text-charcoal-100">
               <Lightbulb className="w-4 h-4 text-amber-500" aria-hidden="true" />
               Ideas to improve this workflow
             </h2>
-            <p className="text-xs text-warm-600 dark:text-charcoal-400 mt-0.5">Based on how it has been running lately.</p>
+            <p className="text-sm text-warm-600 dark:text-charcoal-400 mt-0.5">Based on how it has been running lately.</p>
           </div>
           <button
             ref={closeRef}
@@ -160,7 +145,7 @@ export const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
           </button>
         </div>
 
-        <div className="p-4 sm:p-5 overflow-y-auto space-y-4" aria-live="polite">
+        <div className="px-5 pb-5 overflow-y-auto space-y-5" aria-live="polite">
           {isLoading && (
             <div className="flex items-center gap-2 text-sm text-warm-700 dark:text-charcoal-300 py-6 justify-center" role="status">
               <Loader2 className="w-4 h-4 animate-spin text-teal-600" aria-hidden="true" />
@@ -176,14 +161,30 @@ export const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
 
           {data && (
             <>
-              <div className="p-3 rounded-xl bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 space-y-1">
+              <div className="border-t border-warm-200 dark:border-charcoal-800 pt-4">
+                {data.stats.total_runs > 0 && (
+                  <dl className="grid grid-cols-3 gap-4 mb-3">
+                    <div>
+                      <dd className="text-2xl font-semibold text-warm-900 dark:text-charcoal-100">{data.stats.total_runs}</dd>
+                      <dt className="text-xs text-warm-600 dark:text-charcoal-400">runs</dt>
+                    </div>
+                    <div>
+                      <dd className="text-2xl font-semibold text-warm-900 dark:text-charcoal-100">{data.stats.failed_runs}</dd>
+                      <dt className="text-xs text-warm-600 dark:text-charcoal-400">failed</dt>
+                    </div>
+                    <div>
+                      <dd className="text-2xl font-semibold text-warm-900 dark:text-charcoal-100">{data.stats.pending_approvals}</dd>
+                      <dt className="text-xs text-warm-600 dark:text-charcoal-400">waiting for approval</dt>
+                    </div>
+                  </dl>
+                )}
                 {describeStats(data.stats).map((line) => (
-                  <p key={line} className="text-sm text-warm-800 dark:text-charcoal-200">
+                  <p key={line} className="text-sm text-warm-700 dark:text-charcoal-300">
                     {line}
                   </p>
                 ))}
                 {data.stats.top_failing_steps.length > 0 && (
-                  <p className="text-xs text-warm-600 dark:text-charcoal-400">
+                  <p className="text-xs text-warm-600 dark:text-charcoal-400 mt-1">
                     Most often stuck: {data.stats.top_failing_steps.map(failingStepLabel).join(', ')}.
                   </p>
                 )}
@@ -194,23 +195,18 @@ export const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
                   Nothing to suggest right now. This workflow looks healthy.
                 </p>
               ) : (
-                <ul className="space-y-2.5">
+                <ul className="divide-y divide-warm-200 dark:divide-charcoal-800 border-t border-warm-200 dark:border-charcoal-800">
                   {data.suggestions.map((s) => {
                     const sev = SEVERITY_STYLE[s.severity] ?? SEVERITY_STYLE.info;
-                    const Icon = sev.icon;
                     return (
-                      <li key={s.id} className={`p-3 rounded-xl border ${sev.box}`}>
-                        <div className="flex items-start gap-2.5">
-                          <Icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${sev.iconClass}`} aria-hidden="true" />
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-semibold text-warm-900 dark:text-charcoal-100">{s.title}</span>
-                              <span className="text-[10px] font-bold uppercase tracking-wide text-warm-600 dark:text-charcoal-400">
-                                {sev.label}
-                              </span>
-                            </div>
-                            <p className="text-xs text-warm-700 dark:text-charcoal-300 mt-0.5 leading-relaxed">{s.detail}</p>
+                      <li key={s.id} className="py-3 flex items-start gap-3">
+                        <span className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${sev.dot}`} aria-hidden="true" />
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-warm-900 dark:text-charcoal-100">
+                            {s.title}
+                            <span className="ml-2 text-xs font-normal text-warm-500 dark:text-charcoal-400">{sev.label}</span>
                           </div>
+                          <p className="text-sm text-warm-600 dark:text-charcoal-400 mt-0.5 leading-relaxed">{s.detail}</p>
                         </div>
                       </li>
                     );
@@ -219,36 +215,36 @@ export const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
               )}
 
               {data.proposal && (
-                <div className="p-3 rounded-xl bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 space-y-2.5">
-                  <div className="text-sm font-semibold text-warm-900 dark:text-charcoal-100">Suggested change</div>
+                <div className="border-t border-warm-200 dark:border-charcoal-800 pt-4 space-y-3">
+                  <h3 className="text-sm font-semibold text-warm-900 dark:text-charcoal-100">Suggested change</h3>
                   <ProposalDiffSummary proposal={data.proposal} />
                   {!data.proposal.valid && (
-                    <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+                    <p role="alert" className="text-sm text-red-700 dark:text-red-400">
                       This change has a problem and cannot be applied: {data.proposal.errors.join(' ')}
                     </p>
                   )}
                   {applyError && (
-                    <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+                    <p role="alert" className="text-sm text-red-700 dark:text-red-400">
                       {applyError}
                     </p>
                   )}
                   {applied ? (
-                    <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700 dark:text-brand-400">
-                      <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
+                    <p className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 dark:text-brand-400">
+                      <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                       Saved as a new draft and opened in the editor.
                     </p>
                   ) : (
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                       <button
                         type="button"
                         onClick={handleApply}
                         disabled={!data.proposal.valid || isApplying || !canEdit}
-                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
                       >
                         {isApplying && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
                         <span>Apply as new draft</span>
                       </button>
-                      <span className="inline-flex items-center gap-1 text-[11px] text-warm-600 dark:text-charcoal-400">
+                      <span className="inline-flex items-center gap-1 text-xs text-warm-500 dark:text-charcoal-400">
                         <ShieldCheck className="w-3 h-3" aria-hidden="true" />
                         Your live workflow is not changed.
                       </span>
@@ -258,7 +254,7 @@ export const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
               )}
 
               {!data.used_ai && (
-                <p className="text-[11px] text-warm-500 dark:text-charcoal-400">
+                <p className="text-xs text-warm-500 dark:text-charcoal-400">
                   These ideas come from your run numbers only; the AI helper was not available.
                 </p>
               )}

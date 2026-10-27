@@ -366,7 +366,7 @@ export const NotificationCenter: React.FC = () => {
                           <button
                             type="button"
                             onClick={(e) => markAsRead(item.id, e)}
-                            className="text-[10px] text-warm-500 hover:text-warm-800 dark:text-charcoal-400 dark:hover:text-charcoal-200 flex items-center gap-0.5"
+                            className="text-[10px] text-warm-500 hover:text-warm-800 dark:hover:text-charcoal-400 dark:hover:text-charcoal-200 flex items-center gap-0.5"
                             title="Mark as read"
                           >
                             <Check className="w-3 h-3" />

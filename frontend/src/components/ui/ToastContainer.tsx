@@ -63,7 +63,7 @@ export const ToastContainer: React.FC = () => {
           <button
             type="button"
             onClick={() => dismissToast(toast.id)}
-            className="text-warm-400 hover:text-warm-700 dark:text-charcoal-400 dark:hover:text-charcoal-100 p-1 rounded-lg transition-colors cursor-pointer -mr-1 -mt-1"
+            className="text-warm-400 hover:text-warm-700 dark:hover:text-charcoal-400 dark:hover:text-charcoal-100 p-1 rounded-lg transition-colors cursor-pointer -mr-1 -mt-1"
             aria-label="Close notification"
           >
             <X className="w-3.5 h-3.5" />

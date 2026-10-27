@@ -474,8 +474,8 @@ export const WorkflowEditorContent: React.FC = () => {
   };
 
   const isDark = resolvedTheme === 'dark';
-  const canvasBg = isDark ? '#101513' : '#F5F3EE';
-  const dotColor = isDark ? '#2A332E' : '#DDD9D0';
+  const canvasBg = isDark ? '#0B1120' : '#F8FAFC';
+  const dotColor = isDark ? '#273449' : '#CBD5E1';
 
   if (isLoading) {
     return (
@@ -620,12 +620,12 @@ export const WorkflowEditorContent: React.FC = () => {
               onClick={() => setIsAIAssistantOpen((prev) => !prev)}
               className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-semibold shadow-2xs transition cursor-pointer ${
                 isAIAssistantOpen
-                  ? 'bg-teal-100 dark:bg-teal-950/80 border-teal-300 dark:border-teal-700 text-teal-800 dark:text-teal-200 ring-2 ring-teal-500/20'
-                  : 'bg-teal-50/70 dark:bg-teal-950/30 hover:bg-teal-100/80 dark:hover:bg-teal-900/50 border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-300'
+                  ? 'bg-brand-100 dark:bg-brand-950/80 border-brand-300 dark:border-brand-700 text-brand-800 dark:text-brand-200 ring-2 ring-brand-500/20'
+                  : 'bg-brand-50/70 dark:bg-brand-950/30 hover:bg-brand-100/80 dark:hover:bg-brand-900/50 border-brand-200 dark:border-brand-800/60 text-brand-700 dark:text-brand-300'
               }`}
               title="Open AI Workflow Assistant"
             >
-              <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
               <span>AI Assistant</span>
             </button>
 
@@ -671,7 +671,7 @@ export const WorkflowEditorContent: React.FC = () => {
                   type="button"
                   disabled={isPublishing || activeVersion?.status === 'PUBLISHED'}
                   onClick={() => setIsPublishConfirmOpen(true)}
-                  className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-xs font-semibold text-white shadow-subtle transition disabled:opacity-40 cursor-pointer"
+                  className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 dark:hover:bg-brand-500 dark:hover:bg-brand-600 text-xs font-semibold text-white shadow-subtle transition disabled:opacity-40 cursor-pointer"
                   title="Publish Version"
                 >
                   {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
@@ -718,8 +718,8 @@ export const WorkflowEditorContent: React.FC = () => {
                   attributionPosition="bottom-left"
                   defaultEdgeOptions={{
                     type: 'smoothstep',
-                    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: '#69716C' },
-                    style: { strokeWidth: 1.5, stroke: '#69716C' },
+                    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: '#94A3B8' },
+                    style: { strokeWidth: 1.5, stroke: '#94A3B8' },
                   }}
                 >
                   <Background color={dotColor} gap={16} size={1} style={{ backgroundColor: canvasBg }} />

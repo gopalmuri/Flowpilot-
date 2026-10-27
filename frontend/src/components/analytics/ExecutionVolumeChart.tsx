@@ -73,7 +73,7 @@ export const ExecutionVolumeChart: React.FC<ExecutionVolumeChartProps> = ({
         {/* Legend */}
         <div className="flex items-center gap-3 text-[11px] text-warm-500 dark:text-charcoal-400">
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-brand-600 dark:bg-brand-500" />
+            <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />
             Success
           </span>
           <span className="flex items-center gap-1.5">
@@ -107,7 +107,7 @@ export const ExecutionVolumeChart: React.FC<ExecutionVolumeChartProps> = ({
                   y1={y}
                   x2={totalWidth - paddingRight}
                   y2={y}
-                  stroke="#DDD9D0"
+                  stroke="#E2E8F0"
                   strokeWidth="1"
                   strokeDasharray={val === 0 ? undefined : '3 3'}
                   opacity={val === 0 ? 0.8 : 0.4}
@@ -170,7 +170,7 @@ export const ExecutionVolumeChart: React.FC<ExecutionVolumeChartProps> = ({
                     y={paddingTop}
                     width={barSlotWidth}
                     height={chartHeight}
-                    fill="#176B4D"
+                    fill="#4F46E5"
                     opacity={0.08}
                     rx={4}
                   />
@@ -219,7 +219,7 @@ export const ExecutionVolumeChart: React.FC<ExecutionVolumeChartProps> = ({
                     y={inFlightY}
                     width={barWidth}
                     height={inFlightH}
-                    fill="#176B4D"
+                    fill="#4F46E5"
                     rx={1}
                   />
                 )}
@@ -254,8 +254,8 @@ export const ExecutionVolumeChart: React.FC<ExecutionVolumeChartProps> = ({
                 {buckets[hoveredIdx].total_count}
               </span>
 
-              <span className="text-brand-600 dark:text-brand-400">Success:</span>
-              <span className="font-mono text-brand-700 dark:text-brand-300 text-right">
+              <span className="text-emerald-700 dark:text-emerald-400">Success:</span>
+              <span className="font-mono text-emerald-700 dark:text-emerald-400 text-right">
                 {buckets[hoveredIdx].success_count}
               </span>
 

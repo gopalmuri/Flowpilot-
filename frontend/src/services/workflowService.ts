@@ -6,6 +6,10 @@ import type {
   AIRunExplainResponse,
   AISuggestionsResponse,
   AIWorkflowAssistRequest,
+  AISimulateExecutionRequest,
+  AISimulateExecutionResponse,
+  AISimulatePayloadRequest,
+  AISimulatePayloadResponse,
   AIWorkflowAssistResponse,
   AIWorkflowProposal,
   AIWorkflowTemplate,
@@ -304,5 +308,30 @@ export async function applyProposalAsNewDraft(
   return updateWorkflowVersion(organizationId, workflowId, draft.id, {
     steps: proposal.steps,
     connections: proposal.connections,
+  });
+}
+
+/** Dry-run helpers that work before a draft exists (no workflow id needed, nothing is saved or sent). */
+export async function simulateProposalPayload(
+  organizationId: string,
+  payload: AISimulatePayloadRequest,
+  signal?: AbortSignal
+): Promise<AISimulatePayloadResponse> {
+  return apiRequest<AISimulatePayloadResponse>(`${orgWorkflowsBase(organizationId)}/ai-builder/simulate-payload`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    signal,
+  });
+}
+
+export async function simulateProposalRun(
+  organizationId: string,
+  payload: AISimulateExecutionRequest,
+  signal?: AbortSignal
+): Promise<AISimulateExecutionResponse> {
+  return apiRequest<AISimulateExecutionResponse>(`${orgWorkflowsBase(organizationId)}/ai-builder/simulate-run`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    signal,
   });
 }

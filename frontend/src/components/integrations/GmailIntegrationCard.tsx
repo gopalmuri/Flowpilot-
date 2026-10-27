@@ -20,7 +20,7 @@ interface GmailIntegrationCardProps {
 }
 
 const HEALTH_BADGE: Record<GmailHealth, { label: string; tone: string }> = {
-  healthy: { label: 'Healthy', tone: 'bg-emerald-500/10 text-brand-600 dark:text-brand-400 border-brand-600 dark:border-brand-500/20' },
+  healthy: { label: 'Healthy', tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' },
   degraded: { label: 'Needs attention', tone: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60' },
   needs_reauth: { label: 'Reconnect required', tone: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/60' },
   disconnected: { label: 'Disconnected', tone: 'bg-slate-500/10 text-warm-500 dark:text-charcoal-400 border-slate-500/20' },
@@ -306,7 +306,7 @@ export const GmailIntegrationCard: React.FC<GmailIntegrationCardProps> = ({
             type="button"
             disabled={busy !== null || (data !== null && !data.oauth_configured)}
             onClick={() => void connect()}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 rounded-xl shadow-subtle transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 dark:hover:bg-brand-500 dark:hover:bg-brand-600 rounded-xl shadow-subtle transition-colors disabled:opacity-50"
           >
             <Mail className="w-3.5 h-3.5" />
             {active.length > 0 ? 'Connect another mailbox' : 'Connect Gmail'}

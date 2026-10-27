@@ -67,9 +67,56 @@ from app.main import app  # noqa: E402
 # Disable rate limiting for general integration test fixtures unless explicitly enabled
 settings.RATE_LIMIT_ENABLED = False
 
+# Tests must never send real email. The dev .env can hold live SMTP credentials and registration sends a verification
+# code, so without this every test that registers a user would email a fake address from the real account.
+settings.SMTP_USER = None
+settings.SMTP_PASSWORD = None
+
+# Likewise never call a real AI provider from tests: the dev .env selects a live provider with real keys, which makes
+# tests slow, flaky and billable. Tests that need provider behaviour select it explicitly or inject a fake.
+settings.AI_PROVIDER = "mock"
+
+
+# Modules that exercise the registration / verification / two-step login flow itself keep the raw behaviour.
+_RAW_AUTH_FLOW_MODULES = {"test_login_otp_flow", "test_email_verification_flow", "test_verify_email_already_verified"}
+
+
+def _json_or_empty(resp) -> dict:
+    try:
+        data = resp.json()
+        return data if isinstance(data, dict) else {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+class _TwoStepLoginClient(AsyncClient):
+    """
+    Login is two-step (password, then an emailed code) and needs a verified email. Most API tests only need "a
+    logged-in user", so for them this client finishes those steps with the codes the app would have emailed
+    (recorded in `otps`), so `POST /auth/login` still returns tokens. Tests of the flow itself opt out.
+    """
+
+    otps: dict = {}
+
+    async def post(self, url, *args, **kwargs):  # type: ignore[override]
+        resp = await super().post(url, *args, **kwargs)
+        if not str(url).endswith("/auth/login"):
+            return resp
+        email = ((kwargs.get("json") or {}).get("email") or "").strip().lower()
+        data = _json_or_empty(resp)
+
+        if resp.status_code == 403 and data.get("detail") == "email_not_verified" and self.otps.get((email, "verification")):
+            await super().post("/api/v1/auth/verify-email", json={"email": email, "code": self.otps[(email, "verification")]})
+            resp = await super().post(url, *args, **kwargs)
+            data = _json_or_empty(resp)
+
+        if resp.status_code == 200 and data.get("requires_otp") and self.otps.get((email, "login")):
+            return await super().post("/api/v1/auth/verify-login-otp", json={"email": email, "code": self.otps[(email, "login")]})
+        return resp
+
 
 @pytest_asyncio.fixture
-async def async_client():
+async def async_client(request, monkeypatch):
     # Create test engine using NullPool to prevent event loop connection leakage across tests
     test_engine = create_async_engine(settings.DATABASE_URL, poolclass=NullPool)
     test_session_maker = async_sessionmaker(
@@ -92,8 +139,23 @@ async def async_client():
 
     app.dependency_overrides[get_db] = override_get_db
 
+    raw = request.module.__name__.split(".")[-1] in _RAW_AUTH_FLOW_MODULES
+    client_cls = AsyncClient if raw else _TwoStepLoginClient
+    if not raw:
+        from app.services.email import verification as verification_module
+
+        otps: dict = {}
+        original_send = verification_module.send_verification_email
+
+        async def recording_send(to_email, otp_code, purpose="verification"):
+            otps[(to_email.strip().lower(), purpose)] = otp_code
+            return await original_send(to_email, otp_code, purpose)
+
+        monkeypatch.setattr(verification_module, "send_verification_email", recording_send)
+        client_cls = type("_BoundTwoStepClient", (_TwoStepLoginClient,), {"otps": otps})
+
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with client_cls(transport=transport, base_url="http://testserver") as client:
         yield client
 
     app.dependency_overrides.clear()

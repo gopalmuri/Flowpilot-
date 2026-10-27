@@ -1,6 +1,11 @@
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
+import { AlertTriangle, FlaskConical } from 'lucide-react';
 import { branchHandlesFor } from '../../../utils/workflowGraphMapper';
+import { WorkflowNodeData } from '../../../utils/workflowGraphValidator';
+import { KIND_LABEL, KIND_STYLE, describeStep, getStepMeta } from '../builder/stepMeta';
+
+const HANDLE_BASE = '!w-3 !h-3 !border-2 !border-white dark:!border-charcoal-900';
 
 const BRANCH_HANDLE_COLORS: Record<string, string> = {
   true: '!bg-brand-600 dark:!bg-brand-500',
@@ -8,223 +13,108 @@ const BRANCH_HANDLE_COLORS: Record<string, string> = {
   false: '!bg-red-500',
   rejected: '!bg-red-500',
 };
-import {
-  Webhook,
-  Play,
-  CheckCircle2,
-  Sparkles,
-  ScanSearch,
-  Mail,
-  Send,
-  GitFork,
-  Database,
-  MessageSquare,
-  UserCheck,
-} from 'lucide-react';
-import { StepType } from '../../../types/workflow';
-import { WorkflowNodeData } from '../../../utils/workflowGraphValidator';
 
+/**
+ * One step on the canvas. Shared by the full editor and the AI builder.
+ * Optional data flags (set by the AI builder): `catalogLabel`, `testMode`, `hasError`, `hideKey`.
+ */
 export const WorkflowNode: React.FC<NodeProps<any>> = memo(({ data, selected }) => {
   const nodeData = data as WorkflowNodeData;
-  const stepType = nodeData.step_type;
-  const config = nodeData.config || {};
-
-  const getNodeMeta = () => {
-    switch (stepType) {
-      case StepType.WEBHOOK_TRIGGER:
-        return {
-          label: 'Webhook Trigger',
-          category: 'Trigger',
-          icon: Webhook,
-          badgeClass: 'bg-warm-200 dark:bg-charcoal-800 text-warm-800 dark:text-charcoal-300 border-warm-300 dark:border-charcoal-700',
-          iconClass: 'text-brand-600 dark:text-brand-400',
-          summary: `Methods: ${(config.allowed_methods || ['POST']).join(', ')}`,
-          isTrigger: true,
-        };
-      case StepType.MANUAL_TRIGGER:
-        return {
-          label: 'Manual Trigger',
-          category: 'Trigger',
-          icon: Play,
-          badgeClass: 'bg-warm-200 dark:bg-charcoal-800 text-warm-800 dark:text-charcoal-300 border-warm-300 dark:border-charcoal-700',
-          iconClass: 'text-brand-600 dark:text-brand-400',
-          summary: 'Interactive manual execution',
-          isTrigger: true,
-        };
-      case StepType.VALIDATE_DATA:
-        return {
-          label: 'Validate Data',
-          category: 'Processing',
-          icon: CheckCircle2,
-          badgeClass: 'bg-brand-50 dark:bg-brand-900/40 text-brand-800 dark:text-brand-300 border-brand-200 dark:border-brand-800/60',
-          iconClass: 'text-brand-600 dark:text-brand-400',
-          summary: config.required_fields?.length
-            ? `${config.required_fields.length} required fields`
-            : 'Schema & rules',
-          isTrigger: false,
-        };
-      case StepType.AI_CLASSIFICATION:
-        return {
-          label: 'AI Classification',
-          category: 'Intelligence',
-          icon: Sparkles,
-          badgeClass: 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/60',
-          iconClass: 'text-teal-600 dark:text-teal-400',
-          summary: config.model ? `Model: ${config.model}` : 'LLM categorization',
-          isTrigger: false,
-        };
-      case StepType.AI_EXTRACT_DATA:
-        return {
-          label: 'AI pulls out key details',
-          category: 'Intelligence',
-          icon: ScanSearch,
-          badgeClass: 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/60',
-          iconClass: 'text-teal-600 dark:text-teal-400',
-          summary: Array.isArray(config.fields) && config.fields.length
-            ? `Pulls out: ${config.fields.join(', ')}`
-            : 'Extract details from text',
-          isTrigger: false,
-        };
-      case StepType.AI_ANALYZE_MESSAGE:
-        return {
-          label: 'AI reads a message',
-          category: 'Intelligence',
-          icon: Mail,
-          badgeClass: 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/60',
-          iconClass: 'text-teal-600 dark:text-teal-400',
-          summary: 'Reads the message and drafts a reply',
-          isTrigger: false,
-        };
-      case StepType.SEND_REPLY:
-        return {
-          label: 'Send the approved reply',
-          category: 'Integration',
-          icon: Send,
-          badgeClass: 'bg-brand-50 dark:bg-brand-900/30 text-brand-800 dark:text-brand-400 border-brand-200 dark:border-brand-800/50',
-          iconClass: 'text-brand-600 dark:text-brand-400',
-          summary: 'Sends the reply once approved',
-          isTrigger: false,
-        };
-      case StepType.CONDITION:
-        return {
-          label: 'Condition',
-          category: 'Logic & Flow',
-          icon: GitFork,
-          badgeClass: 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
-          iconClass: 'text-amber-600 dark:text-amber-400',
-          summary: config.field ? `Check: ${config.field}` : 'Branching rules',
-          isTrigger: false,
-        };
-      case StepType.MOCK_CRM_CREATE:
-        return {
-          label: 'Mock CRM Entity',
-          category: 'Integration',
-          icon: Database,
-          badgeClass: 'bg-brand-50 dark:bg-brand-900/30 text-brand-800 dark:text-brand-400 border-brand-200 dark:border-brand-800/50',
-          iconClass: 'text-brand-600 dark:text-brand-400',
-          summary: `Entity: ${config.entity_type || 'lead'}`,
-          isTrigger: false,
-        };
-      case StepType.SLACK_NOTIFICATION:
-        return {
-          label: 'Slack Notification',
-          category: 'Integration',
-          icon: MessageSquare,
-          badgeClass: 'bg-brand-50 dark:bg-brand-900/30 text-brand-800 dark:text-brand-400 border-brand-200 dark:border-brand-800/50',
-          iconClass: 'text-brand-600 dark:text-brand-400',
-          summary: config.channel ? `Channel: ${config.channel}` : 'Alerts dispatch',
-          isTrigger: false,
-        };
-      case StepType.HUMAN_APPROVAL:
-        return {
-          label: 'Human Approval Gate',
-          category: 'Governance',
-          icon: UserCheck,
-          badgeClass: 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
-          iconClass: 'text-amber-600 dark:text-amber-400',
-          summary: `Role: ${config.approver_role || config.required_role || 'MANAGER'}`,
-          isTrigger: false,
-        };
-      default:
-        return {
-          label: nodeData.name || 'Step',
-          category: 'Step',
-          icon: CheckCircle2,
-          badgeClass: 'bg-warm-100 dark:bg-charcoal-800 text-warm-700 dark:text-charcoal-300 border-warm-200 dark:border-charcoal-700',
-          iconClass: 'text-warm-600 dark:text-charcoal-400',
-          summary: 'Workflow operation',
-          isTrigger: false,
-        };
-    }
-  };
-
-  const meta = getNodeMeta();
-  const branchHandles = branchHandlesFor(String(nodeData.step_type));
+  const stepType = String(nodeData.step_type);
+  const meta = getStepMeta(stepType);
   const Icon = meta.icon;
-
+  const styles = KIND_STYLE[meta.kind];
+  const isTrigger = meta.kind === 'trigger';
+  const branchHandles = branchHandlesFor(stepType);
+  const title = nodeData.name || nodeData.catalogLabel || meta.fallbackLabel;
+  const description = describeStep(stepType, nodeData.config);
   const isPreview = Boolean(nodeData.isPreview);
 
   return (
     <div
-      className={`min-w-[220px] max-w-[280px] rounded-xl bg-white dark:bg-charcoal-900 border transition-all duration-150 shadow-subtle ${
+      data-testid={`workflow-node-${nodeData.step_key}`}
+      className={`relative w-[272px] rounded-xl bg-white dark:bg-charcoal-900 border shadow-subtle transition-shadow duration-150 ${
         isPreview
-          ? 'border-dashed border-teal-500 dark:border-teal-400 ring-2 ring-teal-500/30'
+          ? 'border-dashed border-brand-500 ring-2 ring-brand-500/20'
           : selected
-          ? 'border-brand-600 dark:border-brand-500 ring-2 ring-brand-500/20'
-          : 'border-warm-300 dark:border-charcoal-750 hover:border-warm-400 dark:hover:border-charcoal-700'
+          ? 'border-brand-500 ring-2 ring-brand-500/40'
+          : nodeData.hasError
+          ? 'border-red-300 dark:border-red-500/50'
+          : 'border-warm-300 dark:border-charcoal-750 hover:shadow-card'
       }`}
     >
-
-      {!meta.isTrigger && (
+      {!isTrigger && (
         <Handle
           type="target"
           position={Position.Top}
-          className="!w-3 !h-3 !bg-warm-400 dark:!bg-charcoal-600 !border-2 !border-white dark:!border-charcoal-900 !-top-1.5 transition-colors"
+          title="Input"
+          className={`${HANDLE_BASE} !bg-warm-400 dark:!bg-charcoal-600 !-top-1.5`}
         />
       )}
 
-      <div className="p-3 border-b border-warm-200 dark:border-charcoal-800 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-6 h-6 rounded-md bg-warm-100 dark:bg-charcoal-850 flex items-center justify-center flex-shrink-0">
-            <Icon className={`w-3.5 h-3.5 ${meta.iconClass}`} />
-          </div>
-          <span className="text-xs font-semibold text-warm-900 dark:text-charcoal-100 truncate">
-            {nodeData.name || meta.label}
-          </span>
+      <div className="flex items-start gap-3 p-3.5">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${styles.tile}`}>
+          <Icon className="w-5 h-5" aria-hidden="true" />
         </div>
-        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${meta.badgeClass}`}>
-          {meta.category}
-        </span>
-      </div>
-
-      <div className="p-3 text-[11px] text-warm-600 dark:text-charcoal-400 space-y-1">
-        {!nodeData.hideKey && (
-          <div className="font-mono text-[10px] text-warm-500 dark:text-charcoal-500 truncate">
-            key: {nodeData.step_key}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-xs font-medium">
+            <span className={styles.label}>{KIND_LABEL[meta.kind]}</span>
+            {nodeData.testMode && (
+              <span className="inline-flex items-center gap-1 text-warm-500 dark:text-charcoal-400">
+                <FlaskConical className="w-3 h-3" aria-hidden="true" />
+                Test mode
+              </span>
+            )}
+            {nodeData.hasError && (
+              <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+                <AlertTriangle className="w-3 h-3" aria-hidden="true" />
+                Needs attention
+              </span>
+            )}
           </div>
-        )}
-        <div className="text-warm-700 dark:text-charcoal-300 truncate">
-          {meta.summary}
+          <div className="mt-0.5 text-sm font-semibold leading-snug text-warm-900 dark:text-charcoal-100 truncate" title={title}>
+            {title}
+          </div>
+          <p className="mt-0.5 text-[13px] leading-snug text-warm-600 dark:text-charcoal-400 line-clamp-2">{description}</p>
+          {!nodeData.hideKey && (
+            <div className="mt-1.5 font-mono text-xs text-warm-500 dark:text-charcoal-500 truncate">
+              key: {nodeData.step_key}
+            </div>
+          )}
         </div>
       </div>
 
       {branchHandles.length > 0 ? (
-        branchHandles.map((handleId, i) => (
-          <Handle
-            key={handleId}
-            type="source"
-            position={Position.Bottom}
-            id={handleId}
-            title={handleId}
-            style={{ left: `${((i + 1) * 100) / (branchHandles.length + 1)}%` }}
-            className={`!w-3 !h-3 !border-2 !border-white dark:!border-charcoal-900 !-bottom-1.5 ${BRANCH_HANDLE_COLORS[handleId] || '!bg-warm-400'}`}
-          />
-        ))
+        <>
+          <div className="relative h-6 border-t border-warm-200 dark:border-charcoal-800" aria-hidden="true">
+            {branchHandles.map((handleId, i) => (
+              <span
+                key={handleId}
+                className="absolute top-1 -translate-x-1/2 text-xs font-medium capitalize text-warm-600 dark:text-charcoal-400"
+                style={{ left: `${((i + 1) * 100) / (branchHandles.length + 1)}%` }}
+              >
+                {handleId}
+              </span>
+            ))}
+          </div>
+          {branchHandles.map((handleId, i) => (
+            <Handle
+              key={handleId}
+              type="source"
+              position={Position.Bottom}
+              id={handleId}
+              title={`Output: ${handleId}`}
+              style={{ left: `${((i + 1) * 100) / (branchHandles.length + 1)}%` }}
+              className={`${HANDLE_BASE} !-bottom-1.5 ${BRANCH_HANDLE_COLORS[handleId] || '!bg-warm-400'}`}
+            />
+          ))}
+        </>
       ) : (
         <Handle
           type="source"
           position={Position.Bottom}
-          className="!w-3 !h-3 !bg-warm-400 dark:!bg-charcoal-600 !border-2 !border-white dark:!border-charcoal-900 !-bottom-1.5 transition-colors"
+          title="Output"
+          className={`${HANDLE_BASE} !bg-warm-400 dark:!bg-charcoal-600 !-bottom-1.5`}
         />
       )}
     </div>

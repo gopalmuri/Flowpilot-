@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.api.deps import get_current_active_user, get_org_context, require_role
 from app.core.database import get_db
 from app.models.audit_log import AuditLog
@@ -25,6 +26,10 @@ from app.models.workflow_run import WorkflowRun
 from app.models.workflow_step import WorkflowConnection, WorkflowStep
 from app.schemas.workflow import WorkflowStatus, WorkflowVersionStatus
 from app.schemas.workflow_ai import (
+    AISimulateExecutionRequest,
+    AISimulateExecutionResponse,
+    AISimulatePayloadRequest,
+    AISimulatePayloadResponse,
     AIBuilderCreateRequest,
     AIBuilderCreateResponse,
     AICatalogStep,
@@ -196,6 +201,37 @@ async def ai_builder_create(
         valid=validation.valid,
         warnings=validation.errors + validation.warnings,
     )
+
+
+@router.post(
+    "/ai-builder/simulate-payload",
+    response_model=AISimulatePayloadResponse,
+    summary="Generate a sample input for a proposed (not yet saved) workflow",
+)
+async def ai_builder_simulate_payload(
+    organization_id: uuid.UUID,
+    req: AISimulatePayloadRequest,
+    org_context: Tuple[Organization, OrganizationMember] = Depends(require_role(_BUILDER_ROLES)),
+    db: AsyncSession = Depends(get_db),
+) -> AISimulatePayloadResponse:
+    await enforce_ai_limit(db, organization_id)
+    result = await AIWorkflowGeneratorService().generate_test_payload(req)
+    if settings.AI_PROVIDER and settings.AI_PROVIDER != "mock":
+        await record_ai_usage(db, organization_id)
+    return result
+
+
+@router.post(
+    "/ai-builder/simulate-run",
+    response_model=AISimulateExecutionResponse,
+    summary="Dry-run a proposed (not yet saved) workflow; no side effects",
+)
+async def ai_builder_simulate_run(
+    organization_id: uuid.UUID,
+    req: AISimulateExecutionRequest,
+    org_context: Tuple[Organization, OrganizationMember] = Depends(require_role(_BUILDER_ROLES)),
+) -> AISimulateExecutionResponse:
+    return await AIWorkflowGeneratorService().simulate_workflow_execution(req)
 
 
 async def _get_workflow(db: AsyncSession, organization_id: uuid.UUID, workflow_id: uuid.UUID) -> Workflow:

@@ -185,6 +185,14 @@ async def verify_email(
             detail="User account not found",
         )
 
+    if user.is_verified:
+        # An already-verified account must never receive tokens from this endpoint: skipping the code check here
+        # would let anyone who knows the email address sign in without the password or the login code.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This email is already verified. Please sign in.",
+        )
+
     if not user.is_verified:
         v_stmt = select(EmailVerification).where(EmailVerification.user_id == user.id)
         v_res = await db.execute(v_stmt)

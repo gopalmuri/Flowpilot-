@@ -6,3 +6,11 @@ export const EXAMPLE_PROMPTS: string[] = [
   'Alert the team if a support request sounds urgent',
   'Check that every sign-up has an email address and add it to the CRM',
 ];
+
+/** One-line starters: a short label to show, the full request to send. */
+export const EXAMPLE_IDEAS: { label: string; prompt: string }[] = [
+  { label: 'Follow up new leads', prompt: EXAMPLE_PROMPTS[0] },
+  { label: 'Reply to customer emails', prompt: EXAMPLE_PROMPTS[1] },
+  { label: 'Approve invoices', prompt: EXAMPLE_PROMPTS[2] },
+  { label: 'Alert on urgent requests', prompt: EXAMPLE_PROMPTS[3] },
+];

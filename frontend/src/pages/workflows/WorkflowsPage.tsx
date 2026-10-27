@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
-  Layers,
   Pause,
   Play,
   Archive,
-  ArrowRight,
+  ArrowUp,
+  ChevronDown,
   Loader2,
   CheckCircle2,
   MoreVertical,
@@ -17,8 +17,7 @@ import {
   Terminal,
   X,
   Edit2,
-  Sparkles,
-  ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -33,9 +32,45 @@ import {
 } from '../../services/workflowService';
 import { triggerExecution } from '../../services/executionService';
 import { Workflow, WorkflowStatus, WorkflowCreateRequest } from '../../types/workflow';
-import { StatusBadge } from '../../components/ui/StatusBadge';
 import { AIWorkflowTemplate } from '../../types/workflowAI';
-import { EXAMPLE_PROMPTS } from '../../components/workflow/ai/examplePrompts';
+import { EXAMPLE_IDEAS } from '../../components/workflow/ai/examplePrompts';
+
+const LAST_RUN_STYLE: Record<string, { label: string; cls: string; Icon: React.ElementType }> = {
+  COMPLETED: { label: 'Completed', cls: 'text-emerald-700 dark:text-emerald-400', Icon: CheckCircle2 },
+  FAILED: { label: 'Failed', cls: 'text-red-700 dark:text-red-400', Icon: AlertTriangle },
+  RUNNING: { label: 'Running', cls: 'text-brand-700 dark:text-brand-400', Icon: Loader2 },
+  PAUSED: { label: 'Waiting for approval', cls: 'text-amber-700 dark:text-amber-400', Icon: Clock },
+  PENDING: { label: 'Waiting to start', cls: 'text-amber-700 dark:text-amber-400', Icon: Clock },
+};
+
+/** Last-run indicator: icon + text carry the meaning, color is only reinforcement. */
+export const LastRunPill: React.FC<{
+  status?: string | null;
+  at?: string | null;
+  formatTime: (iso?: string) => string;
+}> = ({ status, at, formatTime }) => {
+  const base = 'inline-flex items-center gap-1';
+  if (!status) {
+    return (
+      <span className={`${base} text-warm-600 dark:text-charcoal-400`}>
+        <Clock className="w-3 h-3" aria-hidden="true" />
+        Never run
+      </span>
+    );
+  }
+  const style = LAST_RUN_STYLE[status.toUpperCase()] ?? {
+    label: status.charAt(0) + status.slice(1).toLowerCase(),
+    cls: 'text-warm-700 dark:text-charcoal-300',
+    Icon: Clock,
+  };
+  const Icon = style.Icon;
+  return (
+    <span className={`${base} ${style.cls}`}>
+      <Icon className={`w-3 h-3 ${status.toUpperCase() === 'RUNNING' ? 'animate-spin' : ''}`} aria-hidden="true" />
+      {`Last run: ${style.label}${at ? ` ${formatTime(at)}` : ''}`}
+    </span>
+  );
+};
 
 export const WorkflowsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -49,6 +84,7 @@ export const WorkflowsPage: React.FC = () => {
   // Prompt-first hero
   const [heroPrompt, setHeroPrompt] = useState<string>('');
   const [templates, setTemplates] = useState<AIWorkflowTemplate[]>([]);
+  const [templatesOpen, setTemplatesOpen] = useState<boolean>(false);
   const heroInputRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   // Filters
@@ -287,75 +323,69 @@ export const WorkflowsPage: React.FC = () => {
     }
   };
 
+  const STATUS_LABEL: Record<string, { label: string; dot: string }> = {
+    [WorkflowStatus.ACTIVE]: { label: 'Live', dot: 'bg-emerald-500' },
+    [WorkflowStatus.DRAFT]: { label: 'Draft', dot: 'bg-amber-500' },
+    [WorkflowStatus.PAUSED]: { label: 'Paused', dot: 'bg-warm-400 dark:bg-charcoal-500' },
+    [WorkflowStatus.ARCHIVED]: { label: 'Archived', dot: 'bg-warm-400 dark:bg-charcoal-500' },
+  };
+
+  const FILTER_TABS: { id: string; label: string }[] = [
+    { id: 'ALL', label: 'All' },
+    { id: 'ACTIVE', label: 'Active' },
+    { id: 'DRAFT', label: 'Draft' },
+    { id: 'ARCHIVED', label: 'Archived' },
+  ];
+
+  const menuItem =
+    'w-full flex items-center gap-2 px-3 py-1.5 text-left text-warm-700 dark:text-charcoal-300 hover:bg-warm-100 dark:hover:bg-charcoal-800 transition';
+
+  const showTemplates = templatesOpen;
+
   return (
-    <div className="space-y-6">
-      {/* Top Header & Overview */}
-      <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 shadow-subtle flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors">
+    <div className="max-w-5xl mx-auto">
+      {/* Title */}
+      <header className="flex items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-brand-700 dark:text-brand-400 uppercase tracking-wider">
-              Control Plane
-            </span>
-            <span className="text-warm-400 dark:text-charcoal-600">&bull;</span>
-            <span className="text-xs text-warm-600 dark:text-charcoal-400">
-              {activeOrganization?.name || 'Workspace'}
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-warm-900 dark:text-charcoal-100 tracking-tight mt-1">
-            Workflow Orchestration
-          </h1>
-          <p className="text-xs sm:text-sm text-warm-600 dark:text-charcoal-400 mt-1 max-w-xl">
+          <h1 className="text-2xl font-semibold text-warm-900 dark:text-charcoal-100 tracking-tight">Workflows</h1>
+          <p className="text-sm text-warm-600 dark:text-charcoal-400 mt-1">
             Describe a process in plain English, review the steps, and turn it on when you are ready.
           </p>
         </div>
-
         {canEdit && (
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-warm-100 hover:bg-warm-200 dark:bg-charcoal-850 dark:hover:bg-charcoal-800 border border-warm-300 dark:border-charcoal-750 text-warm-800 dark:text-charcoal-200 text-xs font-semibold transition-all cursor-pointer flex-shrink-0"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-warm-700 dark:text-charcoal-300 hover:bg-warm-100 dark:hover:bg-charcoal-850 transition cursor-pointer flex-shrink-0"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4" aria-hidden="true" />
             <span>New Workflow</span>
           </button>
         )}
-      </div>
+      </header>
 
-
-      {/* Prompt-first hero */}
+      {/* Prompt */}
       {canEdit && (
-        <section
-          aria-labelledby="ai-hero-heading"
-          className="relative overflow-hidden p-5 sm:p-7 rounded-2xl bg-gradient-to-br from-brand-50 via-white to-teal-50 dark:from-brand-950/40 dark:via-charcoal-900 dark:to-teal-950/30 border border-brand-200 dark:border-brand-800/50 shadow-subtle"
-        >
-          <div className="max-w-3xl space-y-4">
-            <div className="space-y-1">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400">
-                <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-                Describe it &bull; Review it &bull; Turn it on
-              </span>
-              <h2
-                id="ai-hero-heading"
-                className="text-xl sm:text-2xl font-extrabold text-warm-900 dark:text-charcoal-100 tracking-tight"
-              >
-                What do you want to automate?
-              </h2>
-            </div>
+        <section aria-labelledby="ai-hero-heading" className="mt-8">
+          <h2 id="ai-hero-heading" className="text-base font-medium text-warm-900 dark:text-charcoal-100">
+            What do you want to automate?
+          </h2>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                startAIBuild(heroPrompt);
-              }}
-              className="space-y-3"
-            >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              startAIBuild(heroPrompt);
+            }}
+            className="mt-3"
+          >
+            <div className="relative rounded-2xl border border-warm-300 dark:border-charcoal-700 bg-white dark:bg-charcoal-900 focus-within:border-brand-600 dark:focus-within:border-brand-500 transition-colors">
               <label htmlFor="hero-prompt" className="sr-only">
                 What do you want to automate?
               </label>
               <textarea
                 id="hero-prompt"
                 ref={heroInputRef}
-                rows={3}
+                rows={2}
                 value={heroPrompt}
                 onChange={(e) => setHeroPrompt(e.target.value)}
                 onKeyDown={(e) => {
@@ -364,376 +394,327 @@ export const WorkflowsPage: React.FC = () => {
                     startAIBuild(heroPrompt);
                   }
                 }}
-                placeholder="e.g. When a customer emails us, draft a reply and ask me to approve it before it is sent"
-                className="w-full resize-none px-4 py-3 bg-white dark:bg-charcoal-850 border border-warm-300 dark:border-charcoal-700 rounded-xl text-sm text-warm-900 dark:text-charcoal-100 placeholder:text-warm-500 dark:placeholder:text-charcoal-500 focus:outline-none focus:border-brand-600 dark:focus:border-brand-500 shadow-2xs"
+                placeholder="e.g. When a customer emails us, draft a reply for my approval"
+                className="w-full resize-none bg-transparent pl-4 pr-14 py-3.5 text-sm text-warm-900 dark:text-charcoal-100 placeholder:text-warm-500 dark:placeholder:text-charcoal-500 focus:outline-none"
               />
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={!heroPrompt.trim()}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white text-sm font-semibold shadow-subtle disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer btn-micro-hover"
-                >
-                  <Sparkles className="w-4 h-4" aria-hidden="true" />
-                  <span>Build with AI</span>
-                </button>
-                <p className="flex items-center gap-1.5 text-xs text-warm-600 dark:text-charcoal-400">
-                  <ShieldCheck className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" aria-hidden="true" />
-                  Nothing runs until you turn it on. Press Enter to build, Shift+Enter for a new line.
-                </p>
-              </div>
-            </form>
-
-            <div className="flex flex-wrap gap-2" aria-label="Example ideas">
-              {EXAMPLE_PROMPTS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => {
-                    setHeroPrompt(p);
-                    heroInputRef.current?.focus();
-                  }}
-                  className="text-left text-xs px-3 py-1.5 rounded-full border border-warm-300 dark:border-charcoal-700 bg-white/80 dark:bg-charcoal-900/80 text-warm-700 dark:text-charcoal-300 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400 transition cursor-pointer"
-                >
-                  {p}
-                </button>
-              ))}
+              <button
+                type="submit"
+                aria-label="Build with AI"
+                title="Build with AI"
+                disabled={!heroPrompt.trim()}
+                className="absolute right-2.5 bottom-2.5 w-9 h-9 rounded-xl bg-brand-600 hover:bg-brand-700 dark:hover:bg-brand-500 dark:hover:bg-brand-600 text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                <ArrowUp className="w-4 h-4" aria-hidden="true" />
+              </button>
             </div>
+            <p className="mt-2 text-xs text-warm-500 dark:text-charcoal-400">
+              Nothing runs until you turn it on. Enter to build, Shift+Enter for a new line.
+            </p>
+          </form>
 
+          <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Example ideas">
+            <span className="text-xs text-warm-500 dark:text-charcoal-400">Try:</span>
+            {EXAMPLE_IDEAS.map((idea) => (
+              <button
+                key={idea.label}
+                type="button"
+                title={idea.prompt}
+                onClick={() => {
+                  setHeroPrompt(idea.prompt);
+                  heroInputRef.current?.focus();
+                }}
+                className="text-xs px-3 py-1.5 rounded-full border border-warm-300 dark:border-charcoal-700 text-warm-700 dark:text-charcoal-300 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-400 transition cursor-pointer"
+              >
+                {idea.label}
+              </button>
+            ))}
             {templates.length > 0 && (
-              <div className="pt-1 space-y-2">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-warm-600 dark:text-charcoal-400">
-                  Or start from a template
-                </h3>
-                <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1">
-                  {templates.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => startAIBuild(t.prompt)}
-                      className="min-w-[200px] max-w-[240px] text-left p-3 rounded-xl bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 hover:border-brand-500 shadow-2xs transition cursor-pointer flex-shrink-0"
-                    >
-                      <div className="text-xs font-semibold text-warm-900 dark:text-charcoal-100">{t.title}</div>
-                      <div className="text-[11px] text-warm-600 dark:text-charcoal-400 mt-0.5 line-clamp-2">
-                        {t.description}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => setTemplatesOpen((v) => !v)}
+                aria-expanded={templatesOpen}
+                className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 dark:text-brand-400 hover:underline cursor-pointer"
+              >
+                <span>{templatesOpen ? 'Hide templates' : 'More templates'}</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 transition-transform ${templatesOpen ? 'rotate-180' : ''}`}
+                  aria-hidden="true"
+                />
+              </button>
             )}
           </div>
+
+          {templates.length > 0 && showTemplates && (
+            <ul className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8">
+              {templates.map((t) => (
+                <li key={t.id} className="border-t border-warm-200 dark:border-charcoal-800">
+                  <button
+                    type="button"
+                    onClick={() => startAIBuild(t.prompt)}
+                    className="w-full text-left py-3 group cursor-pointer"
+                  >
+                    <span className="block text-sm font-medium text-warm-900 dark:text-charcoal-100 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition">
+                      {t.title}
+                    </span>
+                    <span className="block text-xs text-warm-600 dark:text-charcoal-400 mt-0.5 truncate">
+                      {t.description}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Search Input */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-warm-500 dark:text-charcoal-400" />
-          <input
-            type="text"
-            placeholder="Search workflows by name or description..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 rounded-xl text-xs text-warm-900 dark:text-charcoal-100 placeholder:text-warm-500 dark:placeholder:text-charcoal-500 focus:outline-none focus:border-brand-600 dark:focus:border-brand-500 transition-all shadow-2xs"
-          />
-        </div>
-
-        {/* Status Filter Tabs */}
-        <div className="flex items-center p-1 bg-warm-200/80 dark:bg-charcoal-850 rounded-xl border border-warm-300 dark:border-charcoal-750 self-start sm:self-auto overflow-x-auto">
-          {['ALL', 'ACTIVE', 'DRAFT', 'ARCHIVED'].map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setStatusFilter(tab)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                statusFilter === tab
-                  ? 'bg-white dark:bg-charcoal-750 text-warm-900 dark:text-charcoal-100 shadow-2xs'
-                  : 'text-warm-600 dark:text-charcoal-400 hover:text-warm-900 dark:hover:text-charcoal-200'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Workflows List / Cards */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-56 rounded-2xl bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 p-5 animate-pulse"
-            >
-              <div className="h-4 bg-warm-200 dark:bg-charcoal-800 rounded w-1/3 mb-3"></div>
-              <div className="h-6 bg-warm-200 dark:bg-charcoal-800 rounded w-2/3 mb-4"></div>
-              <div className="h-12 bg-warm-100 dark:bg-charcoal-850 rounded w-full mb-4"></div>
-              <div className="h-4 bg-warm-200 dark:bg-charcoal-800 rounded w-1/2"></div>
-            </div>
-          ))}
-        </div>
-      ) : error ? (
-        <div className="p-8 text-center rounded-2xl bg-white dark:bg-charcoal-900 border border-red-200 dark:border-red-900/50 shadow-subtle space-y-3">
-          <p className="text-xs text-red-600 dark:text-red-400 font-semibold">{error}</p>
-          <button
-            type="button"
-            onClick={fetchWorkflows}
-            className="px-4 py-2 bg-warm-100 dark:bg-charcoal-800 hover:bg-warm-200 dark:hover:bg-charcoal-700 text-xs font-medium rounded-xl text-warm-800 dark:text-charcoal-200 transition"
-          >
-            Retry Loading
-          </button>
-        </div>
-      ) : filteredWorkflows.length === 0 ? (
-        <div className="p-12 text-center rounded-2xl bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 shadow-subtle space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-warm-100 dark:bg-charcoal-800 border border-warm-200 dark:border-charcoal-700 flex items-center justify-center text-warm-500 dark:text-charcoal-400 mx-auto">
-            <Layers className="w-6 h-6" />
-          </div>
-          <h3 className="text-sm font-bold text-warm-900 dark:text-charcoal-100">
-            No workflows found
-          </h3>
-          <p className="text-xs text-warm-600 dark:text-charcoal-400 max-w-sm mx-auto">
-            {searchQuery
-              ? `No workflows matched "${searchQuery}". Try adjusting your search query.`
-              : 'Create your first workflow to orchestrate business actions and approval gates.'}
-          </p>
-          {canEdit && !searchQuery && (
-            <div className="pt-2">
+      {/* Your workflows */}
+      <section className="mt-12" aria-label="Your workflows">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-warm-200 dark:border-charcoal-800">
+          <div className="flex items-center gap-5 overflow-x-auto -mb-px">
+            {FILTER_TABS.map((tab) => (
               <button
+                key={tab.id}
                 type="button"
-                onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white text-xs font-semibold shadow-subtle transition"
+                onClick={() => setStatusFilter(tab.id)}
+                aria-pressed={statusFilter === tab.id}
+                className={`pb-3 text-sm font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
+                  statusFilter === tab.id
+                    ? 'border-brand-600 text-warm-900 dark:border-brand-500 dark:text-charcoal-100'
+                    : 'border-transparent text-warm-600 dark:text-charcoal-400 hover:text-warm-900 dark:hover:text-charcoal-200'
+                }`}
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Create Workflow</span>
+                {tab.label}
               </button>
-            </div>
-          )}
+            ))}
+          </div>
+          <div className="relative sm:w-80 pb-3">
+            <Search className="w-4 h-4 absolute left-0 top-[11px] text-warm-500 dark:text-charcoal-400" aria-hidden="true" />
+            <input
+              type="text"
+              placeholder="Search workflows by name or description..."
+              aria-label="Search workflows"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-6 pr-2 py-1.5 bg-transparent text-sm text-warm-900 dark:text-charcoal-100 placeholder:text-warm-500 dark:placeholder:text-charcoal-500 focus:outline-none"
+            />
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredWorkflows.map((wf) => (
-            <div
-              key={wf.id}
-              className="p-5 rounded-2xl bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 shadow-subtle hover:border-warm-400 dark:hover:border-charcoal-600 transition-all flex flex-col justify-between group relative"
+
+        {isLoading ? (
+          <ul className="divide-y divide-warm-200 dark:divide-charcoal-800" aria-busy="true">
+            {[1, 2, 3].map((i) => (
+              <li key={i} className="py-5 animate-pulse">
+                <div className="h-4 bg-warm-200 dark:bg-charcoal-800 rounded w-1/4 mb-2" />
+                <div className="h-3 bg-warm-100 dark:bg-charcoal-850 rounded w-1/2" />
+              </li>
+            ))}
+          </ul>
+        ) : error ? (
+          <div className="py-12 text-center space-y-3">
+            <p className="text-sm text-red-600 dark:text-red-400 font-medium">{error}</p>
+            <button
+              type="button"
+              onClick={fetchWorkflows}
+              className="px-4 py-2 text-sm font-medium rounded-lg text-warm-800 dark:text-charcoal-200 hover:bg-warm-100 dark:hover:bg-charcoal-800 transition cursor-pointer"
             >
-              <div>
-                {/* Header & Status */}
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <StatusBadge status={wf.status} size="sm" />
-                    {wf.status === WorkflowStatus.ACTIVE ? (
-                      <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md bg-brand-600 text-white dark:bg-brand-500">
-                        Live
-                      </span>
-                    ) : wf.status === WorkflowStatus.DRAFT ? (
-                      <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800/60">
-                        Not running yet
-                      </span>
-                    ) : null}
-                    {wf.active_version ? (
-                      <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-warm-100 dark:bg-charcoal-850 text-brand-700 dark:text-brand-400 border border-warm-200 dark:border-charcoal-750">
-                        <CheckCircle2 className="w-3 h-3 text-brand-600 dark:text-brand-500" />
-                        Active: v{wf.active_version.version_number}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-warm-100 dark:bg-charcoal-850 text-warm-600 dark:text-charcoal-400 border border-warm-200 dark:border-charcoal-750">
-                        Draft v1
-                      </span>
-                    )}
+              Retry Loading
+            </button>
+          </div>
+        ) : filteredWorkflows.length === 0 ? (
+          <div className="py-14 text-center space-y-2">
+            <h3 className="text-sm font-semibold text-warm-900 dark:text-charcoal-100">No workflows found</h3>
+            <p className="text-sm text-warm-600 dark:text-charcoal-400 max-w-sm mx-auto">
+              {searchQuery
+                ? `No workflows matched "${searchQuery}". Try adjusting your search query.`
+                : canEdit
+                ? 'Describe your first automation above, or pick a template.'
+                : 'No workflows have been created yet.'}
+            </p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-warm-200 dark:divide-charcoal-800">
+            {filteredWorkflows.map((wf) => {
+              const status = STATUS_LABEL[wf.status] ?? { label: wf.status, dot: 'bg-warm-400' };
+              return (
+                <li
+                  key={wf.id}
+                  className="py-4 flex flex-col md:flex-row md:items-center gap-x-6 gap-y-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/workflows/${wf.id}`)}
+                      className="max-w-full text-left text-sm font-semibold text-warm-900 dark:text-charcoal-100 hover:text-brand-700 dark:hover:text-brand-400 transition truncate cursor-pointer"
+                    >
+                      {wf.name}
+                    </button>
+                    <p className="text-sm text-warm-600 dark:text-charcoal-400 truncate">
+                      {wf.description || 'No description'}
+                    </p>
                   </div>
 
-                  {/* Overflow Action Menu */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      aria-label="Workflow options"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenMenuId(openMenuId === wf.id ? null : wf.id);
-                      }}
-                      className="p-1 rounded-lg text-warm-500 hover:text-warm-800 dark:text-charcoal-400 dark:hover:text-charcoal-200 hover:bg-warm-100 dark:hover:bg-charcoal-800 transition cursor-pointer"
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-
-                    {openMenuId === wf.id && (
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute right-0 mt-1 w-44 rounded-xl bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 shadow-elevated py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100 text-xs"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOpenMenuId(null);
-                            navigate(`/workflows/${wf.id}`);
-                          }}
-                          className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-warm-700 dark:text-charcoal-300 hover:bg-warm-100 dark:hover:bg-charcoal-800 transition"
-                        >
-                          <Sliders className="w-3.5 h-3.5" />
-                          <span>Open Visual Editor</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOpenMenuId(null);
-                            navigate(`/executions?search=${encodeURIComponent(wf.name)}`);
-                          }}
-                          className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-warm-700 dark:text-charcoal-300 hover:bg-warm-100 dark:hover:bg-charcoal-800 transition"
-                        >
-                          <History className="w-3.5 h-3.5" />
-                          <span>View Executions</span>
-                        </button>
-
-                        {canEdit && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenMenuId(null);
-                              setEditingWorkflow(wf);
-                              setEditName(wf.name);
-                              setEditDesc(wf.description || '');
-                            }}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-warm-700 dark:text-charcoal-300 hover:bg-warm-100 dark:hover:bg-charcoal-800 transition"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                            <span>Edit Details</span>
-                          </button>
-                        )}
-
-                        {canEdit && wf.status !== WorkflowStatus.ARCHIVED && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenMenuId(null);
-                              handleToggleStatus(wf);
-                            }}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-warm-700 dark:text-charcoal-300 hover:bg-warm-100 dark:hover:bg-charcoal-800 transition"
-                          >
-                            {wf.status === WorkflowStatus.ACTIVE ? (
-                              <>
-                                <Pause className="w-3.5 h-3.5 text-amber-500" />
-                                <span>Pause Workflow</span>
-                              </>
-                            ) : (
-                              <>
-                                <Play className="w-3.5 h-3.5 text-brand-500" />
-                                <span>Activate Workflow</span>
-                              </>
-                            )}
-                          </button>
-                        )}
-
-                        {canEdit && wf.status !== WorkflowStatus.ARCHIVED && (
-                          <div className="border-t border-warm-200 dark:border-charcoal-800 my-1" />
-                        )}
-
-                        {canEdit && wf.status !== WorkflowStatus.ARCHIVED && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenMenuId(null);
-                              handleArchive(wf);
-                            }}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition"
-                          >
-                            <Archive className="w-3.5 h-3.5" />
-                            <span>Archive Workflow</span>
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Workflow Title & Desc */}
-                <h3
-                  onClick={() => navigate(`/workflows/${wf.id}`)}
-                  className="text-sm font-bold text-warm-900 dark:text-charcoal-100 tracking-tight cursor-pointer hover:text-brand-600 dark:hover:text-brand-400 transition"
-                >
-                  {wf.name}
-                </h3>
-                <p className="text-xs text-warm-600 dark:text-charcoal-400 mt-1 line-clamp-2 leading-relaxed min-h-[2rem]">
-                  {wf.description || 'No description configured for this workflow.'}
-                </p>
-
-                {/* Metadata Pills */}
-                <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-warm-200 dark:border-charcoal-800 text-[11px] text-warm-600 dark:text-charcoal-400">
-                  <span className="flex items-center gap-1.5 bg-warm-100 dark:bg-charcoal-850 px-2 py-0.5 rounded-md border border-warm-200 dark:border-charcoal-750 text-warm-700 dark:text-charcoal-300">
-                    <Layers className="w-3.5 h-3.5 text-warm-500 dark:text-charcoal-400" />
-                    {wf.version_count || 1} {wf.version_count === 1 ? 'version' : 'versions'}
-                  </span>
-
-                  <span className="flex items-center gap-1 bg-warm-100 dark:bg-charcoal-850 px-2 py-0.5 rounded-md border border-warm-200 dark:border-charcoal-750 text-warm-600 dark:text-charcoal-400">
-                    <Clock className="w-3 h-3" />
-                    Updated {formatRelativeTime(wf.updated_at)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Card Footer Actions */}
-              <div className="flex items-center justify-between mt-5 pt-3 border-t border-warm-200 dark:border-charcoal-800">
-                <button
-                  type="button"
-                  onClick={() => navigate(`/workflows/${wf.id}`)}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-700 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 transition cursor-pointer"
-                >
-                  <span>Open Visual Editor</span>
-                  <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-0.5 transition-transform" />
-                </button>
-
-                <div className="flex items-center gap-1.5">
-                  {canEdit && wf.status === WorkflowStatus.ACTIVE && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRunningWorkflow(wf);
-                        setRunPayload('{\n  "source": "manual_trigger",\n  "timestamp": "' + new Date().toISOString() + '"\n}');
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/40 dark:hover:bg-brand-900/50 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800/60 text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
-                      title="Trigger execution"
-                    >
-                      <Play className="w-3 h-3 fill-current" />
-                      <span>Run</span>
-                    </button>
-                  )}
-
-                  {canEdit && wf.status !== WorkflowStatus.ARCHIVED && (
-                    <button
-                      type="button"
-                      disabled={actionWorkflowId === wf.id}
-                      onClick={() => handleToggleStatus(wf)}
-                      className={`p-1.5 rounded-lg border transition cursor-pointer ${
-                        wf.status === WorkflowStatus.ACTIVE
-                          ? 'border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
-                          : wf.active_version_id
-                          ? 'border-brand-300 dark:border-brand-800 text-brand-700 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/30'
-                          : 'border-warm-300 dark:border-charcoal-700 text-warm-600 dark:text-charcoal-400 hover:bg-warm-100 dark:hover:bg-charcoal-800'
-                      }`}
-                      title={
-                        wf.status === WorkflowStatus.ACTIVE
-                          ? 'Pause Workflow'
-                          : wf.active_version_id
-                          ? 'Activate Workflow'
-                          : 'Draft Workflow (Open visual editor to publish version 1.0)'
-                      }
-                    >
-                      {actionWorkflowId === wf.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : wf.status === WorkflowStatus.ACTIVE ? (
-                        <Pause className="w-3.5 h-3.5" />
-                      ) : (
-                        <Play className="w-3.5 h-3.5" />
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-warm-600 dark:text-charcoal-400">
+                    <span className="inline-flex items-center gap-1.5 font-medium text-warm-800 dark:text-charcoal-200">
+                      <span className={`w-2 h-2 rounded-full ${status.dot}`} aria-hidden="true" />
+                      {status.label}
+                      {wf.active_version && (
+                        <span className="font-mono font-normal text-warm-500 dark:text-charcoal-400">
+                          v{wf.active_version.version_number}
+                        </span>
                       )}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+                    </span>
+                    <LastRunPill status={wf.last_run_status} at={wf.last_run_at} formatTime={formatRelativeTime} />
+                    <span>Updated {formatRelativeTime(wf.updated_at)}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1 md:justify-end md:w-40">
+                    {canEdit && wf.status === WorkflowStatus.ACTIVE && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRunningWorkflow(wf);
+                          setRunPayload('{\n  "source": "manual_trigger",\n  "timestamp": "' + new Date().toISOString() + '"\n}');
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 text-brand-700 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition cursor-pointer"
+                        title="Trigger execution"
+                      >
+                        <Play className="w-3 h-3 fill-current" aria-hidden="true" />
+                        <span>Run</span>
+                      </button>
+                    )}
+
+                    {canEdit && wf.status !== WorkflowStatus.ARCHIVED && (
+                      <button
+                        type="button"
+                        disabled={actionWorkflowId === wf.id}
+                        onClick={() => handleToggleStatus(wf)}
+                        className="p-2 rounded-lg text-warm-600 dark:text-charcoal-400 hover:text-warm-900 dark:hover:text-charcoal-100 hover:bg-warm-100 dark:hover:bg-charcoal-850 transition cursor-pointer"
+                        title={
+                          wf.status === WorkflowStatus.ACTIVE
+                            ? 'Pause Workflow'
+                            : wf.active_version_id
+                            ? 'Activate Workflow'
+                            : 'Draft Workflow (Open visual editor to publish version 1.0)'
+                        }
+                        aria-label={wf.status === WorkflowStatus.ACTIVE ? 'Pause Workflow' : 'Activate Workflow'}
+                      >
+                        {actionWorkflowId === wf.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : wf.status === WorkflowStatus.ACTIVE ? (
+                          <Pause className="w-4 h-4" />
+                        ) : (
+                          <Play className="w-4 h-4" />
+                        )}
+                      </button>
+                    )}
+
+                    <div className="relative">
+                      <button
+                        type="button"
+                        aria-label="Workflow options"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === wf.id ? null : wf.id);
+                        }}
+                        className="p-2 rounded-lg text-warm-600 dark:text-charcoal-400 hover:text-warm-900 dark:hover:text-charcoal-100 hover:bg-warm-100 dark:hover:bg-charcoal-850 transition cursor-pointer"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {openMenuId === wf.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 mt-1 w-48 rounded-xl bg-white dark:bg-charcoal-900 border border-warm-300 dark:border-charcoal-750 shadow-elevated py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100 text-xs"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              navigate(`/workflows/${wf.id}`);
+                            }}
+                            className={menuItem}
+                          >
+                            <Sliders className="w-3.5 h-3.5" />
+                            <span>Open Visual Editor</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              navigate(`/executions?search=${encodeURIComponent(wf.name)}`);
+                            }}
+                            className={menuItem}
+                          >
+                            <History className="w-3.5 h-3.5" />
+                            <span>View Executions</span>
+                          </button>
+
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                setEditingWorkflow(wf);
+                                setEditName(wf.name);
+                                setEditDesc(wf.description || '');
+                              }}
+                              className={menuItem}
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                              <span>Edit Details</span>
+                            </button>
+                          )}
+
+                          {canEdit && wf.status !== WorkflowStatus.ARCHIVED && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                handleToggleStatus(wf);
+                              }}
+                              className={menuItem}
+                            >
+                              {wf.status === WorkflowStatus.ACTIVE ? (
+                                <>
+                                  <Pause className="w-3.5 h-3.5 text-amber-500" />
+                                  <span>Pause Workflow</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="w-3.5 h-3.5 text-brand-500" />
+                                  <span>Activate Workflow</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+
+                          {canEdit && wf.status !== WorkflowStatus.ARCHIVED && (
+                            <>
+                              <div className="border-t border-warm-200 dark:border-charcoal-800 my-1" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  handleArchive(wf);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition"
+                              >
+                                <Archive className="w-3.5 h-3.5" />
+                                <span>Archive Workflow</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
       {/* New Workflow Modal */}
       {isModalOpen && (
@@ -794,7 +775,7 @@ export const WorkflowsPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isCreating || !newWorkflowName.trim()}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white text-xs font-semibold shadow-subtle transition disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 dark:hover:bg-brand-500 dark:hover:bg-brand-600 text-white text-xs font-semibold shadow-subtle transition disabled:opacity-50 cursor-pointer"
                 >
                   {isCreating ? (
                     <>

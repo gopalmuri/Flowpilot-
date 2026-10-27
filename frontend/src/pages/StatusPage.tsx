@@ -56,7 +56,7 @@ export const StatusPage: React.FC = () => {
             <span
               className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 ${
                 isHealthy
-                  ? 'bg-emerald-500/10 text-brand-600 dark:text-brand-400 border border-emerald-500/20'
+                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20'
                   : isDegraded
                   ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
                   : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
@@ -100,7 +100,7 @@ export const StatusPage: React.FC = () => {
               <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800/60 flex items-center justify-center text-brand-600 dark:text-brand-400">
                 <Server className="w-5 h-5" />
               </div>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-brand-600 dark:text-brand-400 font-medium border border-emerald-500/20">
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium border border-emerald-500/20">
                 Healthy
               </span>
             </div>
@@ -116,7 +116,7 @@ export const StatusPage: React.FC = () => {
             </div>
             <div className="flex items-center justify-between text-[11px]">
               <span>Latency:</span>
-              <span className="text-brand-600 dark:text-brand-400 font-semibold">{health?.latencyMs ? `${health.latencyMs}ms` : '<10ms'}</span>
+              <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{health?.latencyMs ? `${health.latencyMs}ms` : '<10ms'}</span>
             </div>
           </div>
         </div>
@@ -131,7 +131,7 @@ export const StatusPage: React.FC = () => {
               <span
                 className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${
                   health?.services.database === 'connected'
-                    ? 'bg-emerald-500/10 text-brand-600 dark:text-brand-400 border-emerald-500/20'
+                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
                     : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
                 }`}
               >
@@ -165,7 +165,7 @@ export const StatusPage: React.FC = () => {
               <span
                 className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${
                   health?.services.redis === 'connected'
-                    ? 'bg-emerald-500/10 text-brand-600 dark:text-brand-400 border-emerald-500/20'
+                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
                     : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
                 }`}
               >
@@ -196,7 +196,7 @@ export const StatusPage: React.FC = () => {
               <div className="w-10 h-10 rounded-xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-700 dark:bg-brand-950/40 dark:border-brand-800/60 dark:text-brand-400">
                 <Cpu className="w-5 h-5" />
               </div>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-brand-600 dark:text-brand-400 font-medium border border-emerald-500/20">
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium border border-emerald-500/20">
                 Healthy
               </span>
             </div>
@@ -212,7 +212,7 @@ export const StatusPage: React.FC = () => {
             </div>
             <div className="flex items-center justify-between text-[11px]">
               <span>Status:</span>
-              <span className="text-brand-600 dark:text-brand-400 font-semibold">Active</span>
+              <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Active</span>
             </div>
           </div>
         </div>
@@ -238,7 +238,7 @@ export const StatusPage: React.FC = () => {
             <span>Last polled: {lastCheckedTime}</span>
             <button
               onClick={copyCurl}
-              className="flex items-center gap-1.5 text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:text-brand-300 font-medium transition-colors"
+              className="flex items-center gap-1.5 text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-medium transition-colors"
             >
               {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Copied curl!' : 'Copy curl'}</span>
@@ -256,52 +256,52 @@ export const StatusPage: React.FC = () => {
           <div className="space-y-3 text-xs">
             <div className="p-3.5 rounded-xl bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
                 <div>
                   <span className="font-semibold text-warm-800 dark:text-charcoal-200 block">API Gateway &amp; Auth Subsystem</span>
                   <span className="text-[11px] text-warm-500 dark:text-charcoal-400">JWT validation &bull; RBAC enforcement &bull; Rate limiting</span>
                 </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-brand-600 dark:text-brand-400 font-medium border border-emerald-500/20">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium border border-emerald-500/20">
                 Healthy
               </span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <Activity className="w-4 h-4 text-brand-600 dark:text-brand-400 animate-pulse" />
+                <Activity className="w-4 h-4 text-emerald-700 dark:text-emerald-400 animate-pulse" />
                 <div>
                   <span className="font-semibold text-warm-800 dark:text-charcoal-200 block">Workflow Orchestration Engine</span>
                   <span className="text-[11px] text-warm-500 dark:text-charcoal-400">DAG execution graph &bull; Deterministic state transition</span>
                 </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-brand-600 dark:text-brand-400 font-medium border border-emerald-500/20">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium border border-emerald-500/20">
                 Healthy
               </span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <Database className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                <Database className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
                 <div>
                   <span className="font-semibold text-warm-800 dark:text-charcoal-200 block">Multi-Tenant Persistence Store</span>
                   <span className="text-[11px] text-warm-500 dark:text-charcoal-400">PostgreSQL with strict organization isolation</span>
                 </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-brand-600 dark:text-brand-400 font-medium border border-emerald-500/20">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium border border-emerald-500/20">
                 Connected
               </span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-warm-50 dark:bg-charcoal-850 border border-warm-200 dark:border-charcoal-750 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <Cpu className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                <Cpu className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
                 <div>
                   <span className="font-semibold text-warm-800 dark:text-charcoal-200 block">Distributed Task Worker Pool</span>
                   <span className="text-[11px] text-warm-500 dark:text-charcoal-400">Async Celery execution broker with Redis idempotency</span>
                 </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-brand-600 dark:text-brand-400 font-medium border border-emerald-500/20">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium border border-emerald-500/20">
                 Operational
               </span>
             </div>

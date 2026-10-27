@@ -172,7 +172,7 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
           <button
             onClick={onClose}
             disabled={isSubmitting}
-            className="text-warm-500 dark:text-charcoal-400 hover:text-warm-900 dark:text-charcoal-100 transition-colors p-1.5 rounded-lg hover:bg-warm-100 dark:hover:bg-charcoal-800"
+            className="text-warm-500 dark:text-charcoal-400 hover:text-warm-900 dark:hover:text-charcoal-100 transition-colors p-1.5 rounded-lg hover:bg-warm-100 dark:hover:bg-charcoal-800"
           >
             <X className="w-5 h-5" />
           </button>
@@ -317,7 +317,7 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
             <div
               className={`p-3.5 rounded-xl border text-xs flex items-start space-x-2.5 ${
                 testResult.status === 'healthy'
-                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300'
                   : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
               }`}
             >
@@ -365,7 +365,7 @@ export const IntegrationConnectModal: React.FC<IntegrationConnectModalProps> = (
               <button
                 type="submit"
                 disabled={!canManage || isSubmitting}
-                className="w-full sm:w-auto flex items-center justify-center space-x-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 rounded-xl shadow-subtle transition-colors disabled:opacity-50"
+                className="w-full sm:w-auto flex items-center justify-center space-x-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 dark:hover:bg-brand-500 dark:hover:bg-brand-600 rounded-xl shadow-subtle transition-colors disabled:opacity-50"
               >
                 <span>{isSubmitting ? 'Saving...' : isEditing ? 'Update Integration' : 'Connect'}</span>
               </button>

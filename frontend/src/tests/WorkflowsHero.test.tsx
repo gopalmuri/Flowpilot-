@@ -83,15 +83,18 @@ describe('WorkflowsPage prompt-first hero', () => {
 
   it('fills the box when an example chip is clicked', () => {
     renderPage();
-    const chip = screen.getByRole('button', { name: /Alert the team if a support request sounds urgent/i });
+    const chip = screen.getByRole('button', { name: 'Follow up new leads' });
     fireEvent.click(chip);
     expect(screen.getByRole('textbox', { name: 'What do you want to automate?' })).toHaveValue(
-      'Alert the team if a support request sounds urgent'
+      'When a new lead comes in, sort it by size and tell the sales team on Slack'
     );
   });
 
-  it('shows templates and opens the builder with the template prompt', async () => {
+  it('keeps templates out of the way until asked, then opens the builder with the template prompt', async () => {
     renderPage();
+    await waitFor(() => expect(WorkflowServiceModule.getAITemplates).toHaveBeenCalled());
+    expect(screen.queryByText('Lead alerts')).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /More templates/i }));
     fireEvent.click(await screen.findByText('Lead alerts'));
     expect(await screen.findByText('Builder page: Alert sales when a lead arrives')).toBeInTheDocument();
   });
@@ -100,7 +103,7 @@ describe('WorkflowsPage prompt-first hero', () => {
     vi.spyOn(WorkflowServiceModule, 'getAITemplates').mockRejectedValue(new Error('offline'));
     renderPage();
     await waitFor(() => expect(WorkflowServiceModule.getAITemplates).toHaveBeenCalled());
-    expect(screen.queryByText(/start from a template/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /templates/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Build with AI/i })).toBeInTheDocument();
   });
 

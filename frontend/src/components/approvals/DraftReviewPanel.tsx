@@ -19,13 +19,13 @@ interface DraftReviewPanelProps {
 const DRAFT_STATUS_LABEL: Record<DraftStatus, { label: string; tone: string }> = {
   DRAFT: { label: 'Draft', tone: 'bg-slate-500/10 text-warm-600 dark:text-charcoal-300 border-slate-500/20' },
   PENDING_APPROVAL: { label: 'Awaiting approval', tone: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60' },
-  APPROVED: { label: 'Approved', tone: 'bg-emerald-500/10 text-brand-600 dark:text-brand-400 border-brand-600 dark:border-brand-500/20' },
+  APPROVED: { label: 'Approved', tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' },
   REJECTED: { label: 'Rejected', tone: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/60' },
   REVISION_REQUESTED: { label: 'Revision requested', tone: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/60' },
   EXPIRED: { label: 'Expired', tone: 'bg-slate-500/10 text-warm-500 dark:text-charcoal-400 border-slate-500/20' },
   CANCELLED: { label: 'Cancelled', tone: 'bg-slate-500/10 text-warm-500 dark:text-charcoal-400 border-slate-500/20' },
   SENDING: { label: 'Sending', tone: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/60' },
-  SENT: { label: 'Accepted by provider', tone: 'bg-emerald-500/10 text-brand-600 dark:text-brand-400 border-brand-600 dark:border-brand-500/20' },
+  SENT: { label: 'Accepted by provider', tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' },
   SEND_FAILED: { label: 'Sending failed', tone: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/60' },
 };
 
@@ -356,7 +356,7 @@ export const DraftReviewPanel: React.FC<DraftReviewPanelProps> = ({
                 <div className="flex items-center gap-2 text-[11px] text-warm-500 dark:text-charcoal-400">
                   <span className="font-semibold">v{v.version_number}</span>
                   <span>{v.author_type === 'AI' ? 'AI draft' : 'Edited by a person'}</span>
-                  {v.is_approved && <span className="text-brand-600 dark:text-brand-400 font-semibold">approved</span>}
+                  {v.is_approved && <span className="text-emerald-700 dark:text-emerald-400 font-semibold">approved</span>}
                   {v.version_number === original.version_number && <span>(original)</span>}
                 </div>
                 <pre className="whitespace-pre-wrap font-mono mt-0.5 p-2 bg-white dark:bg-charcoal-950 border border-warm-200 dark:border-charcoal-750 rounded-lg">

@@ -21,7 +21,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   to,
   onClick,
 }) => {
-  let accentClass = 'text-brand-600 dark:text-brand-500 bg-brand-50 dark:bg-brand-900/30 border-brand-200 dark:border-brand-800/50';
+  let accentClass = 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50';
   if (variant === 'warning') {
     accentClass = 'text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50';
   } else if (variant === 'danger') {

@@ -193,7 +193,7 @@ export const IntegrationsPage: React.FC = () => {
         <button
           onClick={loadData}
           disabled={isLoading}
-          className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-medium text-warm-700 dark:text-charcoal-300 bg-white dark:bg-charcoal-900 border border-warm-200 dark:border-charcoal-750 hover:bg-warm-100 dark:bg-charcoal-800 transition-colors self-start sm:self-auto"
+          className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-medium text-warm-700 dark:text-charcoal-300 bg-white dark:bg-charcoal-900 border border-warm-200 dark:border-charcoal-750 hover:bg-warm-100 dark:hover:bg-charcoal-800 transition-colors self-start sm:self-auto"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-brand-600 dark:text-brand-400' : ''}`} />
           <span>Refresh</span>
@@ -205,7 +205,7 @@ export const IntegrationsPage: React.FC = () => {
         <div
           className={`flex items-start justify-between p-4 rounded-xl border text-xs ${
             feedback.type === 'success'
-              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300'
               : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
           }`}
         >
@@ -219,7 +219,7 @@ export const IntegrationsPage: React.FC = () => {
           </div>
           <button
             onClick={() => setFeedback(null)}
-            className="text-warm-500 dark:text-charcoal-400 hover:text-warm-900 dark:text-charcoal-100 transition-colors ml-4 text-xs"
+            className="text-warm-500 dark:text-charcoal-400 hover:text-warm-900 dark:hover:text-charcoal-100 transition-colors ml-4 text-xs"
           >
             Dismiss
           </button>
@@ -231,7 +231,7 @@ export const IntegrationsPage: React.FC = () => {
         <h2 className="text-sm font-semibold text-warm-900 dark:text-charcoal-100 tracking-tight">Available Connectors</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Slack Connector */}
-          <div className="p-5 rounded-2xl bg-white dark:bg-charcoal-900 shadow-subtle border border-warm-200 dark:border-charcoal-750 hover:border-warm-300 dark:border-charcoal-700 transition-all flex flex-col justify-between">
+          <div className="p-5 rounded-2xl bg-white dark:bg-charcoal-900 shadow-subtle border border-warm-200 dark:border-charcoal-750 hover:border-warm-300 dark:hover:border-charcoal-700 transition-all flex flex-col justify-between">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800/60 flex items-center justify-center text-brand-600 dark:text-brand-400">
@@ -253,7 +253,7 @@ export const IntegrationsPage: React.FC = () => {
               <button
                 onClick={() => handleOpenConnect('SLACK')}
                 disabled={!canManage}
-                className="flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 rounded-xl shadow-subtle transition-colors disabled:opacity-50"
+                className="flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 dark:hover:bg-brand-500 dark:hover:bg-brand-600 rounded-xl shadow-subtle transition-colors disabled:opacity-50"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Connect</span>
@@ -262,7 +262,7 @@ export const IntegrationsPage: React.FC = () => {
           </div>
 
           {/* Mock CRM Connector */}
-          <div className="p-5 rounded-2xl bg-white dark:bg-charcoal-900 shadow-subtle border border-warm-200 dark:border-charcoal-750 hover:border-warm-300 dark:border-charcoal-700 transition-all flex flex-col justify-between">
+          <div className="p-5 rounded-2xl bg-white dark:bg-charcoal-900 shadow-subtle border border-warm-200 dark:border-charcoal-750 hover:border-warm-300 dark:hover:border-charcoal-700 transition-all flex flex-col justify-between">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
@@ -331,7 +331,7 @@ export const IntegrationsPage: React.FC = () => {
               return (
                 <div
                   key={item.id}
-                  className="p-5 rounded-2xl bg-white dark:bg-charcoal-900 shadow-subtle border border-warm-200 dark:border-charcoal-750 hover:border-warm-300 dark:border-charcoal-700 transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                  className="p-5 rounded-2xl bg-white dark:bg-charcoal-900 shadow-subtle border border-warm-200 dark:border-charcoal-750 hover:border-warm-300 dark:hover:border-charcoal-700 transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
                 >
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2.5">
@@ -343,7 +343,7 @@ export const IntegrationsPage: React.FC = () => {
                         )}
                       </div>
                       <span className="font-semibold text-sm text-warm-900 dark:text-charcoal-100">{item.name}</span>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-brand-600 dark:text-brand-400 border border-emerald-500/20">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
                         {item.status}
                       </span>
                       {item.has_credentials && (
@@ -367,7 +367,7 @@ export const IntegrationsPage: React.FC = () => {
                         <span
                           className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded font-mono text-[11px] ${
                             testInfo.status === 'healthy'
-                              ? 'bg-emerald-500/10 text-emerald-300'
+                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
                               : 'bg-rose-500/10 text-rose-300'
                           }`}
                         >

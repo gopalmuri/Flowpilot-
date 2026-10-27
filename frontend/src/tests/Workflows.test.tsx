@@ -94,7 +94,7 @@ describe('WorkflowsPage Catalog Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Workflow Orchestration')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Workflows' })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Search workflows by name or description/i)).toBeInTheDocument();
 
     await waitFor(() => {
@@ -102,9 +102,9 @@ describe('WorkflowsPage Catalog Component', () => {
       expect(screen.getByText('Customer Support Escalation')).toBeInTheDocument();
     });
 
-    expect(screen.getAllByText('ACTIVE').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('DRAFT').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Active: v1')).toBeInTheDocument();
+    expect(screen.getAllByText('Live').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Draft').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('v1')).toBeInTheDocument();
   });
 
   it('filters workflows based on search input query', async () => {
@@ -136,7 +136,7 @@ describe('WorkflowsPage Catalog Component', () => {
       expect(screen.getByText('Inbound Lead Qualification')).toBeInTheDocument();
     });
 
-    const activeTab = screen.getByRole('button', { name: 'ACTIVE' });
+    const activeTab = screen.getByRole('button', { name: 'Active' });
     fireEvent.click(activeTab);
 
     expect(WorkflowServiceModule.listWorkflows).toHaveBeenCalledWith('org-test-1', {

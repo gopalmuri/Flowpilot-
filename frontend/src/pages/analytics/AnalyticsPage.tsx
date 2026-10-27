@@ -222,8 +222,8 @@ export const AnalyticsPage: React.FC = () => {
                 onClick={() => setTimeRange(rng)}
                 className={`px-2.5 py-1 rounded-lg font-medium transition-all select-none ${
                   timeRange === rng
-                    ? 'bg-brand-600 dark:bg-brand-500 text-warm-900 dark:text-charcoal-100 shadow-subtle'
-                    : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
+                    ? 'bg-brand-600 dark:bg-brand-500 text-white shadow-subtle'
+                    : 'text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:hover:text-charcoal-200'
                 }`}
               >
                 {rng.toUpperCase()}
@@ -236,8 +236,8 @@ export const AnalyticsPage: React.FC = () => {
             onClick={() => setAutoRefresh(!autoRefresh)}
             className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors flex items-center gap-1.5 ${
               autoRefresh
-                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                : 'bg-white dark:bg-charcoal-900 border-warm-200 dark:border-charcoal-750 text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200'
+                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                : 'bg-white dark:bg-charcoal-900 border-warm-200 dark:border-charcoal-750 text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:hover:text-charcoal-200'
             }`}
             title="Auto-refresh every 30 seconds"
           >
@@ -249,7 +249,7 @@ export const AnalyticsPage: React.FC = () => {
           <button
             onClick={fetchData}
             disabled={isLoading}
-            className="p-2 rounded-xl bg-white dark:bg-charcoal-900 hover:bg-slate-800 border border-warm-200 dark:border-charcoal-750 text-warm-700 dark:text-charcoal-300 hover:text-warm-900 dark:text-charcoal-100 transition-colors disabled:opacity-50"
+            className="p-2 rounded-xl bg-white dark:bg-charcoal-900 hover:bg-slate-800 border border-warm-200 dark:border-charcoal-750 text-warm-700 dark:text-charcoal-300 hover:text-warm-900 dark:hover:text-charcoal-100 transition-colors disabled:opacity-50"
             title="Refresh now"
             aria-label="Refresh analytics"
           >

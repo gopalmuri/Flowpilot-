@@ -255,6 +255,8 @@ class WorkflowResponse(BaseModel):
     updated_at: datetime
     version_count: int = 0
     active_version: Optional[WorkflowVersionSummaryResponse] = None
+    last_run_status: Optional[str] = None
+    last_run_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
