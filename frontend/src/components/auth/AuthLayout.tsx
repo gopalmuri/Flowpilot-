@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link } from 'react-router-dom';
 import { Shield } from 'lucide-react';
 import { ThemeSwitcher } from '../ui/ThemeSwitcher';
@@ -17,8 +17,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
       {/* Subtle Ambient Background Depth */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[350px] bg-brand-500/5 dark:bg-brand-400/5 blur-3xl pointer-events-none rounded-full" />
 
-      {/* Top Utility Bar with ThemeSwitcher */}
-      <header className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between relative z-10">
+      {/* Top Utility Bar with ThemeSwitcher - Elevated z-index to ensure dropdown floats cleanly above main content */}
+      <header className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between relative z-30">
         <Link 
           to="/" 
           className="text-xs font-mono text-[var(--text-secondary)] hover:text-brand-600 dark:hover:text-brand-400 transition-colors flex items-center gap-1.5"

@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
+
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Response, status
 from sqlalchemy import text
-import redis.asyncio as aioredis
 
 from app.core.config import settings
 from app.core.database import async_session_maker

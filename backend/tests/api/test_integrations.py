@@ -1,4 +1,5 @@
 import uuid
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -7,8 +8,6 @@ from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 from app.models.audit_log import AuditLog
-from app.models.integration import Integration
-from app.models.membership import OrganizationRole
 
 
 async def create_authenticated_user(async_client: AsyncClient, name: str):
@@ -21,9 +20,7 @@ async def create_authenticated_user(async_client: AsyncClient, name: str):
         "full_name": f"{name.capitalize()} User",
     }
     await async_client.post("/api/v1/auth/register", json=reg_payload)
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     return email, password, headers
@@ -396,9 +393,7 @@ async def test_audit_logs_recorded_for_integrations(async_client: AsyncClient):
 
     async with session_factory() as session:
         logs_stmt = (
-            select(AuditLog)
-            .where(AuditLog.organization_id == uuid.UUID(org_id))
-            .order_by(AuditLog.created_at.asc())
+            select(AuditLog).where(AuditLog.organization_id == uuid.UUID(org_id)).order_by(AuditLog.created_at.asc())
         )
         logs = (await session.execute(logs_stmt)).scalars().all()
 

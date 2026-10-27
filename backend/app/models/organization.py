@@ -1,18 +1,20 @@
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING, List
+
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
-from app.models.base import UUIDMixin, TimestampMixin
+from app.models.base import TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
-    from app.models.membership import OrganizationMember
-    from app.models.integration import Integration
-    from app.models.workflow import Workflow
-    from app.models.workflow_run import WorkflowRun
     from app.models.approval import ApprovalRequest
     from app.models.audit_log import AuditLog
-    from app.models.usage import UsageRecord
     from app.models.idempotency import IdempotencyRecord
+    from app.models.integration import Integration
+    from app.models.membership import OrganizationMember
+    from app.models.usage import UsageRecord
+    from app.models.workflow import Workflow
+    from app.models.workflow_run import WorkflowRun
 
 
 class Organization(Base, UUIDMixin, TimestampMixin):

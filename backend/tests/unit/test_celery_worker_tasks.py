@@ -1,10 +1,9 @@
-import asyncio
 import uuid
-from datetime import datetime, timezone
 from typing import AsyncGenerator
+
+import httpx
 import pytest
 import pytest_asyncio
-import httpx
 from redis.exceptions import RedisError
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
@@ -20,11 +19,11 @@ from app.models.workflow import Workflow, WorkflowVersion
 from app.models.workflow_run import WorkflowRun, WorkflowStepRun
 from app.models.workflow_step import WorkflowConnection, WorkflowStep
 from app.schemas.execution import WorkflowRunStatus
-from app.workers.celery_app import celery_app, health_check_task
+from app.workers.celery_app import health_check_task
 from app.workers.tasks import (
     execute_workflow_run,
-    resume_workflow_run,
     process_webhook_event,
+    resume_workflow_run,
 )
 
 
@@ -126,6 +125,7 @@ async def simple_workflow(
 # Celery Worker Unit Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_celery_task_retry_configuration():
     """Verify that tasks are configured with exponential retry backoff and error types."""
@@ -161,9 +161,7 @@ async def test_execute_workflow_run_missing_run():
     fake_run = str(uuid.uuid4())
     fake_ver = str(uuid.uuid4())
 
-    result = execute_workflow_run.apply(
-        args=[fake_org, fake_run, fake_ver, {"text": "hello"}]
-    ).get()
+    result = execute_workflow_run.apply(args=[fake_org, fake_run, fake_ver, {"text": "hello"}]).get()
 
     assert result["status"] == "FAILED"
     assert "not found" in result.get("error_message", "").lower()

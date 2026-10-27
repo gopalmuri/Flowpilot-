@@ -1,12 +1,15 @@
 from typing import Dict, Type
+
 from app.engine.base import BaseStepExecutor
 from app.engine.executors import (
+    AIAnalyzeMessageExecutor,
+    AIExtractDataExecutor,
     AIClassificationExecutor,
     ConditionRuleExecutor,
     HumanApprovalExecutor,
-    MockAIClassificationExecutor,
     MockCRMCreateExecutor,
     MockSlackNotificationExecutor,
+    SendReplyExecutor,
     TriggerExecutor,
     ValidateDataExecutor,
 )
@@ -21,6 +24,9 @@ STEP_EXECUTOR_REGISTRY: Dict[str, Type[BaseStepExecutor]] = {
     StepType.SLACK_NOTIFICATION.value: MockSlackNotificationExecutor,
     StepType.AI_CLASSIFICATION.value: AIClassificationExecutor,
     StepType.HUMAN_APPROVAL.value: HumanApprovalExecutor,
+    StepType.AI_ANALYZE_MESSAGE.value: AIAnalyzeMessageExecutor,
+    StepType.SEND_REPLY.value: SendReplyExecutor,
+    StepType.AI_EXTRACT_DATA.value: AIExtractDataExecutor,
 }
 
 

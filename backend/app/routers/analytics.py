@@ -1,4 +1,3 @@
-from app.core.rate_limit import analytics_rate_limiter
 import uuid
 from datetime import datetime
 from typing import Optional, Tuple
@@ -9,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user, get_org_context, require_role
 from app.core.database import get_db
+from app.core.rate_limit import analytics_rate_limiter
 from app.models.audit_log import AuditLog
 from app.models.membership import OrganizationMember, OrganizationRole
 from app.models.organization import Organization
@@ -50,6 +50,7 @@ async def _verify_workflow_ownership(
 # 1. Executive Overview Analytics
 # ==============================================================================
 
+
 @router.get(
     "/organizations/{organization_id}/analytics/overview",
     response_model=AnalyticsOverviewResponse,
@@ -86,6 +87,7 @@ async def get_analytics_overview(
 # 2. Time-Series Analytics
 # ==============================================================================
 
+
 @router.get(
     "/organizations/{organization_id}/analytics/time-series",
     response_model=TimeSeriesResponse,
@@ -120,6 +122,7 @@ async def get_time_series(
 # ==============================================================================
 # 3. Workflow Performance Analytics
 # ==============================================================================
+
 
 @router.get(
     "/organizations/{organization_id}/analytics/workflows",
@@ -159,6 +162,7 @@ async def get_workflow_performance(
 # 4. Step Latency and Bottleneck Analytics
 # ==============================================================================
 
+
 @router.get(
     "/organizations/{organization_id}/analytics/steps",
     response_model=StepLatencyResponse,
@@ -196,6 +200,7 @@ async def get_step_latency(
 # 5. SLA Monitoring & Health Analytics
 # ==============================================================================
 
+
 @router.get(
     "/organizations/{organization_id}/analytics/sla",
     response_model=SLAMonitoringResponse,
@@ -231,6 +236,7 @@ async def get_sla_monitoring(
 # ==============================================================================
 # 6. Version-Scoped SLA Configuration
 # ==============================================================================
+
 
 @router.put(
     "/organizations/{organization_id}/workflows/{workflow_id}/versions/{version_id}/sla",

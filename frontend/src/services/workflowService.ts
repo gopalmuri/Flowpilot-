@@ -1,4 +1,19 @@
 import { apiRequest } from './apiClient';
+import type {
+  AIBuilderCreateRequest,
+  AIBuilderCreateResponse,
+  AICatalogStep,
+  AIRunExplainResponse,
+  AISuggestionsResponse,
+  AIWorkflowAssistRequest,
+  AISimulateExecutionRequest,
+  AISimulateExecutionResponse,
+  AISimulatePayloadRequest,
+  AISimulatePayloadResponse,
+  AIWorkflowAssistResponse,
+  AIWorkflowProposal,
+  AIWorkflowTemplate,
+} from '../types/workflowAI';
 import {
   Workflow,
   WorkflowListResponse,
@@ -142,10 +157,11 @@ export async function createWorkflowVersion(
   workflowId: string,
   baseVersionId?: string
 ): Promise<WorkflowVersionSummary> {
-  const params = baseVersionId ? `?base_version_id=${baseVersionId}` : '';
-  const endpoint = `/api/v1/organizations/${organizationId}/workflows/${workflowId}/versions${params}`;
+  // The backend reads base_version_id from the JSON body (WorkflowVersionCreateRequest).
+  const endpoint = `/api/v1/organizations/${organizationId}/workflows/${workflowId}/versions`;
   return apiRequest<WorkflowVersionSummary>(endpoint, {
     method: 'POST',
+    body: JSON.stringify(baseVersionId ? { base_version_id: baseVersionId } : {}),
   });
 }
 
@@ -181,5 +197,141 @@ export async function publishWorkflowVersion(
   const endpoint = `/api/v1/organizations/${organizationId}/workflows/${workflowId}/versions/${versionId}/publish`;
   return apiRequest<WorkflowVersionSummary>(endpoint, {
     method: 'POST',
+  });
+}
+
+export async function assistWorkflowWithAI(
+  organizationId: string,
+  workflowId: string,
+  payload: import('../types/workflowAI').AIWorkflowAssistRequest,
+  signal?: AbortSignal
+): Promise<import('../types/workflowAI').AIWorkflowAssistResponse> {
+  const endpoint = `/api/v1/organizations/${organizationId}/workflows/${workflowId}/ai-assist`;
+  return apiRequest<import('../types/workflowAI').AIWorkflowAssistResponse>(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    signal,
+  });
+}
+
+export async function simulatePayloadWithAI(
+  organizationId: string,
+  workflowId: string,
+  payload: import('../types/workflowAI').AISimulatePayloadRequest,
+  signal?: AbortSignal
+): Promise<import('../types/workflowAI').AISimulatePayloadResponse> {
+  const endpoint = `/api/v1/organizations/${organizationId}/workflows/${workflowId}/ai-simulate-payload`;
+  return apiRequest<import('../types/workflowAI').AISimulatePayloadResponse>(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    signal,
+  });
+}
+
+export async function simulateWorkflowRunWithAI(
+  organizationId: string,
+  workflowId: string,
+  payload: import('../types/workflowAI').AISimulateExecutionRequest,
+  signal?: AbortSignal
+): Promise<import('../types/workflowAI').AISimulateExecutionResponse> {
+  const endpoint = `/api/v1/organizations/${organizationId}/workflows/${workflowId}/ai-simulate-run`;
+  return apiRequest<import('../types/workflowAI').AISimulateExecutionResponse>(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    signal,
+  });
+}
+
+const orgWorkflowsBase = (organizationId: string) => `/api/v1/organizations/${organizationId}/workflows`;
+
+export async function getAICatalog(organizationId: string): Promise<AICatalogStep[]> {
+  return apiRequest<AICatalogStep[]>(`${orgWorkflowsBase(organizationId)}/catalog`, { method: 'GET' });
+}
+
+export async function getAITemplates(organizationId: string): Promise<AIWorkflowTemplate[]> {
+  return apiRequest<AIWorkflowTemplate[]>(`${orgWorkflowsBase(organizationId)}/templates`, { method: 'GET' });
+}
+
+export async function buildWorkflowWithAI(
+  organizationId: string,
+  payload: AIWorkflowAssistRequest,
+  signal?: AbortSignal
+): Promise<AIWorkflowAssistResponse> {
+  return apiRequest<AIWorkflowAssistResponse>(`${orgWorkflowsBase(organizationId)}/ai-builder`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    signal,
+  });
+}
+
+export async function createDraftFromAIProposal(
+  organizationId: string,
+  payload: AIBuilderCreateRequest
+): Promise<AIBuilderCreateResponse> {
+  return apiRequest<AIBuilderCreateResponse>(`${orgWorkflowsBase(organizationId)}/ai-builder/create`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function explainRunWithAI(
+  organizationId: string,
+  workflowId: string,
+  runId: string
+): Promise<AIRunExplainResponse> {
+  return apiRequest<AIRunExplainResponse>(
+    `${orgWorkflowsBase(organizationId)}/${workflowId}/runs/${runId}/ai-explain`,
+    { method: 'POST' }
+  );
+}
+
+export async function getAISuggestions(
+  organizationId: string,
+  workflowId: string
+): Promise<AISuggestionsResponse> {
+  return apiRequest<AISuggestionsResponse>(`${orgWorkflowsBase(organizationId)}/${workflowId}/ai-suggestions`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * Applies an AI proposal as a NEW draft version cloned from `baseVersionId`.
+ * Published/active versions are never edited in place.
+ */
+export async function applyProposalAsNewDraft(
+  organizationId: string,
+  workflowId: string,
+  baseVersionId: string | null | undefined,
+  proposal: AIWorkflowProposal
+): Promise<WorkflowVersionDetail> {
+  const draft = await createWorkflowVersion(organizationId, workflowId, baseVersionId ?? undefined);
+  return updateWorkflowVersion(organizationId, workflowId, draft.id, {
+    steps: proposal.steps,
+    connections: proposal.connections,
+  });
+}
+
+/** Dry-run helpers that work before a draft exists (no workflow id needed, nothing is saved or sent). */
+export async function simulateProposalPayload(
+  organizationId: string,
+  payload: AISimulatePayloadRequest,
+  signal?: AbortSignal
+): Promise<AISimulatePayloadResponse> {
+  return apiRequest<AISimulatePayloadResponse>(`${orgWorkflowsBase(organizationId)}/ai-builder/simulate-payload`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    signal,
+  });
+}
+
+export async function simulateProposalRun(
+  organizationId: string,
+  payload: AISimulateExecutionRequest,
+  signal?: AbortSignal
+): Promise<AISimulateExecutionResponse> {
+  return apiRequest<AISimulateExecutionResponse>(`${orgWorkflowsBase(organizationId)}/ai-builder/simulate-run`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    signal,
   });
 }

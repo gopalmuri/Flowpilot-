@@ -5,18 +5,22 @@ import {
   XCircle,
   ChevronUp,
   ChevronDown,
+  Sparkles,
 } from 'lucide-react';
 import { WorkflowValidationResult } from '../../types/workflow';
 
 interface ValidationBarProps {
   validationResult: WorkflowValidationResult | null;
   isValidating?: boolean;
+  onFixWithAI?: (issues: { errors: string[]; warnings: string[] }) => void;
 }
 
 export const ValidationBar: React.FC<ValidationBarProps> = ({
   validationResult,
   isValidating = false,
+  onFixWithAI,
 }) => {
+
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   if (!validationResult && !isValidating) return null;
@@ -52,9 +56,24 @@ export const ValidationBar: React.FC<ValidationBarProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {onFixWithAI && (errors.length > 0 || warnings.length > 0) && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFixWithAI({ errors, warnings });
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 dark:hover:bg-teal-900/60 border border-teal-200 dark:border-teal-800/60 text-teal-800 dark:text-teal-200 text-xs font-semibold shadow-2xs transition cursor-pointer"
+              title="Ask AI to repair validation errors and rewire missing branches"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              <span>Fix with AI</span>
+            </button>
+          )}
+
           {(errors.length > 0 || warnings.length > 0) && (
-            <span className="text-[11px] text-warm-500 dark:text-charcoal-400">
+            <span className="text-[11px] text-warm-500 dark:text-charcoal-400 hidden xs:inline">
               {isExpanded ? 'Hide details' : 'View details'}
             </span>
           )}
@@ -67,7 +86,7 @@ export const ValidationBar: React.FC<ValidationBarProps> = ({
       </div>
 
       {isExpanded && (errors.length > 0 || warnings.length > 0) && (
-        <div className="p-4 border-t border-warm-200 dark:border-charcoal-800 max-h-48 overflow-y-auto space-y-2 text-xs">
+        <div className="p-4 border-t border-warm-200 dark:border-charcoal-800 max-h-56 overflow-y-auto space-y-2 text-xs">
           {errors.map((err, i) => (
             <div
               key={`err-${i}`}
@@ -87,8 +106,22 @@ export const ValidationBar: React.FC<ValidationBarProps> = ({
               <span>{warn}</span>
             </div>
           ))}
+
+          {onFixWithAI && (
+            <div className="pt-2 flex justify-end border-t border-warm-200 dark:border-charcoal-800">
+              <button
+                type="button"
+                onClick={() => onFixWithAI({ errors, warnings })}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-2xs transition cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Auto-Repair All Issues with AI</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 };
+

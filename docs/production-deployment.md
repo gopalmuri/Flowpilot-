@@ -116,7 +116,7 @@ If an anomalous regression is detected post-deployment:
 2. **Revert Application Image**:
    ```bash
    docker tag flowpilot-backend:previous flowpilot-backend:latest
-   docker compose -f docker-compose.prod.yml up -d --no-deps backend celery_worker
+   docker compose -f docker-compose.prod.yml up -d --no-deps backend celery_worker celery_beat
    ```
 3. **Database Rollback** (Only if forward compatibility is broken):
    ```bash

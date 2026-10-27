@@ -41,7 +41,7 @@ describe('Authentication Flow', () => {
 
       const emailInput = screen.getByLabelText(/Work Email/i);
       const passwordInput = screen.getByLabelText(/^Password$/i);
-      const submitBtn = screen.getByRole('button', { name: /Sign In/i });
+      const submitBtn = screen.getByRole('button', { name: /Continue/i });
 
       fireEvent.change(emailInput, { target: { value: 'pilot@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'Secret123!' } });
@@ -87,7 +87,7 @@ describe('Authentication Flow', () => {
         target: { value: 'WrongPassword123!' },
       });
 
-      fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('alert')).toBeInTheDocument();
@@ -127,7 +127,7 @@ describe('Authentication Flow', () => {
         target: { value: 'Secret123!' },
       });
 
-      fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
 
       await waitFor(() => {
         expect(mockLogin).toHaveBeenCalledWith({
@@ -160,7 +160,7 @@ describe('Authentication Flow', () => {
         <MemoryRouter initialEntries={['/register']}>
           <Routes>
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="/dashboard" element={<div>Dashboard Target</div>} />
+            <Route path="/verify-email" element={<div>Verify Email Target</div>} />
           </Routes>
         </MemoryRouter>
       );
@@ -196,7 +196,7 @@ describe('Authentication Flow', () => {
           password: 'SuperSecret123!',
           organization_name: undefined,
         });
-        expect(screen.getByText('Dashboard Target')).toBeInTheDocument();
+        expect(screen.getByText('Verify Email Target')).toBeInTheDocument();
       });
     });
   });

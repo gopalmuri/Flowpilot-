@@ -1,4 +1,5 @@
 import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -101,9 +102,7 @@ async def test_auth_me_endpoint(async_client: AsyncClient):
         "organization_name": "Me Org",
     }
     await async_client.post("/api/v1/auth/register", json=reg_payload)
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     access_token = login_resp.json()["access_token"]
 
     # Authenticated request
@@ -131,9 +130,7 @@ async def test_refresh_token_rotation_and_replay_prevention(async_client: AsyncC
         "/api/v1/auth/register",
         json={"email": email, "password": password, "full_name": "Refresh User"},
     )
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     tokens = login_resp.json()
     old_refresh_token = tokens["refresh_token"]
 
@@ -165,9 +162,7 @@ async def test_logout_revocation(async_client: AsyncClient):
         "/api/v1/auth/register",
         json={"email": email, "password": password, "full_name": "Logout User"},
     )
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     tokens = login_resp.json()
     access_token = tokens["access_token"]
     refresh_token = tokens["refresh_token"]

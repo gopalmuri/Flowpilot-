@@ -2,6 +2,7 @@ import re
 import uuid
 from datetime import datetime
 from typing import List, Optional
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
@@ -54,9 +55,48 @@ class UserResponse(BaseModel):
     full_name: str
     is_active: bool
     is_superuser: bool
+    is_verified: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UserRegisterResponse(BaseModel):
+    message: str
+    email: str
+    requires_verification: bool = True
+    user_id: uuid.UUID
+
+
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+
+
+class ResendOtpRequest(BaseModel):
+    email: EmailStr
+
+
+class ResendOtpResponse(BaseModel):
+    message: str
+
+
+class LoginInitiateResponse(BaseModel):
+    message: str = "A 6-digit verification code has been sent to your email."
+    email: str
+    requires_otp: bool = True
+
+
+class VerifyLoginOtpRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+    organization_id: Optional[uuid.UUID] = None
+
+
+class ResendLoginOtpRequest(BaseModel):
+    email: EmailStr
+
+
 
 
 class UserOrganizationSummary(BaseModel):

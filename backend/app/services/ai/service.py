@@ -4,11 +4,11 @@ import logging
 import re
 import time
 from typing import Any, Dict, List, Optional
+
 from pydantic import ValidationError
 
 from app.core.config import settings
 from app.schemas.ai import (
-    ALLOWED_LEAD_CATEGORIES,
     AIProviderConfig,
     LeadClassificationInput,
     LeadClassificationResult,
@@ -179,9 +179,7 @@ class AIClassificationService:
             # Validate category against candidate categories
             cat = str(parsed.get("category", "")).strip().lower()
             if cat not in [c.lower() for c in input_data.categories]:
-                raise ValueError(
-                    f"Returned category '{cat}' not in candidate categories {input_data.categories}"
-                )
+                raise ValueError(f"Returned category '{cat}' not in candidate categories {input_data.categories}")
 
             # Validate full schema strictly (e.g. rejects confidence out of [0, 1])
             validated = LeadClassificationResult(
@@ -231,9 +229,7 @@ class AIClassificationService:
             fallback_reason = "provider_unavailable"
 
         # Attempt deterministic fallback
-        logger.warning(
-            f"AI provider '{cfg.provider}' failed ({fallback_reason}). Attempting deterministic fallback."
-        )
+        logger.warning(f"AI provider '{cfg.provider}' failed ({fallback_reason}). Attempting deterministic fallback.")
 
         try:
             fallback_result = DeterministicFallbackClassifier.classify(

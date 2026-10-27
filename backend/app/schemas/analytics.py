@@ -1,14 +1,18 @@
 import math
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
+
 from pydantic import BaseModel, Field, model_validator
 
 
 class SLAConfig(BaseModel):
     """SLA threshold and activation configuration."""
+
     target_seconds: float = Field(..., description="Target SLA duration in seconds (> 0 and <= 604800)")
-    warning_threshold_seconds: float = Field(..., description="Warning threshold in seconds (>= 0 and < target_seconds)")
+    warning_threshold_seconds: float = Field(
+        ..., description="Warning threshold in seconds (>= 0 and < target_seconds)"
+    )
     enabled: bool = Field(True, description="Whether SLA evaluation is active")
 
     @model_validator(mode="after")
@@ -30,6 +34,7 @@ class SLAConfig(BaseModel):
 
 class SLAUpdateRequest(BaseModel):
     """Request payload to configure SLA targets for a draft workflow version."""
+
     target_seconds: float = Field(..., description="Target duration in seconds")
     warning_threshold_seconds: float = Field(..., description="Warning threshold in seconds")
     enabled: bool = Field(True, description="Enable SLA monitoring")
@@ -53,6 +58,7 @@ class SLAUpdateRequest(BaseModel):
 
 class SLAVersionResponse(BaseModel):
     """Response returned upon SLA configuration update."""
+
     workflow_id: uuid.UUID
     version_id: uuid.UUID
     version_number: int
@@ -62,6 +68,7 @@ class SLAVersionResponse(BaseModel):
 
 class ExecutionVolumeMetrics(BaseModel):
     """Execution volume counts and terminal completion rates."""
+
     total: int = Field(..., description="Total executions (terminal + in-flight)")
     terminal: int = Field(..., description="Terminal executions (success + failed + cancelled)")
     in_flight: int = Field(..., description="In-flight executions (running + pending + waiting_approval)")
@@ -78,6 +85,7 @@ class ExecutionVolumeMetrics(BaseModel):
 
 class DurationMetrics(BaseModel):
     """Duration percentiles in milliseconds for finished executions."""
+
     avg_duration_ms: float
     p50_duration_ms: float
     p95_duration_ms: float
@@ -86,6 +94,7 @@ class DurationMetrics(BaseModel):
 
 class SLAMetrics(BaseModel):
     """Query-derived SLA compliance metrics across evaluated executions."""
+
     monitored_count: int = Field(..., description="healthy + warning + breached")
     healthy_count: int
     warning_count: int
@@ -98,6 +107,7 @@ class SLAMetrics(BaseModel):
 
 class AnalyticsOverviewResponse(BaseModel):
     """Executive KPI overview aggregating volume, latency, and SLA performance."""
+
     organization_id: uuid.UUID
     workflow_id: Optional[uuid.UUID] = None
     time_range: str
@@ -110,6 +120,7 @@ class AnalyticsOverviewResponse(BaseModel):
 
 class TimeSeriesBucket(BaseModel):
     """Continuous time bucket for execution volume and latency trend."""
+
     timestamp: datetime
     total_count: int
     success_count: int
@@ -122,6 +133,7 @@ class TimeSeriesBucket(BaseModel):
 
 class TimeSeriesResponse(BaseModel):
     """Time-series trend analysis response with continuous zero-filled buckets."""
+
     organization_id: uuid.UUID
     workflow_id: Optional[uuid.UUID] = None
     start_time: datetime
@@ -132,6 +144,7 @@ class TimeSeriesResponse(BaseModel):
 
 class WorkflowPerformanceItem(BaseModel):
     """Per-workflow aggregated execution and SLA metrics."""
+
     workflow_id: uuid.UUID
     workflow_name: str
     status: str
@@ -152,6 +165,7 @@ class WorkflowPerformanceItem(BaseModel):
 
 class WorkflowPerformanceResponse(BaseModel):
     """Paginated list of workflow performance summaries."""
+
     items: List[WorkflowPerformanceItem]
     total: int
     page: int
@@ -161,6 +175,7 @@ class WorkflowPerformanceResponse(BaseModel):
 
 class StepLatencyItem(BaseModel):
     """Step execution statistics identifying bottlenecks."""
+
     step_key: str
     step_type: str
     name: Optional[str] = None
@@ -174,6 +189,7 @@ class StepLatencyItem(BaseModel):
 
 class StepLatencyResponse(BaseModel):
     """Bounded step performance and bottleneck analysis."""
+
     items: List[StepLatencyItem]
     total: int
     limit: int
@@ -182,6 +198,7 @@ class StepLatencyResponse(BaseModel):
 
 class SLAMonitoringItem(BaseModel):
     """Workflow-level SLA tracking status."""
+
     workflow_id: uuid.UUID
     workflow_name: str
     active_version_number: Optional[int] = None
@@ -200,5 +217,6 @@ class SLAMonitoringItem(BaseModel):
 
 class SLAMonitoringResponse(BaseModel):
     """Comprehensive SLA monitoring response with overall summary and workflow details."""
+
     summary: SLAMetrics
     workflows: List[SLAMonitoringItem]

@@ -3,11 +3,11 @@ import secrets
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Set
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.engine.base import StepExecutionContext, StepExecutionResult
 from app.engine.registry import get_step_executor
@@ -19,11 +19,20 @@ from app.models.workflow import Workflow, WorkflowVersion
 from app.models.workflow_run import WorkflowRun, WorkflowStepRun
 from app.models.workflow_step import WorkflowConnection, WorkflowStep
 from app.schemas.execution import WorkflowRunStatus, WorkflowStepRunStatus
+from app.services.inbound import drafts as draft_service
 from app.services.workflow_validator import validate_workflow_dag
 
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+class WorkflowRunNotFoundError(RuntimeError):
+    """The workflow run row no longer exists (e.g. its workflow was deleted mid-execution)."""
+
+    def __init__(self, run_id: uuid.UUID):
+        super().__init__(f"Workflow run {run_id} no longer exists")
+        self.run_id = run_id
 
 
 class WorkflowEngine:
@@ -42,9 +51,7 @@ class WorkflowEngine:
     ):
         self.session_factory = session_factory
         self.step_timeout_seconds = (
-            step_timeout_seconds
-            if step_timeout_seconds is not None
-            else self.default_step_timeout_seconds
+            step_timeout_seconds if step_timeout_seconds is not None else self.default_step_timeout_seconds
         )
 
     async def execute_new_run(
@@ -121,7 +128,7 @@ class WorkflowEngine:
             val_res = validate_workflow_dag(list(steps), conn_dicts)
             if not val_res.valid:
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=422,
                     detail={"message": "Active version DAG validation failed", "errors": val_res.errors},
                 )
 
@@ -179,9 +186,14 @@ class WorkflowEngine:
         approved: bool = True,
         comment: Optional[str] = None,
         approval_id: Optional[uuid.UUID] = None,
+        on_decision: Optional[Callable[[AsyncSession, ApprovalRequest, bool], Awaitable[None]]] = None,
     ) -> WorkflowRun:
         """
         Resumes a paused workflow run upon human approval or rejection.
+
+        `on_decision` runs inside the decision transaction, after the approval row and run are locked and updated and
+        before the commit, and only for the request that wins the PENDING -> decided transition. If it raises, the
+        whole decision rolls back. Draft approval uses it so the decision and the exact approved text commit together.
         Strictly follows the 9-step decision resolution sequence with row-locks:
         1. Acquire WorkflowRun row lock
         2. Acquire ApprovalRequest row lock
@@ -240,6 +252,7 @@ class WorkflowEngine:
             if approval.status == "PENDING" and (created_at + timedelta(hours=timeout_hours)) <= utc_now():
                 approval.status = "EXPIRED"
                 approval.resolved_at = utc_now()
+                await draft_service.sync_terminal(session, approval, "EXPIRED")
 
                 run.status = WorkflowRunStatus.FAILED.value
                 run.error_message = f"Approval request expired after {timeout_hours} hours"
@@ -329,6 +342,7 @@ class WorkflowEngine:
                 approval.reviewed_by = reviewer_id
                 approval.comment = comment
                 approval.resolved_at = utc_now()
+                approval.resume_claimed_at = utc_now()
 
                 # Mark paused step run as COMPLETED with selected_branch
                 step_run_stmt = select(WorkflowStepRun).where(
@@ -368,20 +382,49 @@ class WorkflowEngine:
                     },
                 )
                 session.add(audit_log)
+                if on_decision is not None:
+                    await on_decision(session, approval, approved)
 
             # 8. Commit the approval decision / state transition
             await session.commit()
             await session.refresh(run)
             version_id = run.workflow_version_id
             clean_trigger_payload = dict(run.trigger_payload or {})
+            winning_approval_id = approval.id
 
         # 9. Only the request that successfully transitioned PENDING -> APPROVED/REJECTED initiates DAG traversal
-        return await self._run_dag_traversal(
+        result = await self._run_dag_traversal(
             organization_id=organization_id,
             run_id=run_id,
             version_id=version_id,
             trigger_payload=clean_trigger_payload,
         )
+        await self.mark_resume_completed(organization_id, winning_approval_id)
+        return result
+
+    async def mark_resume_completed(
+        self, organization_id: uuid.UUID, approval_id: uuid.UUID, recovered: bool = False
+    ) -> None:
+        """Records that the run was driven on after a decision, so recovery does not pick it up again."""
+        async with self.session_factory() as session:
+            approval = await session.get(ApprovalRequest, approval_id)
+            if approval is not None and approval.organization_id == organization_id:
+                approval.resume_completed_at = utc_now()
+                session.add(
+                    AuditLog(
+                        organization_id=organization_id,
+                        user_id=None,
+                        action="approval.workflow_resumed",
+                        resource_type="approval_request",
+                        resource_id=str(approval_id),
+                        details={
+                            "workflow_run_id": str(approval.workflow_run_id),
+                            "decision": approval.status,
+                            "recovered": recovered,
+                        },
+                    )
+                )
+                await session.commit()
 
     async def cancel_run(
         self,
@@ -441,6 +484,7 @@ class WorkflowEngine:
             for pa in pending_approvals:
                 pa.status = "CANCELLED"
                 pa.resolved_at = utc_now()
+                await draft_service.sync_terminal(session, pa, "CANCELLED")
                 audit_log = AuditLog(
                     organization_id=organization_id,
                     user_id=None,
@@ -450,8 +494,6 @@ class WorkflowEngine:
                     details={"workflow_run_id": str(run_id), "step_id": str(pa.step_id)},
                 )
                 session.add(audit_log)
-
-
 
             await session.commit()
             await session.refresh(run)
@@ -503,16 +545,11 @@ class WorkflowEngine:
             )
             steps = (await session.execute(steps_stmt)).scalars().all()
 
-            conns_stmt = (
-                select(WorkflowConnection)
-                .where(WorkflowConnection.workflow_version_id == version_id)
-            )
+            conns_stmt = select(WorkflowConnection).where(WorkflowConnection.workflow_version_id == version_id)
             conns = (await session.execute(conns_stmt)).scalars().all()
 
             # Load existing completed/skipped step runs for this execution
-            existing_runs_stmt = select(WorkflowStepRun).where(
-                WorkflowStepRun.workflow_run_id == run_id
-            )
+            existing_runs_stmt = select(WorkflowStepRun).where(WorkflowStepRun.workflow_run_id == run_id)
             existing_step_runs = (await session.execute(existing_runs_stmt)).scalars().all()
 
         step_by_id: Dict[uuid.UUID, WorkflowStep] = {s.id: s for s in steps}
@@ -609,10 +646,7 @@ class WorkflowEngine:
                                 edge_active[out_c.id] = False
                             continue
 
-                        all_parents_done = all(
-                            node_status.get(p_id) in ["COMPLETED", "SKIPPED"]
-                            for p_id in parents
-                        )
+                        all_parents_done = all(node_status.get(p_id) in ["COMPLETED", "SKIPPED"] for p_id in parents)
                         if all_parents_done:
                             ready_nodes.append(s)
 
@@ -669,11 +703,13 @@ class WorkflowEngine:
                 # -----------------------------------------------------
                 # 1. Start Step Transaction (WorkflowStepRun -> RUNNING)
                 step_start_time = time.monotonic()
-                step_input_snapshot = sanitize_payload({
-                    "config": curr_step.config or {},
-                    "workflow_data": workflow_data,
-                    "trigger_payload": trigger_payload,
-                })
+                step_input_snapshot = sanitize_payload(
+                    {
+                        "config": curr_step.config or {},
+                        "workflow_data": workflow_data,
+                        "trigger_payload": trigger_payload,
+                    }
+                )
 
                 async with self.session_factory() as session:
                     step_run = WorkflowStepRun(
@@ -758,24 +794,28 @@ class WorkflowEngine:
                             session.add(fail_audit)
 
                         await session.commit()
+                        if w_run is None:
+                            raise WorkflowRunNotFoundError(run_id)
                         await session.refresh(w_run)
                         return w_run
 
                 elif res.status == "PAUSED":
                     # Human Approval Suspension -> WorkflowRun PAUSED
-                    clean_snapshot = sanitize_payload({
-                        "step_key": curr_step.step_key,
-                        "step_type": curr_step.step_type,
-                        "workflow_data": workflow_data,
-                        "trigger_payload": trigger_payload,
-                        "approval_context": res.approval_context or {},
-                    })
+                    clean_snapshot = sanitize_payload(
+                        {
+                            "step_key": curr_step.step_key,
+                            "step_type": curr_step.step_type,
+                            "workflow_data": workflow_data,
+                            "trigger_payload": trigger_payload,
+                            "approval_context": res.approval_context or {},
+                        }
+                    )
 
                     async with self.session_factory() as session:
                         # 1. Acquire WorkflowRun row lock
                         w_run = await session.get(WorkflowRun, run_id, with_for_update=True)
                         if not w_run:
-                            return None
+                            raise WorkflowRunNotFoundError(run_id)
 
                         # 2. Check for existing active PENDING approval request under lock
                         existing_stmt = (
@@ -788,6 +828,7 @@ class WorkflowEngine:
                             .with_for_update()
                         )
                         existing_approval = (await session.execute(existing_stmt)).scalar_one_or_none()
+                        pending_approval = existing_approval
 
                         if not existing_approval:
                             approval_req = ApprovalRequest(
@@ -799,6 +840,7 @@ class WorkflowEngine:
                             )
                             session.add(approval_req)
                             await session.flush()
+                            pending_approval = approval_req
 
                             # Emit audit log for approval requested
                             audit_log = AuditLog(
@@ -816,6 +858,16 @@ class WorkflowEngine:
                                 },
                             )
                             session.add(audit_log)
+
+                        # Reply drafts: link to this approval (idempotent, so a retried pause emits no second event).
+                        draft_ref = (res.approval_context or {}).get("draft_id")
+                        if draft_ref and pending_approval is not None:
+                            try:
+                                await draft_service.submit_for_approval(
+                                    session, pending_approval, uuid.UUID(str(draft_ref))
+                                )
+                            except ValueError:
+                                pass
 
                         s_run = await session.get(WorkflowStepRun, step_run_id)
                         if s_run:
@@ -890,7 +942,11 @@ class WorkflowEngine:
             if final_run and final_run.status == WorkflowRunStatus.RUNNING.value:
                 final_run.status = WorkflowRunStatus.COMPLETED.value
                 final_run.completed_at = utc_now()
-                duration_ms = int((final_run.completed_at - final_run.started_at).total_seconds() * 1000) if final_run.started_at else 0
+                duration_ms = (
+                    int((final_run.completed_at - final_run.started_at).total_seconds() * 1000)
+                    if final_run.started_at
+                    else 0
+                )
                 comp_audit = AuditLog(
                     organization_id=organization_id,
                     user_id=None,
@@ -902,4 +958,6 @@ class WorkflowEngine:
                 session.add(comp_audit)
                 await session.commit()
                 await session.refresh(final_run)
+            if final_run is None:
+                raise WorkflowRunNotFoundError(run_id)
             return final_run

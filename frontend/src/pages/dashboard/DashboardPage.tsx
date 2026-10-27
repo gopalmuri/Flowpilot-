@@ -26,6 +26,7 @@ import { WorkflowRun } from '../../types/execution';
 import { ApprovalRequest } from '../../types/approval';
 import { MetricCard } from '../../components/ui/MetricCard';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { formatRunDuration } from '../../utils/formatRunDuration';
 
 export const DashboardPage: React.FC = () => {
   const { user, activeOrganization, activeRole } = useAuth();
@@ -153,7 +154,7 @@ export const DashboardPage: React.FC = () => {
 
           <Link
             to="/workflows"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white text-xs font-semibold shadow-subtle transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 dark:hover:bg-brand-500 dark:hover:bg-brand-600 text-white text-xs font-semibold shadow-subtle transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>New Workflow</span>
@@ -222,7 +223,7 @@ export const DashboardPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <span
               className={`w-2.5 h-2.5 rounded-full ${
-                hasIssues ? 'bg-amber-500 animate-pulse' : 'bg-brand-600 dark:bg-brand-500'
+                hasIssues ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'
               }`}
             />
             <h2 className="text-xs font-bold text-warm-900 dark:text-charcoal-100 uppercase tracking-wider">
@@ -383,7 +384,7 @@ export const DashboardPage: React.FC = () => {
                         </div>
                         <span className="text-[11px] text-warm-500 dark:text-charcoal-400 block truncate mt-0.5">
                           Trigger: {run.trigger_type} &bull; Duration:{' '}
-                          {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(2)}s` : 'In progress'}
+                          {formatRunDuration(run)}
                         </span>
                       </div>
                     </div>
@@ -448,9 +449,11 @@ export const DashboardPage: React.FC = () => {
                           Review Required
                         </h4>
                       </div>
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60">
-                        {appr.required_role}
-                      </span>
+                      {appr.required_role && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60">
+                          {appr.required_role}
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] text-warm-600 dark:text-charcoal-400 pt-1 border-t border-warm-200 dark:border-charcoal-800">
@@ -500,8 +503,8 @@ export const DashboardPage: React.FC = () => {
               Tenant Isolation &amp; Governance
             </h2>
           </div>
-          <span className="text-[11px] font-medium text-brand-700 dark:text-brand-400 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-brand-600 dark:bg-brand-500" /> Boundary Verified
+          <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" /> Boundary Verified
           </span>
         </div>
 

@@ -6,9 +6,11 @@ import { DashboardLayout } from '../layouts/DashboardLayout';
 import { LandingPage } from '../pages/landing/LandingPage';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
+import { VerifyEmailPage } from '../pages/auth/VerifyEmailPage';
 import { DashboardPage } from '../pages/dashboard/DashboardPage';
 import { AnalyticsPage } from '../pages/analytics/AnalyticsPage';
 import { WorkflowsPage } from '../pages/workflows/WorkflowsPage';
+import { AIBuilderPage } from '../pages/workflows/AIBuilderPage';
 import { WorkflowEditorPage } from '../pages/workflows/WorkflowEditorPage';
 import { IntegrationsPage } from '../pages/integrations/IntegrationsPage';
 import { ExecutionsPage } from '../pages/executions/ExecutionsPage';
@@ -19,9 +21,16 @@ import { StatusPage } from '../pages/StatusPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
 // Public guard that redirects authenticated users away from /login and /register to /dashboard
-const PublicAuthRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+export const PublicAuthRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
-  if (isLoading) {
+  // Only hold the page back while the session is first being restored. login(), verifyLoginOtp(), register() and
+  // friends also flip isLoading for the whole app; hiding the form for those would unmount the page mid-request
+  // and throw away its local state, so the "enter your code" step was never shown and every retry emailed a new code.
+  const sessionChecked = React.useRef(false);
+  if (!isLoading) {
+    sessionChecked.current = true;
+  }
+  if (isLoading && !sessionChecked.current) {
     return null;
   }
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
@@ -50,6 +59,14 @@ export const AppRoutes: React.FC = () => {
           </PublicAuthRoute>
         }
       />
+      <Route
+        path="/verify-email"
+        element={
+          <PublicAuthRoute>
+            <VerifyEmailPage />
+          </PublicAuthRoute>
+        }
+      />
 
       {/* Protected Dashboard Routes */}
       <Route
@@ -62,6 +79,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/workflows" element={<WorkflowsPage />} />
+        <Route path="/workflows/new/ai" element={<AIBuilderPage />} />
         <Route path="/workflows/:workflowId" element={<WorkflowEditorPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
         <Route path="/executions" element={<ExecutionsPage />} />

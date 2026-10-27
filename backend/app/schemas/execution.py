@@ -2,7 +2,8 @@ import uuid
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class WorkflowRunStatus(str, Enum):
@@ -43,12 +44,13 @@ class WorkflowRunCreateRequest(BaseModel):
     @classmethod
     def validate_payload_size(cls, v: Dict[str, Any]) -> Dict[str, Any]:
         import json
+
         try:
             dumped = json.dumps(v)
             if len(dumped.encode("utf-8")) > 1024 * 1024:  # 1MB max upload payload
                 raise ValueError("Payload exceeds maximum permitted size of 1MB")
-        except (TypeError, OverflowError):
-            raise ValueError("Payload must be valid JSON-serializable dictionary")
+        except (TypeError, OverflowError) as exc:
+            raise ValueError("Payload must be valid JSON-serializable dictionary") from exc
         return v
 
 

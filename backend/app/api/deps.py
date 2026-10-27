@@ -1,5 +1,6 @@
 import uuid
 from typing import Callable, List, Optional, Tuple
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
@@ -42,7 +43,7 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
     jti = payload.get("jti")
     if jti and await is_access_token_revoked(jti):
@@ -62,19 +63,17 @@ async def get_current_user(
 
     try:
         user_uuid = uuid.UUID(user_id_str)
-    except ValueError:
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid user ID format in token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc
 
     # Fetch user with memberships
     stmt = (
         select(User)
-        .options(
-            selectinload(User.memberships).selectinload(OrganizationMember.organization)
-        )
+        .options(selectinload(User.memberships).selectinload(OrganizationMember.organization))
         .where(User.id == user_uuid)
     )
     result = await db.execute(stmt)
@@ -95,8 +94,8 @@ async def get_current_user(
         )
 
     # Attach token claims for downstream context
-    user._raw_token = token
-    user._token_payload = payload
+    user._raw_token = token  # type: ignore[attr-defined]
+    user._token_payload = payload  # type: ignore[attr-defined]
     return user
 
 

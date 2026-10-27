@@ -123,7 +123,7 @@ export const SettingsPage: React.FC = () => {
                 <div>
                   <div className="text-xs font-semibold text-warm-900 dark:text-charcoal-100">Dark Mode</div>
                   <div className="text-[11px] text-warm-500 dark:text-charcoal-400 mt-0.5">
-                    Deep charcoal control plane with emerald accents
+                    Deep slate control plane with indigo accents
                   </div>
                 </div>
               </button>
@@ -241,7 +241,7 @@ export const SettingsPage: React.FC = () => {
               </div>
               <div>
                 <span className="text-warm-500 dark:text-charcoal-400 block text-[11px]">Status</span>
-                <span className="inline-flex items-center gap-1 text-brand-700 dark:text-brand-400 font-medium">
+                <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-medium">
                   <Check className="w-3.5 h-3.5" />
                   Active User
                 </span>
@@ -307,8 +307,8 @@ export const SettingsPage: React.FC = () => {
                     </span>
                   </td>
                   <td className="py-3 px-3">
-                    <span className="inline-flex items-center gap-1 text-brand-700 dark:text-brand-400 font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+                    <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                       Active
                     </span>
                   </td>

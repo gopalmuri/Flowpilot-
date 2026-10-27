@@ -135,12 +135,12 @@ export const AnalyticsOverviewCards: React.FC<AnalyticsOverviewCardsProps> = ({
             <span>Success Rate</span>
             <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-rose-500" />
           </span>
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-brand-600 dark:text-brand-400">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-700 dark:text-emerald-400">
             <CheckCircle2 className="w-4 h-4" />
           </div>
         </div>
         <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-3xl font-bold text-brand-600 dark:text-brand-400 tracking-tight font-mono">
+          <span className="text-3xl font-bold text-emerald-700 dark:text-emerald-400 tracking-tight font-mono">
             {vol.terminal > 0 ? `${vol.success_rate.toFixed(1)}%` : '0.0%'}
           </span>
           <span className="text-[11px] text-warm-500 dark:text-charcoal-400">
@@ -158,7 +158,7 @@ export const AnalyticsOverviewCards: React.FC<AnalyticsOverviewCardsProps> = ({
       </a>
 
       {/* 3. Latency & Duration Percentiles */}
-      <div className="p-5 rounded-2xl bg-white dark:bg-charcoal-900/60 border border-warm-200 dark:border-charcoal-750/80 shadow-lg relative overflow-hidden group hover:border-warm-300 dark:border-charcoal-700 transition-all">
+      <div className="p-5 rounded-2xl bg-white dark:bg-charcoal-900/60 border border-warm-200 dark:border-charcoal-750/80 shadow-lg relative overflow-hidden group hover:border-warm-300 dark:hover:border-charcoal-700 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-warm-500 dark:text-charcoal-400 uppercase tracking-wider">
             Latency (P95 / Avg)
@@ -202,7 +202,7 @@ export const AnalyticsOverviewCards: React.FC<AnalyticsOverviewCardsProps> = ({
           </div>
         </div>
         <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-3xl font-bold text-brand-600 dark:text-brand-400 tracking-tight font-mono">
+          <span className="text-3xl font-bold text-emerald-700 dark:text-emerald-400 tracking-tight font-mono">
             {slaData.monitored_count > 0 ? `${slaData.sla_compliance_rate.toFixed(1)}%` : 'N/A'}
           </span>
           {slaData.breached_count > 0 ? (
@@ -217,7 +217,7 @@ export const AnalyticsOverviewCards: React.FC<AnalyticsOverviewCardsProps> = ({
           )}
         </div>
         <div className="mt-3 flex items-center gap-3 text-[11px] text-warm-500 dark:text-charcoal-400 border-t border-warm-200 dark:border-charcoal-750/60 pt-2.5">
-          <span>Healthy: <strong className="text-brand-600 dark:text-brand-400 font-mono">{slaData.healthy_count}</strong></span>
+          <span>Healthy: <strong className="text-emerald-700 dark:text-emerald-400 font-mono">{slaData.healthy_count}</strong></span>
           <span>Warning: <strong className="text-amber-500 font-mono">{slaData.warning_count}</strong></span>
           <span>Breached: <strong className="text-rose-500 font-mono">{slaData.breached_count}</strong></span>
         </div>

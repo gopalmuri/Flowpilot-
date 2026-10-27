@@ -1,9 +1,10 @@
 import os
+
 import pytest
+
 from app.core.config import settings
 from app.core.encryption import (
     DecryptionFailedError,
-    EncryptionError,
     InvalidKeyError,
     decrypt_credentials,
     encrypt_credentials,
@@ -122,6 +123,7 @@ def test_encryption_truncated_ciphertext():
 def test_encryption_malformed_decrypted_json():
     # Encrypt raw non-JSON bytes with valid key/nonce using AESGCM directly
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
     key = parse_encryption_key(settings.ENCRYPTION_KEY)
     aesgcm = AESGCM(key)
     nonce = os.urandom(12)

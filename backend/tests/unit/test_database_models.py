@@ -1,32 +1,21 @@
-import uuid
-from datetime import datetime, timezone
-import pytest
 from sqlalchemy import create_engine
+
 from app.core.database import Base
-from app.models import (
-    User,
-    Organization,
-    OrganizationMember,
-    Integration,
-    Workflow,
-    WorkflowVersion,
-    WorkflowStep,
-    WorkflowConnection,
-    WorkflowRun,
-    WorkflowStepRun,
-    ApprovalRequest,
-    AuditLog,
-    UsageRecord,
-    IdempotencyRecord,
-)
 
 EXPECTED_TABLES = [
     "approval_requests",
     "audit_logs",
+    "conversations",
+    "gmail_accounts",
     "idempotency_records",
+    "inbound_messages",
     "integrations",
+    "oauth_states",
     "organization_members",
     "organizations",
+    "outbound_deliveries",
+    "reply_draft_versions",
+    "reply_drafts",
     "usage_records",
     "users",
     "workflow_connections",
@@ -40,19 +29,26 @@ EXPECTED_TABLES = [
 TENANT_TABLES = [
     "approval_requests",
     "audit_logs",
+    "conversations",
+    "gmail_accounts",
     "idempotency_records",
+    "inbound_messages",
     "integrations",
+    "oauth_states",
     "organization_members",
+    "outbound_deliveries",
+    "reply_draft_versions",
+    "reply_drafts",
     "usage_records",
     "workflow_runs",
     "workflows",
 ]
 
 
-def test_all_14_tables_registered():
-    """Verify that all 14 required tables are registered in Base metadata."""
+def test_all_21_tables_registered():
+    """Verify that all 21 required tables are registered in Base metadata."""
     tables = sorted(list(Base.metadata.tables.keys()))
-    assert len(tables) == 14
+    assert len(tables) == 21
     assert tables == EXPECTED_TABLES
 
 
@@ -66,7 +62,7 @@ def test_tenant_tables_have_organization_id():
 
 
 def test_all_tables_have_uuid_primary_key():
-    """Verify that all 14 tables have an 'id' primary key."""
+    """Verify that all 21 tables have an 'id' primary key."""
     for table_name in EXPECTED_TABLES:
         table = Base.metadata.tables[table_name]
         assert "id" in table.columns, f"{table_name} missing id column"
@@ -74,15 +70,16 @@ def test_all_tables_have_uuid_primary_key():
 
 
 def test_metadata_creates_tables_in_memory():
-    """Verify that SQLAlchemy can create all 14 tables without circular or syntax errors."""
+    """Verify that SQLAlchemy can create all 21 tables without circular or syntax errors."""
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
-    
+
     with engine.connect() as conn:
         from sqlalchemy import inspect
+
         inspector = inspect(conn)
         created_tables = sorted(inspector.get_table_names())
-        assert len(created_tables) == 14
+        assert len(created_tables) == 21
         assert created_tables == EXPECTED_TABLES
-    
+
     engine.dispose()

@@ -2,8 +2,10 @@ import base64
 import json
 import os
 from typing import Any, Dict, Optional, Union
+
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
 from app.core.config import settings
 
 DEFAULT_DEV_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef"
@@ -11,16 +13,19 @@ DEFAULT_DEV_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef"
 
 class EncryptionError(Exception):
     """Base exception for encryption and decryption errors. Never includes sensitive data."""
+
     pass
 
 
 class InvalidKeyError(EncryptionError):
     """Raised when an encryption key is invalid or does not decode to exactly 32 bytes."""
+
     pass
 
 
 class DecryptionFailedError(EncryptionError):
     """Raised when decryption fails due to tag mismatch, corrupted nonce, or bad key."""
+
     pass
 
 
@@ -67,9 +72,7 @@ def parse_encryption_key(key_input: Union[str, bytes]) -> bytes:
     if len(encoded) == 32:
         return encoded
 
-    raise InvalidKeyError(
-        f"Encryption key must decode to exactly 32 bytes. Decoded size was {len(encoded)} bytes."
-    )
+    raise InvalidKeyError(f"Encryption key must decode to exactly 32 bytes. Decoded size was {len(encoded)} bytes.")
 
 
 def validate_production_key() -> None:
@@ -88,9 +91,7 @@ def validate_production_key() -> None:
         try:
             parse_encryption_key(key_str)
         except Exception as e:
-            raise RuntimeError(
-                f"FATAL: Production ENCRYPTION_KEY is invalid: {str(e)}. Cannot start."
-            )
+            raise RuntimeError(f"FATAL: Production ENCRYPTION_KEY is invalid: {str(e)}. Cannot start.") from e
     else:
         # Development / testing mode validation
         if not key_str:
@@ -113,7 +114,7 @@ def encrypt_credentials(
     try:
         json_bytes = json.dumps(data, ensure_ascii=False).encode("utf-8")
     except Exception as e:
-        raise EncryptionError(f"Failed to serialize credentials to JSON: {type(e).__name__}")
+        raise EncryptionError(f"Failed to serialize credentials to JSON: {type(e).__name__}") from e
 
     nonce = os.urandom(12)
     aesgcm = AESGCM(resolved_key)
@@ -121,7 +122,7 @@ def encrypt_credentials(
     try:
         ciphertext = aesgcm.encrypt(nonce, json_bytes, aad)
     except Exception as e:
-        raise EncryptionError(f"Encryption failed: {type(e).__name__}")
+        raise EncryptionError(f"Encryption failed: {type(e).__name__}") from e
 
     return nonce + ciphertext
 
@@ -152,10 +153,12 @@ def decrypt_credentials(
 
     try:
         decrypted_bytes = aesgcm.decrypt(nonce, ciphertext, aad)
-    except InvalidTag:
-        raise DecryptionFailedError("Decryption authentication tag verification failed. Bad key, corrupted ciphertext, or tampered payload.")
+    except InvalidTag as exc:
+        raise DecryptionFailedError(
+            "Decryption authentication tag verification failed. Bad key, corrupted ciphertext, or tampered payload."
+        ) from exc
     except Exception as e:
-        raise DecryptionFailedError(f"Decryption failed: {type(e).__name__}")
+        raise DecryptionFailedError(f"Decryption failed: {type(e).__name__}") from e
 
     try:
         parsed = json.loads(decrypted_bytes.decode("utf-8"))
@@ -164,5 +167,5 @@ def decrypt_credentials(
         return parsed
     except DecryptionFailedError:
         raise
-    except Exception:
-        raise DecryptionFailedError("Decrypted payload contains malformed JSON")
+    except Exception as exc:
+        raise DecryptionFailedError("Decrypted payload contains malformed JSON") from exc

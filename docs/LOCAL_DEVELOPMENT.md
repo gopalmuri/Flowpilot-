@@ -34,6 +34,8 @@ docker compose up -d postgres redis
 
 ---
 
+> **Shortcut:** `.\scripts\dev.ps1 setup` (Windows) or `make setup` (macOS/Linux) performs the venv, dependency and `.env` steps below. Python 3.12+ is required; always use the project venv, since globally installed packages (e.g. SQLAlchemy 1.x) will break the backend.
+
 ## 3. Backend Setup & Startup
 
 ```bash
@@ -45,10 +47,10 @@ venv\Scripts\activate  # Windows PowerShell
 # source venv/bin/activate  # macOS / Linux
 
 # 2. Install dependencies
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 
 # 3. Configure environment
-cp .env.example .env
+cp ../.env.example .env   # template lives at the repo root
 
 # 4. Start FastAPI server with live reload (Port 8000)
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
@@ -62,6 +64,24 @@ venv\Scripts\activate
 # Start Celery worker (use -P solo on Windows)
 celery -A app.workers.celery_app.celery_app worker --loglevel=info -P solo
 ```
+
+### Start the Celery Beat scheduler (one terminal, exactly one process)
+Periodic work (the outbound-delivery relay every 15 s, stale-delivery recovery every 60 s, approval-resume recovery
+every 120 s) only runs while a scheduler is running. Without it, committed deliveries are still sent when something
+nudges the relay, and the worker also runs recovery once each time it starts, but nothing re-queues a lost task.
+```bash
+cd E:\flowpilot\backend
+venv\Scripts\activate
+celery -A app.workers.celery_app.celery_app beat --loglevel=info --schedule=%TEMP%\celerybeat-schedule
+```
+Verify it is really running: the Integrations page warns when no heartbeat is seen, beat stamps
+`flowpilot:beat:last_tick` in Redis every 30 s (`redis-cli GET flowpilot:beat:last_tick`), and
+`python -c "from app.workers.celery_app import celery_app as c; print(c.conf.beat_schedule)"` lists the schedule.
+Gmail setup is in `docs/GMAIL_INTEGRATION.md`.
+
+Never run two beat processes against the same broker: every periodic task would be enqueued twice. (Duplicates are
+harmless to correctness because each delivery can be claimed once, but they waste work.) With Docker Compose use
+`docker compose up -d celery_beat`; the service has a fixed `container_name`, so Compose refuses to scale it.
 
 ---
 

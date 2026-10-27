@@ -1,7 +1,8 @@
 import uuid
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any, Callable, Dict, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class StepExecutionContext(BaseModel):
@@ -9,8 +10,10 @@ class StepExecutionContext(BaseModel):
     Execution context provided to a step executor.
     Previous step outputs in workflow_data are treated as a read-only snapshot.
     """
+
     organization_id: uuid.UUID
     workflow_run_id: uuid.UUID
+    step_run_id: Optional[uuid.UUID] = None
     step_id: uuid.UUID
     step_key: str
     step_type: str
@@ -24,13 +27,19 @@ class StepExecutionContext(BaseModel):
         description="Original trigger payload for the workflow run",
     )
 
-    model_config = ConfigDict(frozen=True)
+    session_factory: Optional[Callable[..., Any]] = Field(
+        default=None,
+        description="Async session factory for executors that persist data (supplied by the engine)",
+    )
+
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
 
 class StepExecutionResult(BaseModel):
     """
     Result returned by a step executor after discrete execution.
     """
+
     status: str = Field(..., description="COMPLETED | FAILED | PAUSED | SKIPPED")
     output_data: Dict[str, Any] = Field(
         default_factory=dict,

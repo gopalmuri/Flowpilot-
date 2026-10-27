@@ -1,10 +1,12 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
-from argon2 import PasswordHasher
-from argon2.exceptions import InvalidHashError, VerifyMismatchError
+
 import jwt
 import redis.asyncio as aioredis
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerifyMismatchError
+
 from app.core.config import settings
 
 # Argon2id Password Hasher with exact parameters specified in docs/security.md
@@ -105,9 +107,7 @@ def decode_token(token: str, expected_type: Optional[str] = None) -> Dict[str, A
             options={"require": ["sub", "exp", "iat", "jti"]},
         )
         if expected_type and payload.get("type") != expected_type:
-            raise ValueError(
-                f"Invalid token type: expected {expected_type}, got {payload.get('type')}"
-            )
+            raise ValueError(f"Invalid token type: expected {expected_type}, got {payload.get('type')}")
         return payload
     except jwt.PyJWTError as e:
         raise ValueError(f"Token validation failed: {e}") from e
@@ -154,9 +154,7 @@ async def revoke_refresh_token(jti: str) -> bool:
     return res > 0
 
 
-async def rotate_refresh_token(
-    old_jti: str, new_jti: str, user_id: str, new_ttl_seconds: int
-) -> bool:
+async def rotate_refresh_token(old_jti: str, new_jti: str, user_id: str, new_ttl_seconds: int) -> bool:
     """
     Atomically verifies and invalidates the old refresh token while storing the new one.
     Returns False if old_jti was already invalid or replayed.
@@ -175,7 +173,7 @@ async def rotate_refresh_token(
         return 0
     end
     """
-    res = await r.eval(lua_script, 2, old_key, new_key, str(user_id), new_ttl_seconds)
+    res = await r.eval(lua_script, 2, old_key, new_key, str(user_id), str(new_ttl_seconds))  # type: ignore[misc]
     return bool(res)
 
 

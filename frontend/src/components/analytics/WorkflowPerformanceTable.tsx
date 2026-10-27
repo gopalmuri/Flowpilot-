@@ -41,7 +41,7 @@ export const WorkflowPerformanceTable: React.FC<WorkflowPerformanceTableProps> =
     return (
       <ArrowUpDown
         className={`w-3.5 h-3.5 ml-1 transition-colors ${
-          isActive ? 'text-brand-600 dark:text-brand-400' : 'text-warm-600 dark:text-charcoal-400 group-hover:text-warm-500 dark:text-charcoal-400'
+          isActive ? 'text-brand-600 dark:text-brand-400' : 'text-warm-600 dark:text-charcoal-400 group-hover:text-warm-500 dark:group-hover:text-charcoal-400'
         }`}
       />
     );
@@ -72,7 +72,7 @@ export const WorkflowPerformanceTable: React.FC<WorkflowPerformanceTableProps> =
             <tr>
               <th className="py-3 px-4">Workflow Name</th>
               <th
-                className="py-3 px-4 cursor-pointer hover:text-warm-800 dark:text-charcoal-200 group select-none"
+                className="py-3 px-4 cursor-pointer hover:text-warm-800 dark:hover:text-charcoal-200 group select-none"
                 onClick={() => onSortChange('executions')}
               >
                 <div className="flex items-center">
@@ -81,7 +81,7 @@ export const WorkflowPerformanceTable: React.FC<WorkflowPerformanceTableProps> =
                 </div>
               </th>
               <th
-                className="py-3 px-4 cursor-pointer hover:text-warm-800 dark:text-charcoal-200 group select-none"
+                className="py-3 px-4 cursor-pointer hover:text-warm-800 dark:hover:text-charcoal-200 group select-none"
                 onClick={() => onSortChange('failure_rate')}
               >
                 <div className="flex items-center">
@@ -90,7 +90,7 @@ export const WorkflowPerformanceTable: React.FC<WorkflowPerformanceTableProps> =
                 </div>
               </th>
               <th
-                className="py-3 px-4 cursor-pointer hover:text-warm-800 dark:text-charcoal-200 group select-none"
+                className="py-3 px-4 cursor-pointer hover:text-warm-800 dark:hover:text-charcoal-200 group select-none"
                 onClick={() => onSortChange('avg_duration')}
               >
                 <div className="flex items-center">
@@ -99,7 +99,7 @@ export const WorkflowPerformanceTable: React.FC<WorkflowPerformanceTableProps> =
                 </div>
               </th>
               <th
-                className="py-3 px-4 cursor-pointer hover:text-warm-800 dark:text-charcoal-200 group select-none"
+                className="py-3 px-4 cursor-pointer hover:text-warm-800 dark:hover:text-charcoal-200 group select-none"
                 onClick={() => onSortChange('breaches')}
               >
                 <div className="flex items-center">
@@ -128,13 +128,13 @@ export const WorkflowPerformanceTable: React.FC<WorkflowPerformanceTableProps> =
               items.map((wf) => (
                 <tr
                   key={wf.workflow_id}
-                  className="hover:bg-warm-100 dark:bg-charcoal-800/40 transition-colors group"
+                  className="hover:bg-warm-100 dark:hover:bg-charcoal-800/40 transition-colors group"
                 >
                   {/* Workflow Name */}
                   <td className="py-3.5 px-4">
                     <Link
                       to={`/workflows/${wf.workflow_id}`}
-                      className="font-medium text-warm-800 dark:text-charcoal-200 hover:text-brand-600 dark:text-brand-400 transition-colors flex items-center gap-2"
+                      className="font-medium text-warm-800 dark:text-charcoal-200 hover:text-brand-600 dark:hover:text-brand-400 transition-colors flex items-center gap-2"
                     >
                       <span>{wf.workflow_name}</span>
                       {wf.active_version_number && (
@@ -159,7 +159,7 @@ export const WorkflowPerformanceTable: React.FC<WorkflowPerformanceTableProps> =
                   <td className="py-3.5 px-4">
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-[11px] font-mono">
-                        <span className="text-brand-600 dark:text-brand-400 font-semibold">
+                        <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
                           {wf.success_rate.toFixed(1)}% succ
                         </span>
                         {wf.failed_count > 0 && (
@@ -194,7 +194,7 @@ export const WorkflowPerformanceTable: React.FC<WorkflowPerformanceTableProps> =
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold font-mono ${
                             wf.sla_compliance_rate >= 95
-                              ? 'bg-emerald-500/15 text-brand-600 dark:text-brand-400 border border-emerald-500/30'
+                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
                               : wf.sla_compliance_rate >= 80
                               ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                               : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'

@@ -2,12 +2,16 @@ import enum
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class IntegrationType(str, enum.Enum):
     MOCK_CRM = "MOCK_CRM"
     SLACK = "SLACK"
+    PORTFOLIO_FORM = "PORTFOLIO_FORM"
+    EMAIL_SENDER = "EMAIL_SENDER"
+    GMAIL = "GMAIL"
 
 
 class IntegrationStatus(str, enum.Enum):
@@ -43,6 +47,10 @@ class IntegrationResponse(BaseModel):
     config: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
+    public_key: Optional[str] = Field(None, description="Public identifier used in inbound URLs (not a secret)")
+    setup: Optional[Dict[str, str]] = Field(
+        None, description="One-time values (e.g. signing secret) shown only in the create response"
+    )
 
 
 class IntegrationListResponse(BaseModel):

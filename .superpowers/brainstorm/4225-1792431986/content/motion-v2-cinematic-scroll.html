@@ -1,0 +1,170 @@
+<style>
+.v{--g:#2f9e6e;--g2:#7be0a9;--bg:#07100c;font-family:Inter,system-ui,sans-serif;color:#fff;margin:-20px;background:var(--bg);overflow-x:hidden}
+.v *{box-sizing:border-box}
+.hero{position:relative;min-height:560px;display:flex;align-items:center;padding:60px 6vw;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(70px);will-change:transform;opacity:.55}
+.o1{width:420px;height:420px;background:#2f9e6e;left:-100px;top:-120px;animation:d1 18s ease-in-out infinite alternate}
+.o2{width:360px;height:360px;background:#1d6b4b;right:-80px;bottom:-100px;animation:d2 22s ease-in-out infinite alternate}
+.o3{width:240px;height:240px;background:#7be0a9;left:45%;top:30%;opacity:.25;animation:d1 26s ease-in-out infinite alternate-reverse}
+@keyframes d1{to{transform:translate(120px,80px) scale(1.2)}}
+@keyframes d2{to{transform:translate(-140px,-70px) scale(1.15)}}
+.grid{position:absolute;inset:0;background-image:linear-gradient(#ffffff0a 1px,transparent 1px),linear-gradient(90deg,#ffffff0a 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(60% 60% at 50% 40%,#000,transparent);animation:gridm 30s linear infinite}
+@keyframes gridm{to{background-position:56px 56px}}
+.hc{position:relative;z-index:2;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;width:100%;max-width:1100px;margin:auto}
+.eyebrow{display:inline-block;border:1px solid #7be0a944;color:var(--g2);padding:6px 14px;border-radius:99px;font-size:13px;margin-bottom:22px;opacity:0;transform:translateY(14px);animation:up 1.4s .2s cubic-bezier(.16,1,.3,1) forwards}
+.line{display:block;overflow:hidden;padding-bottom:.08em}
+.line>span{display:block;transform:translateY(115%) rotate(2deg);animation:mask 1.6s cubic-bezier(.16,1,.3,1) forwards}
+h1.hh{font-size:clamp(36px,5.4vw,66px);line-height:1.02;font-weight:800;letter-spacing:-.035em;margin:0 0 22px}
+.l1>span{animation-delay:.5s}.l2>span{animation-delay:.75s}.l3>span{animation-delay:1s}
+.acc{background:linear-gradient(90deg,#7be0a9,#2f9e6e,#7be0a9);background-size:200%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:mask 1.6s 1s cubic-bezier(.16,1,.3,1) forwards,shine 6s 2.6s linear infinite}
+@keyframes mask{to{transform:none}}
+@keyframes shine{to{background-position:200% 0}}
+.sub{color:#a9c0b3;font-size:17px;max-width:460px;opacity:0;transform:translateY(20px);animation:up 1.6s 1.5s cubic-bezier(.16,1,.3,1) forwards;margin:0 0 28px}
+.btns{display:flex;gap:14px;opacity:0;transform:translateY(20px);animation:up 1.6s 1.8s cubic-bezier(.16,1,.3,1) forwards}
+@keyframes up{to{opacity:1;transform:none}}
+.b1{position:relative;background:var(--g);color:#fff;border:0;border-radius:12px;padding:14px 26px;font-weight:700;font-size:15px;cursor:pointer;transition:transform .6s cubic-bezier(.16,1,.3,1),box-shadow .6s;box-shadow:0 0 0 0 #2f9e6e66}
+.b1:hover{transform:translateY(-3px);box-shadow:0 14px 40px -6px #2f9e6eaa}
+.b1::after{content:"";position:absolute;inset:0;border-radius:12px;box-shadow:0 0 0 0 #7be0a9aa;animation:ring 3s 3s infinite}
+@keyframes ring{0%{box-shadow:0 0 0 0 #7be0a988}60%,100%{box-shadow:0 0 0 18px #7be0a900}}
+.b2{background:transparent;color:#fff;border:1px solid #ffffff33;border-radius:12px;padding:14px 26px;font-weight:600;cursor:pointer;transition:all .6s cubic-bezier(.16,1,.3,1)}
+.b2:hover{background:#ffffff14;border-color:#ffffff66}
+.card{position:relative;background:linear-gradient(160deg,#ffffff18,#ffffff06);border:1px solid #ffffff22;border-radius:20px;padding:20px;backdrop-filter:blur(14px);opacity:0;transform:translateY(60px) scale(.94);animation:cardin 2s 1.2s cubic-bezier(.16,1,.3,1) forwards;will-change:transform}
+@keyframes cardin{to{opacity:1;transform:none}}
+.fl{animation:float 7s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-14px)}}
+.rw{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:#ffffff0c;margin-bottom:10px;font-size:14px}
+.ck{width:22px;height:22px;border-radius:50%;background:#2f9e6e33;display:grid;place-items:center;color:var(--g2);font-size:12px}
+.prog{height:6px;border-radius:9px;background:#ffffff14;overflow:hidden;margin-top:6px}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--g),var(--g2));animation:pg 4s 2.2s cubic-bezier(.65,0,.35,1) infinite}
+@keyframes pg{0%{width:0}70%,100%{width:100%}}
+.hint{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);color:#7be0a9;font-size:12px;letter-spacing:.2em;text-transform:uppercase;z-index:3;animation:bob 2.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translate(-50%,8px)}}
+
+/* pinned scroll story */
+.story{position:relative;height:520vh}
+.pin{position:sticky;top:0;height:100vh;display:flex;align-items:center;overflow:hidden}
+.pin .in{width:100%;max-width:1100px;margin:auto;padding:0 6vw;display:grid;grid-template-columns:.9fr 1.1fr;gap:40px;align-items:center}
+.stepn{font-size:13px;letter-spacing:.2em;color:var(--g2);text-transform:uppercase}
+.tt{position:relative;height:210px}
+.tt>div{position:absolute;inset:0;opacity:0;transform:translateY(40px);filter:blur(8px);transition:opacity 1.1s cubic-bezier(.16,1,.3,1),transform 1.1s cubic-bezier(.16,1,.3,1),filter 1.1s}
+.tt>div.on{opacity:1;transform:none;filter:none}
+.tt h2{font-size:clamp(28px,3.6vw,46px);margin:8px 0 12px;letter-spacing:-.03em;line-height:1.05}
+.tt p{color:#a9c0b3;margin:0;max-width:380px}
+.dots{display:flex;gap:8px;margin-top:18px}
+.dots i{width:34px;height:4px;border-radius:9px;background:#ffffff22;overflow:hidden;position:relative}
+.dots i b{position:absolute;inset:0;background:var(--g2);transform:scaleX(0);transform-origin:left}
+.diag{position:relative;height:420px;border-radius:24px;background:linear-gradient(160deg,#ffffff0d,#ffffff03);border:1px solid #ffffff1c;overflow:hidden}
+.diag svg{position:absolute;inset:0;width:100%;height:100%}
+.nd{position:absolute;width:128px;padding:14px 8px;text-align:center;border-radius:16px;background:#101e17;border:1px solid #ffffff22;font-weight:700;font-size:14px;transition:all 1s cubic-bezier(.16,1,.3,1);transform:translate(-50%,-50%) scale(.9);opacity:.35}
+.nd small{display:block;font-weight:400;color:#8fa89a;font-size:11px;margin-top:3px}
+.nd.on{opacity:1;transform:translate(-50%,-50%) scale(1.12);border-color:var(--g2);box-shadow:0 0 60px -4px #7be0a977;background:#183327}
+.nd.done{opacity:1;transform:translate(-50%,-50%) scale(1);border-color:#7be0a977}
+.pkt{position:absolute;width:16px;height:16px;border-radius:50%;background:var(--g2);box-shadow:0 0 30px 8px #7be0a9aa;transform:translate(-50%,-50%);left:0;top:0}
+.sbar{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,var(--g),var(--g2));transform-origin:left;transform:scaleX(0);z-index:50}
+
+.end{min-height:420px;display:grid;place-items:center;text-align:center;padding:80px 6vw;position:relative;overflow:hidden}
+.rev{opacity:0;transform:translateY(60px);transition:opacity 1.4s cubic-bezier(.16,1,.3,1),transform 1.4s cubic-bezier(.16,1,.3,1)}
+.rev.in{opacity:1;transform:none}
+.stats{display:flex;gap:60px;justify-content:center;flex-wrap:wrap;margin-top:34px}
+.stats b{display:block;font-size:48px;color:var(--g2);letter-spacing:-.03em}
+.stats span{color:#8fa89a;font-size:13px}
+@media(max-width:720px){.hc,.pin .in{grid-template-columns:1fr}.diag{height:300px}.nd{width:96px;font-size:12px}}
+@media(prefers-reduced-motion:reduce){.v *{animation:none!important;transition:none!important}.line>span,.eyebrow,.sub,.btns,.card,.rev{opacity:1!important;transform:none!important}}
+</style>
+
+<div class="v">
+<div class="sbar" id="sbar"></div>
+
+<section class="hero">
+  <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="grid"></div>
+  <div class="hc">
+    <div>
+      <span class="eyebrow">● AI-powered workflow control</span>
+      <h1 class="hh">
+        <span class="line l1"><span>Automate everything.</span></span>
+        <span class="line l2"><span>Keep humans</span></span>
+        <span class="line l3"><span class="acc">in control.</span></span>
+      </h1>
+      <p class="sub">AI drafts the work. Your team approves it. Every step is audited and safe.</p>
+      <div class="btns"><button class="b1">Start free</button><button class="b2">Watch it run</button></div>
+    </div>
+    <div class="card" id="tilt"><div class="fl">
+      <div class="rw"><span class="ck">✓</span>Customer email received</div>
+      <div class="rw"><span class="ck">✓</span>AI drafted a reply in 1.2s</div>
+      <div class="rw"><span class="ck">…</span>Waiting for approval</div>
+      <div class="prog"><i></i></div>
+    </div></div>
+  </div>
+  <div class="hint">Scroll ↓</div>
+</section>
+
+<section class="story" id="story"><div class="pin"><div class="in">
+  <div>
+    <div class="stepn" id="stepn">Step 1 of 4</div>
+    <div class="tt" id="tt">
+      <div class="on"><h2>A request arrives</h2><p>An email, a form or a message lands in FlowPilot and starts a workflow.</p></div>
+      <div><h2>AI drafts the reply</h2><p>The AI reads it, understands it and writes a draft. Nothing is sent yet.</p></div>
+      <div><h2>A human approves</h2><p>Your team reviews, edits or rejects. You stay in control.</p></div>
+      <div><h2>It executes, audited</h2><p>Only approved work is sent, with every step logged.</p></div>
+    </div>
+    <div class="dots" id="dots"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
+  </div>
+  <div class="diag" id="diag">
+    <svg viewBox="0 0 600 420" preserveAspectRatio="none">
+      <path id="trk" d="M90 110 C 230 110, 230 310, 250 310 S 380 110, 400 110 S 520 310, 520 310" fill="none" stroke="#ffffff14" stroke-width="3"/>
+      <path id="draw" d="M90 110 C 230 110, 230 310, 250 310 S 380 110, 400 110 S 520 310, 520 310" fill="none" stroke="#7be0a9" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <div class="nd" style="left:15%;top:26%">Request<small>Gmail · Form</small></div>
+    <div class="nd" style="left:41.6%;top:74%">AI draft<small>Grok</small></div>
+    <div class="nd" style="left:66.6%;top:26%">Approval<small>Human</small></div>
+    <div class="nd" style="left:86.6%;top:74%">Execute<small>Audited</small></div>
+    <div class="pkt" id="pkt"></div>
+  </div>
+</div></div></section>
+
+<section class="end">
+  <div>
+    <h2 class="rev" style="font-size:clamp(30px,4.4vw,54px);margin:0;letter-spacing:-.03em">Built for teams that<br><span style="color:#7be0a9">cannot afford mistakes.</span></h2>
+    <div class="stats rev" style="transition-delay:.25s">
+      <div><b data-c="12480">0</b><span>workflow runs</span></div>
+      <div><b data-c="99">0</b><span>% audit coverage</span></div>
+      <div><b data-c="4">0</b><span>seconds to first draft</span></div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script>
+(function(){
+  /* smoothed (lerped) scroll progress = the buttery feel */
+  var story=document.getElementById('story'),draw=document.getElementById('draw'),pkt=document.getElementById('pkt'),
+      sbar=document.getElementById('sbar'),nodes=[].slice.call(document.querySelectorAll('.nd')),
+      texts=[].slice.call(document.querySelectorAll('#tt>div')),bars=[].slice.call(document.querySelectorAll('#dots b')),
+      stepn=document.getElementById('stepn'),len=draw.getTotalLength(),cur=0,tgt=0,last=-1;
+  draw.style.strokeDasharray=len;draw.style.strokeDashoffset=len;
+  var svg=draw.ownerSVGElement,diag=document.getElementById('diag');
+  function target(){var r=story.getBoundingClientRect(),span=story.offsetHeight-innerHeight;tgt=Math.min(1,Math.max(0,-r.top/span));
+    var d=document.documentElement,max=d.scrollHeight-innerHeight;sbar.style.transform='scaleX('+(max>0?scrollY/max:0)+')'}
+  addEventListener('scroll',target,{passive:true});target();
+  function frame(){cur+=(tgt-cur)*0.07;if(Math.abs(tgt-cur)<.0003)cur=tgt;
+    draw.style.strokeDashoffset=len*(1-cur);
+    var p=draw.getPointAtLength(len*cur),w=diag.clientWidth,h=diag.clientHeight;
+    pkt.style.left=(p.x/600*w)+'px';pkt.style.top=(p.y/420*h)+'px';
+    var s=Math.min(3,Math.floor(cur*4-0.0001));if(cur<=0.001)s=0;
+    if(s!==last){last=s;texts.forEach(function(t,i){t.className=i===s?'on':''});
+      nodes.forEach(function(n,i){n.className='nd'+(i<s?' done':i===s?' on':'')});
+      stepn.textContent='Step '+(s+1)+' of 4'}
+    bars.forEach(function(b,i){var f=Math.min(1,Math.max(0,cur*4-i));b.style.transform='scaleX('+f+')'});
+    requestAnimationFrame(frame)}
+  frame();
+  /* hero card tilt with smoothing */
+  var card=document.getElementById('tilt'),rx=0,ry=0,tx=0,ty=0;
+  addEventListener('mousemove',function(e){tx=(e.clientX/innerWidth-.5)*16;ty=-(e.clientY/innerHeight-.5)*12});
+  (function t(){rx+=(tx-rx)*.06;ry+=(ty-ry)*.06;card.style.transform='perspective(900px) rotateY('+rx+'deg) rotateX('+ry+'deg)';requestAnimationFrame(t)})();
+  /* reveal + count up on view */
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');
+    e.target.querySelectorAll('[data-c]').forEach(function(el){var T=+el.dataset.c,s=performance.now();(function f(n){var p=Math.min((n-s)/2200,1);el.textContent=Math.round(T*(1-Math.pow(1-p,4))).toLocaleString();if(p<1)requestAnimationFrame(f)})(s)});
+    io.unobserve(e.target)}})},{threshold:.3});
+  document.querySelectorAll('.rev').forEach(function(el){io.observe(el)});
+})();
+</script>

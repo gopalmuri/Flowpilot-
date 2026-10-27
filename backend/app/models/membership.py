@@ -1,10 +1,12 @@
 import enum
 import uuid
 from typing import TYPE_CHECKING
-from sqlalchemy import String, ForeignKey, UniqueConstraint, Uuid
+
+from sqlalchemy import ForeignKey, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
-from app.models.base import UUIDMixin, TimestampMixin
+from app.models.base import TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from app.models.organization import Organization
@@ -21,9 +23,7 @@ class OrganizationRole(str, enum.Enum):
 
 class OrganizationMember(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "organization_members"
-    __table_args__ = (
-        UniqueConstraint("organization_id", "user_id", name="uq_org_member"),
-    )
+    __table_args__ = (UniqueConstraint("organization_id", "user_id", name="uq_org_member"),)
 
     organization_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,

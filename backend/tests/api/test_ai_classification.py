@@ -1,4 +1,5 @@
 import uuid
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -19,9 +20,7 @@ async def create_authenticated_user(async_client: AsyncClient, name: str):
         "full_name": f"{name.capitalize()} User",
     }
     await async_client.post("/api/v1/auth/register", json=reg_payload)
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     return email, password, headers
@@ -47,6 +46,7 @@ async def create_org_and_owner(async_client: AsyncClient, name: str):
 # ==============================================================================
 # 1. End-to-End AI Classification Workflow Execution with Downstream Condition
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_ai_classification_workflow_downstream_condition_and_token_usage(async_client: AsyncClient):
@@ -199,6 +199,7 @@ async def test_ai_classification_workflow_downstream_condition_and_token_usage(a
 # 2. Deterministic Fallback During Workflow Execution
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_ai_workflow_fallback_continues_execution(async_client: AsyncClient):
     org_id, headers = await create_org_and_owner(async_client, "ai_fallback")
@@ -281,6 +282,7 @@ async def test_ai_workflow_fallback_continues_execution(async_client: AsyncClien
 # 3. Provider + Fallback Double Failure Produces Workflow Step Failure
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_ai_workflow_both_fail_produces_failed_step(async_client: AsyncClient):
     org_id, headers = await create_org_and_owner(async_client, "ai_double_fail")
@@ -350,6 +352,7 @@ async def test_ai_workflow_both_fail_produces_failed_step(async_client: AsyncCli
 # ==============================================================================
 # 4. Multi-Tenant Isolation & RBAC
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_ai_workflow_tenant_isolation_and_rbac(async_client: AsyncClient):

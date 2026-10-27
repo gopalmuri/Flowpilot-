@@ -1,9 +1,11 @@
 import uuid
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
-from sqlalchemy import String, ForeignKey, JSON, Uuid
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from sqlalchemy import JSON, ForeignKey, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
-from app.models.base import UUIDMixin, TimestampMixin
+from app.models.base import TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from app.models.workflow import WorkflowVersion

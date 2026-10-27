@@ -1,8 +1,9 @@
 import uuid
+
 import pytest
+
 from app.engine.base import StepExecutionContext
 from app.engine.executors import (
-    AIClassificationExecutor,
     MockCRMCreateExecutor,
     MockSlackNotificationExecutor,
 )

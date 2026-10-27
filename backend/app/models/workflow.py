@@ -1,22 +1,22 @@
 import uuid
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
-from sqlalchemy import String, Text, Integer, ForeignKey, Index, UniqueConstraint, JSON, Uuid
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from sqlalchemy import JSON, ForeignKey, Index, Integer, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
-from app.models.base import UUIDMixin, TimestampMixin
+from app.models.base import TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from app.models.organization import Organization
     from app.models.user import User
-    from app.models.workflow_step import WorkflowStep, WorkflowConnection
     from app.models.workflow_run import WorkflowRun
+    from app.models.workflow_step import WorkflowConnection, WorkflowStep
 
 
 class Workflow(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "workflows"
-    __table_args__ = (
-        Index("idx_workflows_org_status", "organization_id", "status"),
-    )
+    __table_args__ = (Index("idx_workflows_org_status", "organization_id", "status"),)
 
     organization_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
@@ -77,9 +77,7 @@ class Workflow(Base, UUIDMixin, TimestampMixin):
 
 class WorkflowVersion(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "workflow_versions"
-    __table_args__ = (
-        UniqueConstraint("workflow_id", "version_number", name="uq_workflow_version"),
-    )
+    __table_args__ = (UniqueConstraint("workflow_id", "version_number", name="uq_workflow_version"),)
 
     workflow_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,

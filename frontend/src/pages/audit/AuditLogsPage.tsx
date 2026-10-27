@@ -197,7 +197,7 @@ export const AuditLogsPage: React.FC = () => {
   const getActionBadge = (action: string) => {
     if (action.includes('completed') || action.includes('approved')) {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-brand-600 dark:text-brand-400 border border-emerald-500/20 font-mono">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 font-mono">
           {action}
         </span>
       );
@@ -299,7 +299,7 @@ export const AuditLogsPage: React.FC = () => {
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-warm-400 dark:text-charcoal-500 hover:text-warm-700 dark:text-charcoal-300"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-warm-400 dark:text-charcoal-500 hover:text-warm-700 dark:hover:text-charcoal-300"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -412,7 +412,7 @@ export const AuditLogsPage: React.FC = () => {
                     {logs.map((log) => (
                       <tr
                         key={log.id}
-                        className="hover:bg-warm-100 dark:bg-charcoal-800/20 transition cursor-pointer"
+                        className="hover:bg-warm-100 dark:hover:bg-charcoal-800/20 transition cursor-pointer"
                         onClick={() => handleOpenDetail(log.id)}
                       >
                         <td className="py-3.5 px-4 whitespace-nowrap text-warm-500 dark:text-charcoal-400 font-mono text-[11px]">
@@ -431,11 +431,11 @@ export const AuditLogsPage: React.FC = () => {
                             </span>
                             <button
                               onClick={(e) => copyToClipboard(log.resource_id, log.id, e)}
-                              className="text-warm-400 dark:text-charcoal-500 hover:text-warm-700 dark:text-charcoal-300 transition"
+                              className="text-warm-400 dark:text-charcoal-500 hover:text-warm-700 dark:hover:text-charcoal-300 transition"
                               title="Copy Resource ID"
                             >
                               {copiedId === log.id ? (
-                                <Check className="w-3 h-3 text-brand-600 dark:text-brand-400" />
+                                <Check className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
                               ) : (
                                 <Copy className="w-3 h-3" />
                               )}
@@ -463,7 +463,7 @@ export const AuditLogsPage: React.FC = () => {
                         >
                           <button
                             onClick={() => handleOpenDetail(log.id)}
-                            className="p-1.5 rounded-lg text-warm-500 dark:text-charcoal-400 hover:text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition"
+                            className="p-1.5 rounded-lg text-warm-500 dark:text-charcoal-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition"
                             title="Inspect Audit Metadata"
                           >
                             <Eye className="w-4 h-4" />
@@ -551,7 +551,7 @@ export const AuditLogsPage: React.FC = () => {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-lg text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:text-charcoal-200 hover:bg-warm-100 dark:bg-charcoal-800 transition"
+                className="p-1.5 rounded-lg text-warm-500 dark:text-charcoal-400 hover:text-warm-800 dark:hover:text-charcoal-200 hover:bg-warm-100 dark:hover:bg-charcoal-800 transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -623,11 +623,11 @@ export const AuditLogsPage: React.FC = () => {
                   </span>
                   <button
                     onClick={copyPayload}
-                    className="inline-flex items-center gap-1 text-[11px] text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:text-brand-300 transition"
+                    className="inline-flex items-center gap-1 text-[11px] text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition"
                   >
                     {copiedPayload ? (
                       <>
-                        <Check className="w-3 h-3 text-brand-600 dark:text-brand-400" />
+                        <Check className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
                         <span>Copied JSON</span>
                       </>
                     ) : (

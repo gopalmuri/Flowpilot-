@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { IntegrationsPage } from '../pages/integrations/IntegrationsPage';
 import * as AuthContextModule from '../context/AuthContext';
 import * as IntegrationServiceModule from '../services/integrationService';
+import * as GmailServiceModule from '../services/gmailService';
 import { Integration } from '../types/integration';
 
 const mockOrg = {
@@ -40,6 +41,15 @@ const mockSlackIntegration: Integration = {
 describe('Integrations Page & Connectors Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // The page now also renders the Gmail card; keep these tests focused on the existing connectors.
+    vi.spyOn(GmailServiceModule, 'listGmailAccounts').mockResolvedValue({
+      items: [],
+      oauth_configured: true,
+      pubsub_configured: false,
+      poll_interval_seconds: 120,
+      scheduler: { healthy: true },
+    });
 
     vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
       user: {

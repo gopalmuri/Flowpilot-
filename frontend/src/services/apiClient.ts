@@ -91,7 +91,7 @@ export async function requestTokenRefresh(): Promise<string | null> {
     setTokens(data.access_token, data.refresh_token);
     processQueue(data.access_token);
     return data.access_token;
-  } catch (_err) {
+  } catch {
     clearAuthStorage();
     processQueue(null);
     if (onAuthFailureHandler) {
@@ -108,6 +108,18 @@ export async function requestTokenRefresh(): Promise<string | null> {
 // ------------------------------------------------------------------------------
 export interface ApiRequestOptions extends RequestInit {
   _retry?: boolean;
+}
+
+function extractErrorMessage(errorData: any, defaultMsg: string): string {
+  if (!errorData) return defaultMsg;
+  if (typeof errorData.detail === 'string') return errorData.detail;
+  if (Array.isArray(errorData.detail) && errorData.detail.length > 0) {
+    return errorData.detail
+      .map((item: any) => (typeof item === 'string' ? item : item.msg || JSON.stringify(item)))
+      .join(', ');
+  }
+  if (typeof errorData.message === 'string') return errorData.message;
+  return defaultMsg;
 }
 
 export async function apiRequest<T = any>(
@@ -171,7 +183,7 @@ export async function apiRequest<T = any>(
       const retryResponse = await fetch(url, retryOptions);
       if (!retryResponse.ok) {
         const errorData = await retryResponse.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Request failed with status ${retryResponse.status}`);
+        throw new Error(extractErrorMessage(errorData, `Request failed with status ${retryResponse.status}`));
       }
       return retryResponse.status === 204 ? (null as T) : await retryResponse.json();
     } else {
@@ -181,7 +193,7 @@ export async function apiRequest<T = any>(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Request failed with status ${response.status}`);
+    throw new Error(extractErrorMessage(errorData, `Request failed with status ${response.status}`));
   }
 
   if (response.status === 204) {

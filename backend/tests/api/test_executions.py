@@ -1,5 +1,6 @@
 import asyncio
 import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -14,9 +15,7 @@ async def create_authenticated_user(async_client: AsyncClient, name: str):
         "full_name": f"{name.capitalize()} User",
     }
     await async_client.post("/api/v1/auth/register", json=reg_payload)
-    login_resp = await async_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    login_resp = await async_client.post("/api/v1/auth/login", json={"email": email, "password": password})
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     return email, password, headers
@@ -580,7 +579,12 @@ async def test_cancellation_lifecycle_and_conflict(async_client: AsyncClient):
         json={
             "steps": [
                 {"step_key": "start", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}},
-                {"step_key": "approval", "step_type": "HUMAN_APPROVAL", "name": "Review", "config": {"approver_role": "MANAGER"}},
+                {
+                    "step_key": "approval",
+                    "step_type": "HUMAN_APPROVAL",
+                    "name": "Review",
+                    "config": {"approver_role": "MANAGER"},
+                },
             ],
             "connections": [{"source_step_key": "start", "target_step_key": "approval"}],
         },
@@ -735,7 +739,12 @@ async def test_rbac_execution_permissions(async_client: AsyncClient):
         json={
             "steps": [
                 {"step_key": "start", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}},
-                {"step_key": "app", "step_type": "HUMAN_APPROVAL", "name": "App", "config": {"approver_role": "MANAGER"}},
+                {
+                    "step_key": "app",
+                    "step_type": "HUMAN_APPROVAL",
+                    "name": "App",
+                    "config": {"approver_role": "MANAGER"},
+                },
             ],
             "connections": [{"source_step_key": "start", "target_step_key": "app"}],
         },
@@ -868,8 +877,18 @@ async def test_concurrent_resume_requests_safe(async_client: AsyncClient):
         json={
             "steps": [
                 {"step_key": "start", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}},
-                {"step_key": "app", "step_type": "HUMAN_APPROVAL", "name": "Review", "config": {"approver_role": "MANAGER"}},
-                {"step_key": "post_app", "step_type": "SLACK_NOTIFICATION", "name": "Post App", "config": {"channel": "#general"}},
+                {
+                    "step_key": "app",
+                    "step_type": "HUMAN_APPROVAL",
+                    "name": "Review",
+                    "config": {"approver_role": "MANAGER"},
+                },
+                {
+                    "step_key": "post_app",
+                    "step_type": "SLACK_NOTIFICATION",
+                    "name": "Post App",
+                    "config": {"channel": "#general"},
+                },
             ],
             "connections": [
                 {"source_step_key": "start", "target_step_key": "app"},
@@ -931,7 +950,6 @@ async def test_concurrent_resume_requests_safe(async_client: AsyncClient):
     assert app_runs[0]["status"] == "COMPLETED"
 
 
-
 @pytest.mark.asyncio
 async def test_step_timeout_marks_step_and_run_failed(async_client: AsyncClient, monkeypatch):
     """
@@ -941,9 +959,9 @@ async def test_step_timeout_marks_step_and_run_failed(async_client: AsyncClient,
     - Verifies workflow run status becomes FAILED.
     - Verifies no downstream steps execute.
     """
-    from app.engine.workflow_engine import WorkflowEngine
-    from app.engine.executors import MockCRMCreateExecutor
     from app.engine.base import StepExecutionResult
+    from app.engine.executors import MockCRMCreateExecutor
+    from app.engine.workflow_engine import WorkflowEngine
 
     # Set engine step timeout to 0.2 seconds
     monkeypatch.setattr(WorkflowEngine, "default_step_timeout_seconds", 0.2)
@@ -979,8 +997,18 @@ async def test_step_timeout_marks_step_and_run_failed(async_client: AsyncClient,
         json={
             "steps": [
                 {"step_key": "start", "step_type": "MANUAL_TRIGGER", "name": "Start", "config": {}},
-                {"step_key": "slow_crm", "step_type": "MOCK_CRM_CREATE", "name": "Slow CRM", "config": {"entity_type": "lead"}},
-                {"step_key": "downstream_alert", "step_type": "SLACK_NOTIFICATION", "name": "Slack Alert", "config": {"channel": "#alerts"}},
+                {
+                    "step_key": "slow_crm",
+                    "step_type": "MOCK_CRM_CREATE",
+                    "name": "Slow CRM",
+                    "config": {"entity_type": "lead"},
+                },
+                {
+                    "step_key": "downstream_alert",
+                    "step_type": "SLACK_NOTIFICATION",
+                    "name": "Slack Alert",
+                    "config": {"channel": "#alerts"},
+                },
             ],
             "connections": [
                 {"source_step_key": "start", "target_step_key": "slow_crm"},

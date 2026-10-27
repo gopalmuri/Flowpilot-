@@ -16,7 +16,7 @@ export const NotFoundPage: React.FC = () => {
         <div className="pt-2">
           <Link
             to="/dashboard"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-xs font-semibold text-white shadow-subtle transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 dark:hover:bg-brand-500 dark:hover:bg-brand-600 text-xs font-semibold text-white shadow-subtle transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Return to Dashboard</span>

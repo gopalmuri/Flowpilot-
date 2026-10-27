@@ -7,6 +7,9 @@ export enum StepType {
   MOCK_CRM_CREATE = 'MOCK_CRM_CREATE',
   SLACK_NOTIFICATION = 'SLACK_NOTIFICATION',
   HUMAN_APPROVAL = 'HUMAN_APPROVAL',
+  AI_ANALYZE_MESSAGE = 'AI_ANALYZE_MESSAGE',
+  SEND_REPLY = 'SEND_REPLY',
+  AI_EXTRACT_DATA = 'AI_EXTRACT_DATA',
 }
 
 export const WorkflowStatus = {
@@ -83,6 +86,8 @@ export interface Workflow {
   updated_at: string;
   version_count?: number;
   active_version?: WorkflowVersionSummary | null;
+  last_run_status?: string | null;
+  last_run_at?: string | null;
 }
 
 export interface WorkflowListResponse {

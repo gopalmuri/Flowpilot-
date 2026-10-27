@@ -1,8 +1,10 @@
 import re
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
 from app.models.membership import OrganizationRole
 
 
